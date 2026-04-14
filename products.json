@@ -1,6 +1,7 @@
 [
   {
     "id": 1,
+    "slug": "bridal-lace",
     "name": { "ar": "دانتيل عرايس", "en": "Bridal Lace" },
     "description": {
       "ar": "قطعة دانتيل فاخرة مصممة للعروس الأنيقة — ناعمة على البشرة بتفاصيل راقية تجمع بين الجمال والأنوثة.",
@@ -28,6 +29,7 @@
   },
   {
     "id": 2,
+    "slug": "karina-1",
     "name": { "ar": "كارينا", "en": "Karina" },
     "description": {
       "ar": "تصميم أنثوي كلاسيكي بقماش ناعم ومريح — مثالية للاستخدام اليومي مع لمسة من الأناقة.",
@@ -55,6 +57,7 @@
   },
   {
     "id": 3,
+    "slug": "karina-2",
     "name": { "ar": "كارينا", "en": "Karina" },
     "description": {
       "ar": "نفس التصميم الأنيق بألوان وخامات مختلفة — راحة لا تُضاهى مع إطلالة مميزة كل يوم.",
@@ -82,6 +85,7 @@
   },
   {
     "id": 4,
+    "slug": "cotton",
     "name": { "ar": "قطن", "en": "Cotton" },
     "description": {
       "ar": "قطن طبيعي 100% فائق النعومة — مصممة للراحة الكاملة طوال اليوم مع تهوية ممتازة للبشرة.",
@@ -107,41 +111,15 @@
       ]
     }
   },
-    {
+  {
     "id": 5,
+    "slug": "lycra",
     "name": { "ar": "ليكرا", "en": "Lycra" },
     "description": {
       "ar": "ليكرا مرنة عالية الجودة تتشكل مع جسمك — تمنحك حرية الحركة والثقة في كل لحظة.",
       "en": "High-quality flexible lycra that shapes with your body — giving you freedom of movement and confidence in every moment."
     },
     "folder": "images/models/7",
-    "main": "pic.png",
-    "gallery": ["1.png", "2.png", "3.png", "4.png"],
-    "featured": true,
-    "sizes": ["L", "XL", "2XL", "3XL", "4XL"],
-    "pricing": {
-      "ar": [
-        { "label": "قطعة واحدة",               "value": "120 جنيه" },
-        { "label": "عرض 3 قطع",                "value": "330 جنيه" },
-        { "label": "عرض 6 قطع (نص دستة)",      "value": "600 جنيه" },
-        { "label": "عرض 12 قطعة (دستة كاملة)", "value": "1100 جنيه" }
-      ],
-      "en": [
-        { "label": "1 Piece",          "value": "120 EGP" },
-        { "label": "3 Pieces",         "value": "330 EGP" },
-        { "label": "6 Pieces",         "value": "600 EGP" },
-        { "label": "12 Pieces",        "value": "1100 EGP" }
-      ]
-    }
-  },
-      {
-    "id": 6,
-    "name": { "ar": "ليكرا", "en": "Lycra" },
-    "description": {
-      "ar": "ليكرا مرنة عالية الجودة تتشكل مع جسمك — تمنحك حرية الحركة والثقة في كل لحظة.",
-      "en": "High-quality flexible lycra that shapes with your body — giving you freedom of movement and confidence in every moment."
-    },
-    "folder": "images/models/77",
     "main": "pic.png",
     "gallery": ["1.png", "2.png", "3.png", "4.png"],
     "featured": true,

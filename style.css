@@ -493,6 +493,11 @@ body.light-mode .skeleton::after {
     width: 65%;
     border-radius: var(--r);
 }
+.skeleton-price {
+    height: 0.75rem;
+    width: 45%;
+    border-radius: var(--r);
+}
 .skeleton-btn {
     height: 2.4rem;
     width: 100%;

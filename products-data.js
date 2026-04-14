@@ -5,6 +5,7 @@
 /* Global store — populated after fetch */
 let DALAL_PRODUCTS     = [];
 let DALAL_PRODUCTS_MAP = {};
+let DALAL_PRODUCTS_SLUG_MAP = {};
 
 /* ─── Skeleton card HTML ─── */
 function createSkeletonCard() {
@@ -14,6 +15,7 @@ function createSkeletonCard() {
         <div class="skeleton skeleton-image"></div>
         <div class="skeleton-info">
             <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-price"></div>
             <div class="skeleton skeleton-btn"></div>
         </div>
     `;
@@ -33,7 +35,11 @@ fetch('products.json')
     .then(data => {
         DALAL_PRODUCTS = data;
         DALAL_PRODUCTS_MAP = {};
-        data.forEach(p => { DALAL_PRODUCTS_MAP[p.id] = p; });
+        DALAL_PRODUCTS_SLUG_MAP = {};
+        data.forEach(p => {
+            DALAL_PRODUCTS_MAP[p.id] = p;
+            if (p.slug) DALAL_PRODUCTS_SLUG_MAP[p.slug] = p;
+        });
         document.dispatchEvent(new Event('dalal:products-ready'));
     })
     .catch(err => console.error('Could not load products.json', err));
@@ -64,12 +70,14 @@ function createProductCard(product) {
     const pricingRows = product.pricing?.[lang] || product.pricing?.ar || [];
     const startPrice  = pricingRows.length ? pricingRows[0].value : '';
 
+    const productUrl = product.slug ? `product.html#${product.slug}` : `product.html?id=${product.id}`;
+
     const article = document.createElement('article');
     article.className = 'product-card scroll-reveal';
     article.setAttribute('data-product-id', product.id);
 
     article.innerHTML = `
-        <a href="product.html?id=${product.id}" class="product-card-link">
+        <a href="${productUrl}" class="product-card-link">
             <div class="product-image-wrapper">
                 <img src="${cover}" alt="${name} — DALAL" class="product-image" loading="lazy"
                      style="opacity:0;transition:opacity 0.4s ease, transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94);"
@@ -80,7 +88,7 @@ function createProductCard(product) {
             <div class="product-info">
                 <h3 class="product-name">${name}</h3>
                 ${startPrice ? `<p class="product-start-price">${lang === 'ar' ? 'يبدأ من' : 'From'} <span>${startPrice}</span></p>` : ''}
-                <a href="product.html?id=${product.id}" class="btn btn-order">
+                <a href="${productUrl}" class="btn btn-order">
                     ${lang === 'ar' ? 'اطلبي الآن' : 'Order Now'}
                 </a>
             </div>

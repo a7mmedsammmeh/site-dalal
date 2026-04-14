@@ -205,6 +205,8 @@ function renderPricing(product, lang) {
 function showProductSkeleton() {
     const mainWrapper     = document.querySelector('.main-image-wrapper');
     const thumbsContainer = document.getElementById('thumbsContainer');
+    const nameEl          = document.getElementById('productName');
+    const descEl          = document.getElementById('productDescription');
     const orderBtn        = document.getElementById('orderBtn');
 
     if (mainWrapper) {
@@ -218,15 +220,26 @@ function showProductSkeleton() {
             thumbsContainer.appendChild(d);
         }
     }
+    if (nameEl) {
+        nameEl.innerHTML = '<div class="skeleton skeleton-product-name"></div>';
+    }
+    if (descEl) {
+        descEl.innerHTML = `
+            <div class="skeleton" style="height:0.8rem;width:100%;border-radius:4px;margin-bottom:0.5rem;"></div>
+            <div class="skeleton" style="height:0.8rem;width:85%;border-radius:4px;"></div>
+        `;
+    }
     if (orderBtn) orderBtn.style.opacity = '0';
 }
 
 /* ─── Boot ─── */
 function initProductPage() {
+    const slug    = window.location.hash.replace('#', '');
     const params  = new URLSearchParams(window.location.search);
-    const id      = parseInt(params.get('id'));
-    const product = DALAL_PRODUCTS_MAP[id];
-    const lang    = localStorage.getItem('dalal-lang') || 'ar';
+    const product = slug
+        ? DALAL_PRODUCTS_SLUG_MAP[slug]
+        : DALAL_PRODUCTS_MAP[parseInt(params.get('id'))];
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
 
     if (!product) {
         const container = document.getElementById('productDetail');
