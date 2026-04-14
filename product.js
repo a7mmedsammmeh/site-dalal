@@ -1,0 +1,310 @@
+/* ═══════════════════════════════════════════════════════════════
+   DALAL — Dynamic Product Detail Page
+   ═══════════════════════════════════════════════════════════════ */
+
+let currentProduct   = null;
+let selectedQtyOption  = null;
+let selectedSize       = null;
+
+/* ─── Modal helpers ─── */
+function openModal() {
+    document.getElementById('orderModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    selectedQtyOption = null;
+    selectedSize      = null;
+    document.getElementById('modalColorInput').value = '';
+    document.getElementById('modalNotesInput').value = '';
+    document.querySelectorAll('.modal-option').forEach(o => o.classList.remove('selected'));
+}
+
+function closeModal() {
+    document.getElementById('orderModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+/* ─── Drag to dismiss (mobile) ─── */
+function initModalDrag() {
+    const overlay = document.getElementById('orderModal');
+    const modal   = overlay?.querySelector('.modal');
+    if (!modal) return;
+
+    let startY = 0, currentY = 0, dragging = false;
+
+    modal.addEventListener('touchstart', e => {
+        if (modal.scrollTop > 0) return; // only when scrolled to top
+        startY   = e.touches[0].clientY;
+        currentY = 0;
+        dragging = true;
+        modal.style.transition = 'none';
+    }, { passive: true });
+
+    modal.addEventListener('touchmove', e => {
+        if (!dragging) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy < 0) return; // block upward drag
+        currentY = dy;
+        modal.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+
+    modal.addEventListener('touchend', () => {
+        if (!dragging) return;
+        dragging = false;
+        modal.style.transition = 'transform 0.3s cubic-bezier(0.4,0,0.2,1)';
+
+        if (currentY > 120) {
+            modal.style.transform = `translateY(100%)`;
+            setTimeout(() => {
+                closeModal();
+                modal.style.transform = '';
+            }, 300);
+        } else {
+            modal.style.transform = '';
+        }
+    });
+}
+
+/* ─── Build size options ─── */
+function buildSizeOptions(product) {
+    const container = document.getElementById('modalSizeOptions');
+    if (!container) return;
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
+    container.closest('.modal-step').style.display = '';
+    container.innerHTML = `
+        <input type="text" id="modalSizeInput" class="modal-input"
+               placeholder="${lang === 'ar' ? 'مثال: L، XL، 2XL...' : 'e.g. L, XL, 2XL...'}">
+    `;
+}
+
+/* ─── Build quantity options from product pricing ─── */
+function buildQtyOptions(product, lang) {
+    const container = document.getElementById('modalQtyOptions');
+    if (!container) return;
+    const rows = product.pricing[lang] || product.pricing.ar;
+    container.innerHTML = '';
+    rows.forEach(row => {
+        const btn = document.createElement('button');
+        btn.className = 'modal-option';
+        btn.type = 'button';
+        btn.innerHTML = `<span class="opt-label">${row.label}</span><span class="opt-value">${row.value}</span>`;
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.modal-option').forEach(o => o.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedQtyOption = row;
+        });
+        container.appendChild(btn);
+    });
+}
+
+/* ─── Send to Messenger ─── */
+function submitOrder() {
+    const colorInput = document.getElementById('modalColorInput');
+    const notesInput = document.getElementById('modalNotesInput');
+    const sizeInput  = document.getElementById('modalSizeInput');
+    const lang       = localStorage.getItem('dalal-lang') || 'ar';
+    const name       = getProductName(currentProduct, 'ar');
+
+    /* Validate — only qty is required */
+    if (!selectedQtyOption) {
+        document.querySelectorAll('#modalQtyOptions .modal-option').forEach(o => {
+            o.style.borderColor = '#c0392b';
+            setTimeout(() => o.style.borderColor = '', 1500);
+        });
+        return;
+    }
+
+    /* Build message */
+    const size  = sizeInput?.value.trim();
+    const color = colorInput?.value.trim();
+    const notes = notesInput?.value.trim();
+
+    let msg;
+    if (lang === 'ar') {
+        msg = `مرحباً دلال 👋\nأريد الطلب:\n📦 المنتج: ${name}\n🔢 الكمية: ${selectedQtyOption.label} — ${selectedQtyOption.value}`;
+        if (size)  msg += `\n📐 المقاس: ${size}`;
+        if (color) msg += `\n🎨 اللون: ${color}`;
+        if (notes) msg += `\n📝 ملاحظات: ${notes}`;
+    } else {
+        const nameEn = getProductName(currentProduct, 'en');
+        msg = `Hello DALAL 👋\nI'd like to order:\n📦 Product: ${nameEn}\n🔢 Quantity: ${selectedQtyOption.label} — ${selectedQtyOption.value}`;
+        if (size)  msg += `\n📐 Size: ${size}`;
+        if (color) msg += `\n🎨 Color: ${color}`;
+        if (notes) msg += `\n📝 Notes: ${notes}`;
+    }
+
+    window.open(`https://m.me/dalal.lingerie?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+}
+
+/* ─── Apply language to product page ─── */
+function applyProductPageLang(lang) {
+    if (!currentProduct) return;
+    const t    = DALAL_I18N[lang];
+    const name = getProductName(currentProduct, lang);
+
+    const nameEl   = document.getElementById('productName');
+    const titleEl  = document.getElementById('pricingTitle');
+    const orderBtn = document.getElementById('orderBtn');
+    const backBtn  = document.getElementById('backToProducts');
+
+    if (nameEl)   nameEl.textContent  = name;
+    const descEl = document.getElementById('productDescription');
+    if (descEl) {
+        const desc = currentProduct.description;
+        descEl.textContent = desc ? (desc[lang] || desc.ar || '') : '';
+    }
+    if (titleEl)  titleEl.textContent = t.pricingTitle;
+    if (orderBtn) {
+        const svg = orderBtn.querySelector('svg');
+        orderBtn.textContent = t.orderBtn;
+        if (svg) orderBtn.prepend(svg);
+    }
+    if (backBtn) {
+        const svg = backBtn.querySelector('svg');
+        backBtn.textContent = t.backToHome;
+        if (svg) backBtn.prepend(svg);
+    }
+
+    /* modal labels */
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    set('modalTitle',      lang === 'ar' ? 'تفاصيل الطلب'              : 'Order Details');
+    set('modalQtyLabel',   lang === 'ar' ? 'اختاري الكمية'             : 'Select Quantity');
+    set('modalSizeLabel',  lang === 'ar' ? 'اختاري المقاس'             : 'Select Size');
+    set('modalColorLabel', lang === 'ar' ? 'اللون المطلوب'             : 'Color');
+    set('modalNotesLabel', lang === 'ar' ? 'ملاحظات إضافية'            : 'Additional Notes');
+    set('modalSubmit',     lang === 'ar' ? 'أرسلي طلبك عبر ماسنجر'    : 'Send Order via Messenger');
+
+    const colorInput = document.getElementById('modalColorInput');
+    const notesInput = document.getElementById('modalNotesInput');
+    const sizeInput  = document.getElementById('modalSizeInput');
+    if (colorInput) colorInput.placeholder = lang === 'ar' ? 'مثال: أبيض، أسود، بيج...' : 'e.g. White, Black, Beige...';
+    if (notesInput) notesInput.placeholder = lang === 'ar' ? 'أي تفاصيل إضافية...'      : 'Any extra details...';
+    if (sizeInput)  sizeInput.placeholder  = lang === 'ar' ? 'مثال: L، XL، 2XL...'      : 'e.g. L, XL, 2XL...';
+
+    const optEl = document.querySelector('.modal-optional');
+    if (optEl) optEl.textContent = lang === 'ar' ? '(اختياري)' : '(optional)';
+
+    renderPricing(currentProduct, lang);
+    buildQtyOptions(currentProduct, lang);
+    buildSizeOptions(currentProduct);
+    document.title = `دلال — ${name}`;
+}
+
+/* ─── Render pricing rows ─── */
+function renderPricing(product, lang) {
+    const list = document.getElementById('pricingList');
+    if (!list) return;
+    const rows = product.pricing[lang] || product.pricing.ar;
+    list.innerHTML = rows.map((row, i) => `
+        <li class="pricing-row ${i === rows.length - 1 ? 'pricing-row-highlight' : ''}">
+            <span class="pricing-label">${row.label}</span>
+            <span class="pricing-value">${row.value}</span>
+        </li>
+    `).join('');
+}
+
+/* ─── Show skeleton for product detail page ─── */
+function showProductSkeleton() {
+    const mainWrapper     = document.querySelector('.main-image-wrapper');
+    const thumbsContainer = document.getElementById('thumbsContainer');
+    const orderBtn        = document.getElementById('orderBtn');
+
+    if (mainWrapper) {
+        mainWrapper.innerHTML = '<div class="skeleton skeleton-main-image"></div>';
+    }
+    if (thumbsContainer) {
+        thumbsContainer.innerHTML = '';
+        for (let i = 0; i < 4; i++) {
+            const d = document.createElement('div');
+            d.className = 'skeleton skeleton-thumb';
+            thumbsContainer.appendChild(d);
+        }
+    }
+    if (orderBtn) orderBtn.style.opacity = '0';
+}
+
+/* ─── Boot ─── */
+function initProductPage() {
+    const params  = new URLSearchParams(window.location.search);
+    const id      = parseInt(params.get('id'));
+    const product = DALAL_PRODUCTS_MAP[id];
+    const lang    = localStorage.getItem('dalal-lang') || 'ar';
+
+    if (!product) {
+        const container = document.getElementById('productDetail');
+        if (container) container.innerHTML = `<p class="not-found">${DALAL_I18N[lang].productNotFound}</p>`;
+        return;
+    }
+
+    currentProduct = product;
+
+    /* Main image — replace skeleton in wrapper */
+    const mainWrapper = document.querySelector('.main-image-wrapper');
+    if (mainWrapper) {
+        mainWrapper.innerHTML = '';
+        const img = document.createElement('img');
+        img.id        = 'mainImage';
+        img.src       = `${product.folder}/${product.main}`;
+        img.alt       = getProductName(product, lang);
+        img.className = 'main-image';
+        img.style.opacity   = '0';
+        img.style.transition = 'opacity 0.4s ease';
+        img.onload  = () => { img.style.opacity = '1'; };
+        img.onerror = () => { img.style.opacity = '0.3'; };
+        mainWrapper.appendChild(img);
+    }
+
+    /* Thumbnails — replace skeleton thumbs */
+    const thumbsContainer = document.getElementById('thumbsContainer');
+    if (thumbsContainer && product.gallery) {
+        thumbsContainer.innerHTML = '';
+        product.gallery.forEach((file, i) => {
+            const src = `${product.folder}/${file}`;
+            const img = document.createElement('img');
+            img.src       = src;
+            img.alt       = `${getProductName(product, lang)} — ${i + 1}`;
+            img.className = 'thumb' + (i === 0 ? ' active' : '');
+            img.loading   = 'lazy';
+            img.style.opacity   = '0';
+            img.style.transition = 'opacity 0.35s ease';
+            img.onload = () => { img.style.opacity = '1'; };
+            img.addEventListener('click', () => {
+                const currentMain = document.getElementById('mainImage');
+                if (currentMain) {
+                    currentMain.style.opacity = '0';
+                    setTimeout(() => { currentMain.src = src; currentMain.style.opacity = '1'; }, 220);
+                }
+                thumbsContainer.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+                img.classList.add('active');
+            });
+            thumbsContainer.appendChild(img);
+        });
+    }
+
+    /* Order button */
+    const orderBtn = document.getElementById('orderBtn');
+    if (orderBtn) {
+        orderBtn.style.opacity = '1';
+        orderBtn.style.transition = 'opacity 0.3s ease, background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease';
+        orderBtn.addEventListener('click', openModal);
+    }
+
+    /* Modal close */
+    document.getElementById('modalClose')?.addEventListener('click', closeModal);
+    document.getElementById('orderModal')?.addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeModal();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    /* Drag to dismiss */
+    initModalDrag();
+
+    /* Modal submit */
+    document.getElementById('modalSubmit')?.addEventListener('click', submitOrder);
+
+    /* Apply language — fills productName, pricingTitle, pricingList */
+    applyProductPageLang(lang);
+}
+
+document.addEventListener('DOMContentLoaded', showProductSkeleton);
+document.addEventListener('dalal:products-ready', initProductPage);
+if (Object.keys(DALAL_PRODUCTS_MAP).length > 0) initProductPage();
+
