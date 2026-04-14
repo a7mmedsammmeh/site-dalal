@@ -176,7 +176,28 @@ body.lang-ar .hero-tagline { font-family:var(--font-ar); font-style:normal; lett
 .product-card:hover { border-color:var(--border-h); box-shadow:var(--shadow-glow); transform:translateY(-4px); }
 .product-card-link { display:block; text-decoration:none; color:inherit; }
 
-.product-image-wrapper { position:relative; overflow:hidden; aspect-ratio:3/4; }
+.product-image-wrapper {
+    position:relative; overflow:hidden; aspect-ratio:3/4;
+    background: #1e1a17;
+}
+.product-image-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(224,192,151,0.07) 40%,
+        rgba(224,192,151,0.13) 50%,
+        rgba(224,192,151,0.07) 60%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+.product-image-wrapper.loaded::after { opacity: 0; }
 .product-image { width:100%; height:100%; object-fit:cover; transition:transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94); will-change:transform; }
 .product-card:hover .product-image { transform:scale(1.08); }
 
@@ -272,7 +293,8 @@ body.lang-ar .btn-sticky { font-family:var(--font-ar); letter-spacing:0.04em; }
     display: block;
 }
 .thumbs-container { display:flex; gap:0.7rem; flex-wrap:wrap; }
-.thumb { width:calc(25% - 0.6rem); aspect-ratio:1; object-fit:cover; border-radius:var(--r); border:1px solid var(--border); cursor:pointer; transition:all var(--tr); opacity:0.7; }
+.thumb-wrap { width:calc(25% - 0.6rem); aspect-ratio:1; border-radius:var(--r); overflow:hidden; }
+.thumb { width:100%; height:100%; object-fit:cover; border-radius:var(--r); border:1px solid var(--border); cursor:pointer; transition:all var(--tr); opacity:0.7; display:block; }
 .thumb:hover { opacity:1; border-color:var(--gold-dim); }
 .thumb.active { opacity:1; border-color:var(--gold); box-shadow:0 0 0 1px var(--gold); }
 
@@ -468,6 +490,31 @@ body.light-mode .skeleton::after {
     );
     background-size: 200% 100%;
 }
+
+/* ─── Universal image shimmer ─── */
+.img-wrap {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+.img-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(224,192,151,0.07) 40%,
+        rgba(224,192,151,0.13) 50%,
+        rgba(224,192,151,0.07) 60%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+.img-wrap.loaded::after { opacity: 0; }
 
 /* ─── Skeleton Card ─── */
 .skeleton-card {

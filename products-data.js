@@ -81,8 +81,8 @@ function createProductCard(product) {
             <div class="product-image-wrapper">
                 <img src="${cover}" alt="${name} — DALAL" class="product-image" loading="lazy"
                      style="opacity:0;transition:opacity 0.4s ease, transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94);"
-                     onerror="this.style.opacity='0.3'"
-                     onload="this.style.opacity='1'">
+                     onerror="this.style.opacity='0.3';this.closest('.product-image-wrapper').classList.add('loaded')"
+                     onload="this.style.opacity='1';this.closest('.product-image-wrapper').classList.add('loaded')">
                 <div class="product-image-overlay"></div>
             </div>
             <div class="product-info">

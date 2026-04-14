@@ -260,8 +260,8 @@ function initProductPage() {
         img.className = 'main-image';
         img.style.opacity   = '0';
         img.style.transition = 'opacity 0.4s ease';
-        img.onload  = () => { img.style.opacity = '1'; };
-        img.onerror = () => { img.style.opacity = '0.3'; };
+        img.onload  = () => { img.style.opacity = '1'; mainWrapper.classList.add('loaded'); };
+        img.onerror = () => { img.style.opacity = '0.3'; mainWrapper.classList.add('loaded'); };
         mainWrapper.appendChild(img);
     }
 
@@ -271,14 +271,19 @@ function initProductPage() {
         thumbsContainer.innerHTML = '';
         product.gallery.forEach((file, i) => {
             const src = `${product.folder}/${file}`;
+
+            const wrap = document.createElement('div');
+            wrap.className = 'img-wrap thumb-wrap';
+
             const img = document.createElement('img');
             img.src       = src;
             img.alt       = `${getProductName(product, lang)} — ${i + 1}`;
             img.className = 'thumb' + (i === 0 ? ' active' : '');
             img.loading   = 'lazy';
-            img.style.opacity   = '0';
+            img.style.opacity    = '0';
             img.style.transition = 'opacity 0.35s ease';
-            img.onload = () => { img.style.opacity = '1'; };
+            img.onload = () => { img.style.opacity = '1'; wrap.classList.add('loaded'); };
+            img.onerror = () => { img.style.opacity = '0.3'; wrap.classList.add('loaded'); };
             img.addEventListener('click', () => {
                 const currentMain = document.getElementById('mainImage');
                 if (currentMain) {
@@ -288,7 +293,8 @@ function initProductPage() {
                 thumbsContainer.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
                 img.classList.add('active');
             });
-            thumbsContainer.appendChild(img);
+            wrap.appendChild(img);
+            thumbsContainer.appendChild(wrap);
         });
     }
 
