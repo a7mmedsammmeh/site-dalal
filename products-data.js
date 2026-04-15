@@ -100,8 +100,9 @@ function createProductCard(product) {
 
 /* ─── Re-render cards on language switch ─── */
 function rerenderProducts(lang) {
-    const orderLabel = lang === 'ar' ? 'اطلبي الآن' : 'Order Now';
-    const fromLabel  = lang === 'ar' ? 'يبدأ من' : 'From';
+    const orderLabel   = lang === 'ar' ? 'اطلبي الآن' : 'Order Now';
+    const addCartLabel = lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart';
+    const fromLabel    = lang === 'ar' ? 'يبدأ من' : 'From';
     document.querySelectorAll('.product-card').forEach(card => {
         const id      = parseInt(card.getAttribute('data-product-id'));
         const product = DALAL_PRODUCTS_MAP[id];
@@ -113,9 +114,11 @@ function rerenderProducts(lang) {
         const priceEl     = card.querySelector('.product-start-price');
         const btnEl       = card.querySelector('.btn-order');
         const imgEl       = card.querySelector('.product-image');
-        if (nameEl)  nameEl.textContent = name;
-        if (priceEl) priceEl.innerHTML  = `${fromLabel} <span>${startPrice}</span>`;
-        if (btnEl)   btnEl.textContent  = orderLabel;
-        if (imgEl)   imgEl.alt = `${name} — DALAL`;
+        const addCartSpan = card.querySelector('.btn-cart-add span');
+        if (nameEl)      nameEl.textContent  = name;
+        if (priceEl)     priceEl.innerHTML   = `${fromLabel} <span>${startPrice}</span>`;
+        if (btnEl)       btnEl.textContent   = orderLabel;
+        if (imgEl)       imgEl.alt           = `${name} — DALAL`;
+        if (addCartSpan) addCartSpan.textContent = addCartLabel;
     });
 }

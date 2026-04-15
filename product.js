@@ -117,21 +117,15 @@ function submitOrder() {
     const color = colorInput?.value.trim();
     const notes = notesInput?.value.trim();
 
-    let msg;
-    if (lang === 'ar') {
-        msg = `مرحباً دلال 👋\nأريد الطلب:\n📦 المنتج: ${name}\n🔢 الكمية: ${selectedQtyOption.label} — ${selectedQtyOption.value}`;
-        if (size)  msg += `\n📐 المقاس: ${size}`;
-        if (color) msg += `\n🎨 اللون: ${color}`;
-        if (notes) msg += `\n📝 ملاحظات: ${notes}`;
-    } else {
-        const nameEn = getProductName(currentProduct, 'en');
-        msg = `Hello DALAL 👋\nI'd like to order:\n📦 Product: ${nameEn}\n🔢 Quantity: ${selectedQtyOption.label} — ${selectedQtyOption.value}`;
-        if (size)  msg += `\n📐 Size: ${size}`;
-        if (color) msg += `\n🎨 Color: ${color}`;
-        if (notes) msg += `\n📝 Notes: ${notes}`;
-    }
-
-    window.open(`https://m.me/dalal.lingerie?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+    const msg = buildMessengerMsg({
+        lang,
+        productName: lang === 'ar' ? getProductName(currentProduct, 'ar') : getProductName(currentProduct, 'en'),
+        code:        currentProduct.code || null,
+        priceLabel:  selectedQtyOption.label,
+        priceValue:  selectedQtyOption.value,
+        size, color, notes
+    });
+    openMessenger(msg);
 }
 
 /* ─── Apply language to product page ─── */
@@ -156,6 +150,13 @@ function applyProductPageLang(lang) {
         const svg = orderBtn.querySelector('svg');
         orderBtn.textContent = t.orderBtn;
         if (svg) orderBtn.prepend(svg);
+    }
+    /* add to cart btn */
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    if (addToCartBtn) {
+        const svg = addToCartBtn.querySelector('svg');
+        addToCartBtn.textContent = lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart';
+        if (svg) addToCartBtn.prepend(svg);
     }
     if (backBtn) {
         const svg = backBtn.querySelector('svg');
