@@ -11,7 +11,7 @@ const DALAL_I18N = {
         heroTagline: 'أناقة تستحقينها',
         heroSubtitle: 'ملابس داخلية فاخرة مصنوعة من الحرير والدانتيل والحب — للمرأة التي تحتضن ثقتها بنفسها.',
         heroShopNow: 'تسوّقي الآن',
-        productsTitle: 'مجموعتنا',
+        productsTitle: 'تشكيلة دلال',
         productsSubtitle: 'قطع مختارة بعناية صُمِّمت للراحة والثقة والأناقة الخالدة',
         showAllProducts: 'عرض جميع المنتجات',
         fullCollectionTitle: 'التشكيلة الكاملة',
