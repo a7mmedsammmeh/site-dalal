@@ -421,16 +421,20 @@ function openCart() {
     renderCartItems();
     const drawer  = document.getElementById('cartDrawer');
     const overlay = document.getElementById('cartOverlay');
+    const sticky  = document.getElementById('mobileSticky');
     if (drawer)  drawer.classList.add('open');
     if (overlay) overlay.classList.add('active');
+    if (sticky)  sticky.style.display = 'none';
     document.body.style.overflow = 'hidden';
 }
 
 function closeCart() {
     const drawer  = document.getElementById('cartDrawer');
     const overlay = document.getElementById('cartOverlay');
+    const sticky  = document.getElementById('mobileSticky');
     if (drawer)  drawer.classList.remove('open');
     if (overlay) overlay.classList.remove('active');
+    if (sticky)  sticky.style.display = '';
     document.body.style.overflow = '';
 }
 
