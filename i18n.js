@@ -33,6 +33,16 @@ const DALAL_I18N = {
         footerCraft: 'صُنع بأناقة',
         messageUs: 'راسلينا', comingSoon: 'قريباً',
         orderNow: 'اطلبي الآن',
+        /* shipping */
+        shippingTitle:   'الشحن والدفع',
+        shippingItem1:   'توصيل لجميع المحافظات',
+        shippingItem2:   'الدفع عند الاستلام',
+        shippingItem3:   'توصيل سريع (٢–٤ أيام)',
+        pageTitles: {
+            home:       'دلال — ملابس داخلية فاخرة',
+            products:   'دلال — التشكيلة الكاملة',
+            product:    'دلال — المنتج',
+        },
         /* product page */
         productPageTitle: 'تفاصيل المنتج',
         pricingTitle: 'الأسعار',
@@ -73,6 +83,16 @@ const DALAL_I18N = {
         footerCraft: 'Crafted with elegance',
         messageUs: 'Message Us', comingSoon: 'Coming Soon',
         orderNow: 'Order Now',
+        /* shipping */
+        shippingTitle:   'Shipping & Payment',
+        shippingItem1:   'Shipping to all governorates',
+        shippingItem2:   'Cash on delivery',
+        shippingItem3:   'Fast delivery (2–4 days)',
+        pageTitles: {
+            home:       'DALAL — Luxury Lingerie',
+            products:   'DALAL — Full Collection',
+            product:    'DALAL — Product',
+        },
         /* product page */
         productPageTitle: 'Product Details',
         pricingTitle: 'Pricing',

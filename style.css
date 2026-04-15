@@ -437,7 +437,8 @@ body.lang-ar .pricing-title { font-family:var(--font-ar); letter-spacing:0.05em;
     .pricing-box { order:5; width:100%; }
     .btn-order-main { order:6; width:100%; }
     .btn-add-to-cart { order:7; width:100%; }
-    .back-link { order:8; }
+    .shipping-box { order:8; width:100%; }
+    .back-link { order:9; }
     .thumbs-container { gap:0.5rem; }
 }
 
@@ -975,4 +976,90 @@ body.lang-en .btn-add-to-cart { font-family: var(--font-body); }
 }
 @media (max-width: 380px) {
     .qa-action-row { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DALAL — Shipping & Payment
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Homepage strip ─── */
+.shipping-section {
+    background: var(--bg);
+    padding: 0 2rem 4rem;
+    transition: background var(--tr-m);
+}
+
+.shipping-strip,
+.shipping-strip-inline {
+    max-width: 900px;
+    margin: 2.5rem auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--bg-card);
+}
+
+.shipping-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 1.2rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    transition: color var(--tr), background var(--tr);
+}
+.shipping-item svg { color: var(--gold); flex-shrink: 0; }
+.shipping-item:hover { color: var(--gold); background: var(--gold-glow); }
+
+.shipping-divider {
+    width: 1px;
+    height: 2.5rem;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
+/* ─── Product page box ─── */
+.shipping-box {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--bg-card);
+}
+
+.shipping-box-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.2rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    transition: color var(--tr), background var(--tr);
+}
+.shipping-box-item:last-child { border-bottom: none; }
+.shipping-box-item svg { color: var(--gold); flex-shrink: 0; }
+.shipping-box-item:hover { color: var(--gold); background: var(--gold-glow); }
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+    .shipping-strip,
+    .shipping-strip-inline {
+        flex-direction: column;
+        gap: 0;
+    }
+    .shipping-item {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 1rem 1.4rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .shipping-item:last-child { border-bottom: none; }
+    .shipping-divider { display: none; }
 }

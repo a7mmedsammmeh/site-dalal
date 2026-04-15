@@ -74,10 +74,29 @@ function applyLanguage(lang) {
         if (svg) stickyBtn.prepend(svg);
     }
 
+    /* page title */
+    const path = window.location.pathname;
+    if (path.includes('products.html')) {
+        document.title = t.pageTitles.products;
+    } else if (path.includes('product.html')) {
+        // product.js handles its own title, skip
+    } else {
+        document.title = t.pageTitles.home;
+    }
+
     /* whatsapp tooltip */
     document.querySelectorAll('.floating-whatsapp .tooltip').forEach(el => {
         el.textContent = t.comingSoon;
     });
+
+    /* shipping */
+    const setS = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    setS('shippingItem1',  t.shippingItem1);
+    setS('shippingItem2',  t.shippingItem2);
+    setS('shippingItem3',  t.shippingItem3);
+    setS('shippingItem1P', t.shippingItem1);
+    setS('shippingItem2P', t.shippingItem2);
+    setS('shippingItem3P', t.shippingItem3);
 
     /* product cards */
     if (typeof rerenderProducts === 'function') rerenderProducts(lang);

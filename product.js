@@ -186,7 +186,7 @@ function applyProductPageLang(lang) {
     renderPricing(currentProduct, lang);
     buildQtyOptions(currentProduct, lang);
     buildSizeOptions(currentProduct);
-    document.title = `دلال — ${name}`;
+    document.title = `${lang === 'ar' ? 'دلال' : 'DALAL'} — ${name}`;
 }
 
 /* ─── Render pricing rows ─── */
