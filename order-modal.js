@@ -9,7 +9,7 @@
         ar: {
             title:      'سجّلي طلبك',
             name:       'الاسم',
-            namePh:     'اسمك الكريم',
+            namePh:     'اكتب أسمك',
             phone:      'رقم الهاتف',
             phonePh:    '01xxxxxxxxx',
             address:    'العنوان',
