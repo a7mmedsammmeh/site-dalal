@@ -31,6 +31,7 @@ const DALAL_I18N = {
         footerAllProducts: 'جميع المنتجات',
         footerRights: '© 2026 دلال. جميع الحقوق محفوظة.',
         footerCraft: 'صُنع بأناقة',
+        footerTrack: 'تتبع طلبك',
         messageUs: 'راسلينا', comingSoon: 'قريباً',
         orderNow: 'اطلبي الآن',
         /* shipping */
@@ -41,7 +42,10 @@ const DALAL_I18N = {
         ordersPageTitle: 'طلباتي',
         ordersPageSub:   'جميع طلباتك المسجلة على هذا الجهاز',
         trackPageTitle:  'تتبع طلبك',
-        trackPageSub:    'أدخلي رقم الطلب (مثال: DL-AB123)',
+        trackPageSub:    'أدخلي رقم الطلب (مثال: DL-AB1234)',
+        trackHelpLabel:  'كيف أجد رقم طلبي؟',
+        trackHelpTitle:  'كيف أجد رقم طلبي؟',
+        trackHelpBody:   '<p>رقم الطلب هو كود فريد يبدأ بـ <strong>DL-</strong> يتم إنشاؤه تلقائياً عند تأكيد طلبك.</p><ul><li>بعد الطلب مباشرة، يظهر الرقم في <strong>رسالة التأكيد</strong></li><li>روحي لصفحة <strong>طلباتي</strong> واضغطي <strong>نسخ رقم الطلب</strong></li><li>الرقم يبدو هكذا: <strong style=\'color:var(--gold)\'>DL-AB1234</strong></li></ul>',
         pageTitles: {
             home:       'دلال — ملابس داخلية فاخرة',
             products:   'دلال — التشكيلة الكاملة',
@@ -56,6 +60,16 @@ const DALAL_I18N = {
         price12: 'عرض 12 قطعة (دستة كاملة)', price12val: '1100 جنيه',
         orderBtn: 'اطلبي الآن عبر ماسنجر',
         productNotFound: 'المنتج غير موجود',
+        /* help labels */
+        helpMessengerLabel: 'تواصلي مباشرة عبر ماسنجر',
+        helpMessengerTitle: 'الطلب عبر ماسنجر',
+        helpMessengerBody: '<p>بالضغط على هذا الزر سيتم فتح <strong>ماسنجر فيسبوك</strong> مع رسالة جاهزة تحتوي على تفاصيل طلبك.</p><ul><li>سريع ومباشر</li><li>لا تحتاجين لإدخال بياناتك</li><li>سيتواصل معكِ فريقنا فوراً</li></ul>',
+        helpSiteLabel: 'سجّلي طلبك وتابعيه من صفحة طلباتي',
+        helpSiteTitle: 'الطلب عبر الموقع',
+        helpSiteBody: '<p>بالضغط على هذا الزر ستظهر لكِ نافذة لإدخال بياناتك وتأكيد الطلب مباشرة من الموقع.</p><ul><li>أدخلي اسمك ورقم هاتفك وعنوانك</li><li>ستحصلين على <strong>رقم طلب</strong> فريد</li><li>تابعي حالة طلبك من صفحة <strong>طلباتي</strong></li><li>يمكنك إلغاء الطلب قبل تأكيده</li></ul>',
+        helpCartLabel: 'أضيفي أكتر من منتج في سلة واحدة وادفعي مرة واحدة',
+        helpCartTitle: 'أضيفي للسلة',
+        helpCartBody: '<p>السلة بتخليكِ تجمعي أكتر من منتج مع بعض قبل ما تطلبي.</p><ul><li>أضيفي منتجات من صفحات مختلفة</li><li>راجعي السلة وعدّلي الكميات</li><li>أتمي الطلب كله مرة واحدة</li></ul>',
     },
     en: {
         langCode: 'en', dir: 'ltr', fontClass: 'lang-en',
@@ -85,6 +99,7 @@ const DALAL_I18N = {
         footerAllProducts: 'All Products',
         footerRights: '© 2026 DALAL. All rights reserved.',
         footerCraft: 'Crafted with elegance',
+        footerTrack: 'Track Your Order',
         messageUs: 'Message Us', comingSoon: 'Coming Soon',
         orderNow: 'Order Now',
         /* shipping */
@@ -95,7 +110,10 @@ const DALAL_I18N = {
         ordersPageTitle: 'My Orders',
         ordersPageSub:   'All orders saved on this device',
         trackPageTitle:  'Track Your Order',
-        trackPageSub:    'Enter your order number (e.g. DL-AB123)',
+        trackPageSub:    'Enter your order number (e.g. DL-AB1234)',
+        trackHelpLabel:  'How do I find my order number?',
+        trackHelpTitle:  'How do I find my order number?',
+        trackHelpBody:   '<p>Your order number is a unique code starting with <strong>DL-</strong> generated automatically when your order is confirmed.</p><ul><li>Right after ordering, the number appears in the <strong>confirmation message</strong></li><li>Go to <strong>My Orders</strong> and tap <strong>Copy Order Number</strong></li><li>It looks like this: <strong style=\'color:var(--gold)\'>DL-AB1234</strong></li></ul>',
         pageTitles: {
             home:       'DALAL — Luxury Lingerie',
             products:   'DALAL — Full Collection',
@@ -110,5 +128,15 @@ const DALAL_I18N = {
         price12: '12 Pieces (Full Dozen)', price12val: '1100 EGP',
         orderBtn: 'Order via Messenger',
         productNotFound: 'Product not found',
+        /* help labels */
+        helpMessengerLabel: 'Contact us directly via Messenger',
+        helpMessengerTitle: 'Order via Messenger',
+        helpMessengerBody: '<p>Tapping this button will open <strong>Facebook Messenger</strong> with a ready-made message containing your order details.</p><ul><li>Fast & direct</li><li>No need to enter your details</li><li>Our team will reach out immediately</li></ul>',
+        helpSiteLabel: 'Place your order & track it from My Orders',
+        helpSiteTitle: 'Order via Website',
+        helpSiteBody: '<p>Tapping this button will open a form to enter your details and confirm your order directly on the website.</p><ul><li>Enter your name, phone & address</li><li>You\'ll receive a unique <strong>order number</strong></li><li>Track your order status from <strong>My Orders</strong></li><li>You can cancel before confirmation</li></ul>',
+        helpCartLabel: 'Add multiple products in one cart and pay at once',
+        helpCartTitle: 'Add to Cart',
+        helpCartBody: '<p>The cart lets you collect multiple products before placing your order.</p><ul><li>Add items from different pages</li><li>Review your cart and adjust quantities</li><li>Complete your entire order at once</li></ul>',
     }
 };

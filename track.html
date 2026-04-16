@@ -263,6 +263,25 @@
     font-size: 0.85rem;
     padding: 1rem;
 }
+
+/* cancel btn */
+.oc-btn {
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.06em;
+    padding: 0.55rem 0.75rem; border-radius: var(--r);
+    border: 1px solid var(--border); color: var(--text-muted);
+    background: transparent; cursor: pointer; font-family: inherit;
+    transition: all 0.25s ease;
+}
+.oc-btn.cancel-btn { color: #e05c5c; border-color: rgba(224,92,92,0.3); }
+.oc-btn.cancel-btn:hover { background: rgba(224,92,92,0.08); border-color: #e05c5c; }
+
+/* search responsive */
+@media (max-width: 600px) {
+    .track-input-wrap { flex-direction: column; }
+    .track-input-wrap input,
+    .track-input-wrap button { width: 100%; }
+}
 </style>
 </head>
 <body class="lang-ar">
@@ -311,22 +330,15 @@
         <h1 class="track-title" id="trackPageTitle">تتبع طلبك</h1>
         <p class="track-subtitle" id="trackPageSub">أدخلي رقم الطلب (مثال: DL-AB123)</p>
         <div style="display:flex;align-items:center;justify-content:center;gap:0.4rem;margin-top:0.4rem;">
-            <span style="font-size:0.78rem;color:var(--text-dim)">كيف أجد رقم طلبي؟</span>
-            <button class="help-btn" onclick="showHelpPopover(this,
-                `<p>رقم الطلب هو كود فريد يبدأ بـ <strong>DL-</strong> يتم إنشاؤه تلقائياً عند تأكيد طلبك.</p>
-                <ul>
-                    <li>بعد الطلب مباشرة، يظهر الرقم في <strong>رسالة التأكيد</strong></li>
-                    <li>روحي لصفحة <strong>طلباتي</strong> واضغطي <strong>نسخ رقم الطلب</strong></li>
-                    <li>الرقم يبدو هكذا: <strong style=\'color:var(--gold)\'>DL-AB123</strong></li>
-                </ul>`,
-                'كيف أجد رقم طلبي؟')" aria-label="مساعدة">?</button>
+            <span id="trackHelpLabel" style="font-size:0.78rem;color:var(--text-dim)">كيف أجد رقم طلبي؟</span>
+            <button class="help-btn" id="trackHelpBtn" onclick="showTrackHelp(this)" aria-label="مساعدة">?</button>
         </div>
     </div>
 
     <div class="track-form-box">
         <div class="track-input-wrap">
             <input type="text" class="track-input" id="trackRef"
-                   placeholder="DL-XXXXX" maxlength="8"
+                   placeholder="DL-XXXXX"
                    style="text-transform:uppercase;letter-spacing:0.12em;font-family:'Poppins',monospace;">
             <button class="track-btn" id="trackSearchBtn" onclick="searchByRef()" id="trackSearchBtnLabel">
                 <span id="trackSearchLabel">بحث</span>
@@ -378,18 +390,18 @@
 (function () {
 
     const STATUS_AR = {
-        pending:   { label: 'قيد المراجعة',   icon: '⏳' },
-        confirmed: { label: 'تم التأكيد',      icon: '✓'  },
-        shipped:   { label: 'في الطريق إليكِ', icon: '🚚' },
-        delivered: { label: 'تم التسليم',      icon: '✓'  },
-        cancelled: { label: 'ملغي',            icon: '✕'  }
+        pending:   { label: 'قيد المراجعة',   icon: '⏳', hint: 'طلبك وصلنا وبنراجعه دلوقتي ✨' },
+        confirmed: { label: 'تم التأكيد',      icon: '✓',  hint: 'تم تأكيد طلبك وجاري التجهيز 🎀' },
+        shipped:   { label: 'في الطريق إليكِ', icon: '🚚', hint: 'طلبك في الطريق إليكِ، استعدي! 🚚' },
+        delivered: { label: 'تم التسليم',      icon: '✓',  hint: 'وصل طلبك بالسلامة 💚' },
+        cancelled: { label: 'ملغي',            icon: '✕',  hint: 'تم إلغاء هذا الطلب' }
     };
     const STATUS_EN = {
-        pending:   { label: 'Under Review', icon: '⏳' },
-        confirmed: { label: 'Confirmed',    icon: '✓'  },
-        shipped:   { label: 'On the Way',   icon: '🚚' },
-        delivered: { label: 'Delivered',    icon: '✓'  },
-        cancelled: { label: 'Cancelled',    icon: '✕'  }
+        pending:   { label: 'Under Review', icon: '⏳', hint: 'We received your order and are reviewing it ✨' },
+        confirmed: { label: 'Confirmed',    icon: '✓',  hint: 'Your order is confirmed and being prepared 🎀' },
+        shipped:   { label: 'On the Way',   icon: '🚚', hint: 'Your order is on its way, get ready! 🚚' },
+        delivered: { label: 'Delivered',    icon: '✓',  hint: 'Your order has been delivered 💚' },
+        cancelled: { label: 'Cancelled',    icon: '✕',  hint: 'This order has been cancelled' }
     };
 
     const STEPS_AR = ['قيد المراجعة', 'تم التأكيد', 'في الطريق', 'تم التسليم'];
@@ -448,10 +460,15 @@
             ? `<div style="padding:1rem 1.25rem;text-align:center;color:#e05c5c;font-size:0.85rem;border-bottom:1px solid var(--border)">
                 ${lang === 'ar' ? 'تم إلغاء هذا الطلب' : 'This order has been cancelled'}
                </div>`
-            : `<div class="track-progress">
+            : `${status === 'delivered' ? `<div style="padding:0.85rem 1.25rem;background:rgba(76,175,125,0.08);border:1px solid rgba(76,175,125,0.25);border-left:0;border-right:0;display:flex;align-items:center;gap:0.6rem;font-size:0.82rem;color:#2d9e5f;">
+                <span style="font-size:1.2rem">🌸</span>
+                <span>${lang === 'ar' ? 'سعدنا بخدمتك! نتمنى أن تكوني راضية تماماً عن طلبك. يشرفنا دائماً استقبال طلباتك' : 'Thank you for your order! We hope you love it. It\'s always a pleasure serving you'}</span>
+               </div>` : ''}
+               <div class="track-progress">
                 ${STEPS.map((label, i) => {
-                    const cls  = i < stepIdx ? 'done' : i === stepIdx ? 'active' : '';
-                    const icon = i < stepIdx ? '✓' : (i + 1);
+                    const isDone = status === 'delivered' ? true : i < stepIdx;
+                    const cls  = isDone ? 'done' : i === stepIdx ? 'active' : '';
+                    const icon = isDone ? '✓' : (i + 1);
                     return `<div class="progress-step ${cls}">
                         <div class="progress-dot">${icon}</div>
                         <div class="progress-label">${label}</div>
@@ -472,7 +489,10 @@
                     <div style="font-family:'Poppins',monospace;font-size:0.88rem;font-weight:600;color:var(--gold);letter-spacing:0.08em">${esc(ref)}</div>
                     <div class="track-order-date">${date}</div>
                 </div>
-                <span class="status-badge ${status}">${s.icon} ${s.label}</span>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.2rem;">
+                    <span class="status-badge ${status}">${s.icon} ${s.label}</span>
+                    <span style="font-size:0.72rem;color:var(--text-dim);text-align:end;">${s.hint}</span>
+                </div>
             </div>
             ${stepsHTML}
             <div class="track-order-body">
@@ -485,6 +505,13 @@
                     <span class="track-order-total">${order.total ? order.total.toLocaleString() + (lang === 'ar' ? ' جنيه' : ' EGP') : '—'}</span>
                 </div>
             </div>
+            ${status === 'pending' ? `
+            <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--border);background:var(--bg-light);">
+                <button class="oc-btn cancel-btn" onclick="cancelOrderFromTrack('${esc(ref)}')" style="width:100%;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    ${lang === 'ar' ? 'إلغاء الطلب' : 'Cancel Order'}
+                </button>
+            </div>` : ''}
         </div>
         ${backHTML}`;
     }
@@ -524,6 +551,15 @@
     if (typeof applyLanguage === 'function') {
         applyLanguage(localStorage.getItem('dalal-lang') || 'ar');
     }
+    // Apply track help label translation
+    const applyTrackHelp = () => {
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const t = DALAL_I18N[lang];
+        const lbl = document.getElementById('trackHelpLabel');
+        if (lbl) lbl.textContent = t.trackHelpLabel;
+    };
+    applyTrackHelp();
+    document.addEventListener('dalal-lang-change', applyTrackHelp);
     // Set search button label
     const searchLbl = document.getElementById('trackSearchLabel');
     if (searchLbl) searchLbl.textContent = localStorage.getItem('dalal-lang') === 'en' ? 'Search' : 'بحث';
@@ -531,6 +567,32 @@
         document.getElementById('trackRef').value = urlRef.toUpperCase();
         searchByRef();
     }
+
+    function showTrackHelp(btn) {
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const t = DALAL_I18N[lang];
+        showHelpPopover(btn, t.trackHelpBody, t.trackHelpTitle);
+    }
+    window.showTrackHelp = showTrackHelp;
+
+    window.cancelOrderFromTrack = async function(ref) {
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const msg  = lang === 'ar' ? 'هل أنت متأكدة من إلغاء هذا الطلب؟' : 'Are you sure you want to cancel this order?';
+        if (!confirm(msg)) return;
+        try {
+            const db = await getSupabase();
+            const { error } = await db.from('orders').update({ status: 'cancelled' }).eq('order_ref', ref);
+            if (error) throw error;
+            // update localStorage
+            const orders = getLocalOrders();
+            const o = orders.find(x => x.ref === ref);
+            if (o) { o.status = 'cancelled'; localStorage.setItem('dalal-my-orders', JSON.stringify(orders)); }
+            // re-search to refresh the card
+            searchByRef();
+        } catch {
+            alert(lang === 'ar' ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'Something went wrong');
+        }
+    };
 
 })();
 </script>

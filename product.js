@@ -147,29 +147,38 @@ function applyProductPageLang(lang) {
     }
     if (titleEl)  titleEl.textContent = t.pricingTitle;
     if (orderBtn) {
-        const svg = orderBtn.querySelector('svg');
-        orderBtn.textContent = t.orderBtn;
-        if (svg) orderBtn.prepend(svg);
+        const titleSpan = orderBtn.querySelector('.btn-stack-title');
+        if (titleSpan) titleSpan.textContent = lang === 'ar' ? 'الطلب عبر ماسنجر' : 'Order via Messenger';
+        else { const svg = orderBtn.querySelector('svg'); orderBtn.textContent = lang === 'ar' ? 'الطلب عبر ماسنجر' : 'Order via Messenger'; if (svg) orderBtn.prepend(svg); }
     }
     /* add to cart btn */
     const addToCartBtn = document.getElementById('addToCartBtn');
     if (addToCartBtn) {
-        const svg = addToCartBtn.querySelector('svg');
-        addToCartBtn.textContent = lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart';
-        if (svg) addToCartBtn.prepend(svg);
+        const titleSpan = addToCartBtn.querySelector('.btn-stack-title');
+        if (titleSpan) titleSpan.textContent = lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart';
+        else { const svg = addToCartBtn.querySelector('svg'); addToCartBtn.textContent = lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart'; if (svg) addToCartBtn.prepend(svg); }
     }
-    /* order via site btn */
+    /* order via site btn (primary) */
     const registerOrderBtn = document.getElementById('registerOrderBtn');
     if (registerOrderBtn) {
-        const svg = registerOrderBtn.querySelector('svg');
-        registerOrderBtn.textContent = lang === 'ar' ? 'اطلبي الآن عن طريق الموقع' : 'Order via Website';
-        if (svg) registerOrderBtn.prepend(svg);
+        const titleSpan = registerOrderBtn.querySelector('.btn-stack-title');
+        if (titleSpan) titleSpan.textContent = lang === 'ar' ? 'اطلبي الآن' : 'Order Now';
+        else { const svg = registerOrderBtn.querySelector('svg'); registerOrderBtn.textContent = lang === 'ar' ? 'اطلبي الآن' : 'Order Now'; if (svg) registerOrderBtn.prepend(svg); }
     }
     if (backBtn) {
         const svg = backBtn.querySelector('svg');
         backBtn.textContent = t.backToHome;
         if (svg) backBtn.prepend(svg);
     }
+
+    /* btn-stack subtitles — update on lang change */
+    const setHint = (id, textAr, textEn) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = lang === 'ar' ? textAr : textEn;
+    };
+    setHint('hintSite',      'سجّلي طلبك وتابعيه من صفحة طلباتي', 'Place & track your order easily');
+    setHint('hintCart',      'أكتر من منتج بطلب واحد',             'Multiple items, one order');
+    setHint('hintMessenger', 'تواصلي مباشرة معنا',                  'Chat with us directly');
 
     /* modal labels */
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
@@ -237,7 +246,6 @@ function showProductSkeleton() {
             <div class="skeleton" style="height:0.8rem;width:85%;border-radius:4px;"></div>
         `;
     }
-    if (orderBtn) orderBtn.style.opacity = '0';
 }
 
 /* ─── Boot ─── */
@@ -263,13 +271,30 @@ function initProductPage() {
         mainWrapper.innerHTML = '';
         const img = document.createElement('img');
         img.id        = 'mainImage';
-        img.src       = `${product.folder}/${product.main}`;
         img.alt       = getProductName(product, lang);
         img.className = 'main-image';
-        img.style.opacity   = '0';
+        img.style.opacity    = '0';
         img.style.transition = 'opacity 0.4s ease';
-        img.onload  = () => { img.style.opacity = '1'; mainWrapper.classList.add('loaded'); };
-        img.onerror = () => { img.style.opacity = '0.3'; mainWrapper.classList.add('loaded'); };
+
+        const onLoad  = () => { img.style.opacity = '1'; mainWrapper.classList.add('loaded'); };
+        const onError = () => {
+            // retry once after 1.5s, then show broken state
+            if (!img.dataset.retried) {
+                img.dataset.retried = '1';
+                setTimeout(() => { img.src = img.src.split('?')[0] + '?r=' + Date.now(); }, 1500);
+            } else {
+                img.style.opacity = '0.3';
+                mainWrapper.classList.add('loaded');
+            }
+        };
+
+        img.addEventListener('load',  onLoad);
+        img.addEventListener('error', onError);
+        img.src = `${product.folder}/${product.main}`;
+
+        // Handle cached images — if already complete before listener fires
+        if (img.complete && img.naturalWidth > 0) onLoad();
+
         mainWrapper.appendChild(img);
     }
 
@@ -284,14 +309,30 @@ function initProductPage() {
             wrap.className = 'img-wrap thumb-wrap';
 
             const img = document.createElement('img');
-            img.src       = src;
             img.alt       = `${getProductName(product, lang)} — ${i + 1}`;
             img.className = 'thumb' + (i === 0 ? ' active' : '');
             img.loading   = 'lazy';
             img.style.opacity    = '0';
             img.style.transition = 'opacity 0.35s ease';
-            img.onload = () => { img.style.opacity = '1'; wrap.classList.add('loaded'); };
-            img.onerror = () => { img.style.opacity = '0.3'; wrap.classList.add('loaded'); };
+
+            const onLoad  = () => { img.style.opacity = '1'; wrap.classList.add('loaded'); };
+            const onError = () => {
+                if (!img.dataset.retried) {
+                    img.dataset.retried = '1';
+                    setTimeout(() => { img.src = src + '?r=' + Date.now(); }, 1500);
+                } else {
+                    img.style.opacity = '0.3';
+                    wrap.classList.add('loaded');
+                }
+            };
+
+            img.addEventListener('load',  onLoad);
+            img.addEventListener('error', onError);
+            img.src = src;
+
+            // Handle cached images
+            if (img.complete && img.naturalWidth > 0) onLoad();
+
             img.addEventListener('click', () => {
                 const currentMain = document.getElementById('mainImage');
                 if (currentMain) {
@@ -306,11 +347,10 @@ function initProductPage() {
         });
     }
 
-    /* Order button */
+    /* Order button (Messenger — ghost) */
     const orderBtn = document.getElementById('orderBtn');
     if (orderBtn) {
         orderBtn.style.opacity = '1';
-        orderBtn.style.transition = 'opacity 0.3s ease, background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease';
         orderBtn.addEventListener('click', openModal);
     }
 
@@ -331,6 +371,7 @@ function initProductPage() {
     applyProductPageLang(lang);
 }
 
+/* ─── Bind help buttons once (lang-aware) ─── */
 document.addEventListener('DOMContentLoaded', showProductSkeleton);
 document.addEventListener('dalal:products-ready', initProductPage);
 if (Object.keys(DALAL_PRODUCTS_MAP).length > 0) initProductPage();

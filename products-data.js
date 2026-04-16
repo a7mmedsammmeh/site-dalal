@@ -111,13 +111,18 @@ function rerenderProducts(lang) {
         const startPrice  = pricingRows.length ? pricingRows[0].value : '';
         const nameEl      = card.querySelector('.product-name');
         const priceEl     = card.querySelector('.product-start-price');
-        const btnEl       = card.querySelector('.btn-order');
+        const btnEl       = card.querySelector('.product-card-btns .btn-order');
         const imgEl       = card.querySelector('.product-image');
-        const addCartSpan = card.querySelector('.btn-cart-add span');
-        if (nameEl)      nameEl.textContent  = name;
-        if (priceEl)     priceEl.innerHTML   = `${fromLabel} <span>${startPrice}</span>`;
-        if (btnEl)       btnEl.textContent   = orderLabel;
-        if (imgEl)       imgEl.alt           = `${name} — DALAL`;
-        if (addCartSpan) addCartSpan.textContent = addCartLabel;
+        const addCartEl   = card.querySelector('.btn-cart-add');
+        if (nameEl)    nameEl.textContent  = name;
+        if (priceEl)   priceEl.innerHTML   = `${fromLabel} <span>${startPrice}</span>`;
+        if (btnEl)     btnEl.textContent   = orderLabel;
+        if (imgEl)     imgEl.alt           = `${name} — DALAL`;
+        if (addCartEl) {
+            // keep the svg, update text node
+            const svg = addCartEl.querySelector('svg');
+            addCartEl.textContent = addCartLabel;
+            if (svg) addCartEl.prepend(svg);
+        }
     });
 }

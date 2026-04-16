@@ -66,6 +66,8 @@ function applyLanguage(lang) {
     set('footerLinkCollection', t.navCollection);
     set('footerLinkAllProducts', t.footerAllProducts);
     set('footerLinkWhyDalal', t.navWhyDalal);
+    set('footerLinkOrders', t.navOrders);
+    set('footerLinkTrack', t.footerTrack);
 
     /* mobile sticky */
     const stickyBtn = document.getElementById('mobileStickyBtn');
@@ -112,6 +114,7 @@ function applyLanguage(lang) {
     if (typeof applyProductPageLang === 'function') applyProductPageLang(lang);
 
     localStorage.setItem(LANG_KEY, lang);
+    document.dispatchEvent(new CustomEvent('dalal-lang-change', { detail: lang }));
 }
 
 /* ─── DOM Ready ─── */

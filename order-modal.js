@@ -155,6 +155,7 @@
 
     /* ── Open ── */
     function openOrderModal(product) {
+        const wasInjected = _injected;
         inject();
         _product = product;
 
@@ -213,9 +214,19 @@
             offerSelect.appendChild(opt);
         });
 
-        document.getElementById('orderOverlay').classList.add('is-open');
-        document.body.style.overflow = 'hidden';
-        setTimeout(() => document.getElementById('orderInputName').focus(), 400);
+        /* Open — if just injected, wait one rAF so the browser paints the element
+           before adding is-open, otherwise the CSS transition won't fire */
+        const doOpen = () => {
+            document.getElementById('orderOverlay').classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => document.getElementById('orderInputName').focus(), 400);
+        };
+
+        if (!wasInjected) {
+            requestAnimationFrame(() => requestAnimationFrame(doOpen));
+        } else {
+            doOpen();
+        }
     }
 
     /* ── Close ── */

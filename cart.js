@@ -952,7 +952,7 @@ function patchProductCards() {
         btnWrap.className = 'product-card-btns';
 
         const addBtn = document.createElement('button');
-        addBtn.className = 'btn btn-cart-add';
+        addBtn.className = 'btn-cart-add';
         addBtn.setAttribute('data-product-id', product.id);
         addBtn.innerHTML = `
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
@@ -971,7 +971,9 @@ function patchProductCards() {
         const orderBtn = document.createElement('a');
         orderBtn.href = productUrl;
         orderBtn.className = 'btn btn-order';
-        orderBtn.textContent = lang === 'ar' ? 'اطلبي الآن' : 'Order Now';        btnWrap.appendChild(addBtn);
+        orderBtn.textContent = lang === 'ar' ? 'اطلبي الآن' : 'Order Now';
+
+        btnWrap.appendChild(addBtn);
         btnWrap.appendChild(orderBtn);
         info.appendChild(btnWrap);
 

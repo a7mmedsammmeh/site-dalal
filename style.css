@@ -321,7 +321,7 @@ body.lang-ar .pricing-title { font-family:var(--font-ar); letter-spacing:0.05em;
 .pricing-label { font-size:0.85rem; color:var(--text-muted); }
 .pricing-value { font-size:0.9rem; color:var(--text); font-weight:500; letter-spacing:0.05em; }
 
-.btn-order-main { width:100%; padding:1rem; font-size:0.85rem; }
+.btn-order-main { width:100%; padding:1rem; font-size:0.85rem; margin-top: 0.5rem; }
 
 .not-found { text-align:center; padding:4rem; color:var(--text-muted); font-size:1.1rem; }
 
@@ -430,16 +430,16 @@ body.lang-ar .pricing-title { font-family:var(--font-ar); letter-spacing:0.05em;
     .product-detail-grid { display:flex; flex-direction:column; gap:1.2rem; }
     .product-gallery { order:3; }
     .product-info-panel { order:3; display:contents; }
-    .back-link { order:1; }
     .product-detail-name { order:2; width:100%; }
     .product-description { order:3; width:100%; }
     .product-gallery { order:4; }
     .pricing-box { order:5; width:100%; }
     .btn-order-main { order:6; width:100%; }
-    .btn-add-to-cart { order:7; width:100%; }
-    .shipping-box { order:8; width:100%; }
-    .back-link { order:9; }
-    .btn-order-site { order:10; width:100%; }
+    .btn-sub-hint:first-of-type { order:7; width:100%; }
+    .btn-secondary-row { order:8; width:100%; }
+    .btn-sub-hint-row { order:9; width:100%; }
+    .shipping-box { order:12; width:100%; }
+    .back-link-bottom { order:13; width:100%; }
     .thumbs-container { gap:0.5rem; }
 }
 
@@ -929,15 +929,38 @@ body.lang-en .cart-drawer-title { font-family: var(--font-en); }
 
 /* ─── Product card buttons ─── */
 .product-card-btns {
-    display: flex; flex-direction: column; gap: 0.5rem; width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 0.5rem;
 }
+
+/* "اطلبي الآن" — primary */
+.product-card-btns .btn-order {
+    background: var(--gold);
+    color: var(--bg);
+    border: 1px solid var(--gold);
+    font-size: 0.78rem;
+    padding: 0.65rem 0.5rem;
+    text-align: center;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+}
+.product-card-btns .btn-order:hover {
+    background: transparent;
+    color: var(--gold);
+    box-shadow: var(--shadow-glow);
+}
+
+/* "أضيفي للسلة" — secondary, same size */
 .btn-cart-add {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
-    width: 100%; padding: 0.65rem 1rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.65rem 0.5rem;
     background: transparent; color: var(--gold);
     border: 1px solid var(--gold); border-radius: var(--r);
-    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.1em;
-    text-transform: uppercase; cursor: pointer;
+    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.06em;
+    cursor: pointer;
     transition: background 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
     font-family: var(--font-ar);
 }
@@ -1080,6 +1103,90 @@ body.lang-en .btn-add-to-cart { font-family: var(--font-body); }
     .btn-order-site { order: 8; width: 100%; }
 }
 
+/* ─── Secondary button row (Cart + Messenger) ─── */
+.btn-secondary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    width: 100%;
+    margin-top: 0.75rem; /* space for the badge that pops above */
+}
+.btn-secondary-row-item {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+    gap: 0.4rem;
+    justify-content: center;
+}
+
+/* Ghost button (Messenger — low emphasis) */
+.btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    font-family: var(--font-ar);
+    font-size: 0.8rem; font-weight: 500; letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: border-color 0.25s, color 0.25s, background 0.25s;
+}
+body.lang-en .btn-ghost { font-family: var(--font-body); }
+.btn-ghost:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+/* ─── Two-line button stack (title + subtitle inside button) ─── */
+.btn-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    text-align: start;
+}
+.btn-stack-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.btn-stack-sub {
+    font-size: 0.7rem;
+    font-weight: 400;
+    opacity: 0.75;
+    line-height: 1.2;
+    letter-spacing: 0;
+}
+
+/* primary btn — icon + stack */
+.btn-order-main {
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0;
+}
+
+/* secondary row items — taller to fit two lines */
+.btn-secondary-row-item {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.8rem;
+    gap: 0.5rem;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: start;
+}
+
+/* remove old hint rows — no longer used */
+.btn-sub-hint,
+.btn-hints-grid,
+.btn-sub-hint-row,
+.btn-with-info,
+.btn-info-badge { display: none; }
+
+/* mobile order */
+@media (max-width: 768px) {
+    .btn-order-site { order: 8; width: 100%; }
+}
+
 .cart-site-order-btn {
     width: 100%; padding: 0.75rem; font-size: 0.8rem; gap: 0.5rem;
     border-style: dashed; opacity: 0.8;
@@ -1105,15 +1212,14 @@ body.lang-en .btn-add-to-cart { font-family: var(--font-body); }
 /* ─── Help Tooltip ─── */
 .help-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 1px solid var(--border-h); color: var(--text-dim);
-    font-size: 0.7rem; font-weight: 700; font-family: 'Poppins', sans-serif;
-    cursor: pointer; background: transparent; flex-shrink: 0;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--gold); color: var(--gold);
+    font-size: 0.75rem; font-weight: 700; font-family: 'Poppins', sans-serif;
+    cursor: pointer; background: var(--gold-glow); flex-shrink: 0;
     transition: border-color var(--tr), color var(--tr), background var(--tr);
-    vertical-align: middle; margin-inline-start: 0.4rem;
     line-height: 1;
 }
-.help-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-glow); }
+.help-btn:hover { background: var(--gold); color: var(--bg); }
 
 .help-popover {
     position: fixed; z-index: 9999;
@@ -1152,14 +1258,29 @@ body.lang-en .btn-add-to-cart { font-family: var(--font-body); }
 
 /* ─── Button help row ─── */
 .btn-help-row {
-    display: flex; align-items: center; gap: 0.4rem;
-    margin-top: -0.4rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-top: -0.6rem;
 }
 .btn-help-label {
-    font-size: 0.72rem; color: var(--text-dim);
+    font-size: 0.78rem; color: var(--text-muted);
+}
+
+/* ─── Back link bottom (desktop: spans full grid width, above footer) ─── */
+.back-link-bottom {
+    display: inline-flex;
+    grid-column: 1 / -1;
+    margin-top: 1rem;
+    padding: 0.5rem 0;
 }
 
 /* mobile order for help rows */
 @media (max-width: 768px) {
-    .btn-help-row { order: inherit; width: 100%; }
+    .btn-secondary-row,
+    .btn-sub-hint-row {
+        grid-template-columns: 1fr 1fr;
+    }
+    .btn-sub-hint,
+    .btn-sub-hint-row {
+        width: 100%;
+    }
 }

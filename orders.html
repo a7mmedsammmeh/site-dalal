@@ -57,8 +57,34 @@
 .status-pill.pending   { background:rgba(224,192,151,0.12); color:var(--gold);   border:1px solid rgba(224,192,151,0.3); }
 .status-pill.confirmed { background:rgba(76,175,125,0.12);  color:#4caf7d;       border:1px solid rgba(76,175,125,0.3); }
 .status-pill.shipped   { background:rgba(91,155,213,0.12);  color:#5b9bd5;       border:1px solid rgba(91,155,213,0.3); }
-.status-pill.delivered { background:rgba(76,175,125,0.18);  color:#4caf7d;       border:1px solid rgba(76,175,125,0.4); }
+.status-pill.delivered { background:rgba(76,175,125,0.25);  color:#2d9e5f;       border:1px solid rgba(76,175,125,0.5); font-size:0.8rem; }
 .status-pill.cancelled { background:rgba(224,92,92,0.12);   color:#e05c5c;       border:1px solid rgba(224,92,92,0.3); }
+
+/* status hint text under pill */
+.status-hint {
+    font-size: 0.72rem; color: var(--text-dim);
+    margin-top: 0.2rem; text-align: end;
+}
+
+/* delivered card special styling */
+.order-card.delivered-card {
+    border-color: rgba(76,175,125,0.45);
+    box-shadow: 0 0 0 1px rgba(76,175,125,0.15), 0 4px 20px rgba(76,175,125,0.08);
+}
+.order-card.delivered-card .order-card-head {
+    background: rgba(76,175,125,0.07);
+    border-bottom-color: rgba(76,175,125,0.2);
+}
+.delivered-msg {
+    display: flex; align-items: center; gap: 0.6rem;
+    background: rgba(76,175,125,0.08);
+    border: 1px solid rgba(76,175,125,0.25);
+    border-radius: var(--r);
+    padding: 0.7rem 1rem;
+    font-size: 0.82rem; color: #2d9e5f;
+    margin-bottom: 0.3rem;
+}
+.delivered-msg .dm-icon { font-size: 1.2rem; flex-shrink:0; }
 
 .order-card-body { padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
 
@@ -211,6 +237,28 @@
         en: { pending:'Under Review',  confirmed:'Confirmed',   shipped:'On the Way', delivered:'Delivered',    cancelled:'Cancelled' }
     };
 
+    const STATUS_HINTS = {
+        ar: {
+            pending:   'طلبك وصلنا وبنراجعه دلوقتي ✨',
+            confirmed: 'تم تأكيد طلبك وجاري التجهيز 🎀',
+            shipped:   'طلبك في الطريق إليكِ، استعدي! 🚚',
+            delivered: 'وصل طلبك بالسلامة 💚',
+            cancelled: 'تم إلغاء هذا الطلب'
+        },
+        en: {
+            pending:   'We received your order and are reviewing it ✨',
+            confirmed: 'Your order is confirmed and being prepared 🎀',
+            shipped:   'Your order is on its way, get ready! 🚚',
+            delivered: 'Your order has been delivered 💚',
+            cancelled: 'This order has been cancelled'
+        }
+    };
+
+    const DELIVERED_MSG = {
+        ar: 'سعدنا بخدمتك! نتمنى أن تكوني راضية تماماً عن طلبك. يشرفنا دائماً استقبال طلباتك',
+        en: 'Thank you for your order! We hope you love it. It\'s always a pleasure serving you'
+    };
+
     function render() {
         const lang   = localStorage.getItem('dalal-lang') || 'ar';
         const isAr   = lang === 'ar';
@@ -232,8 +280,11 @@
 
         list.innerHTML = orders.map(o => {
             const labels = STATUS_LABELS[lang] || STATUS_LABELS.ar;
+            const hints  = STATUS_HINTS[lang]  || STATUS_HINTS.ar;
             const status = o.status || 'pending';
             const statusLabel = labels[status] || status;
+            const statusHint  = hints[status]  || '';
+            const isDelivered = status === 'delivered';
             const date = o.date ? new Date(o.date).toLocaleDateString(isAr ? 'ar-EG' : 'en-US', {day:'2-digit',month:'short',year:'numeric'}) : '—';
 
             const productsHTML = (o.products || []).map(p => {
@@ -244,15 +295,19 @@
             const currency = isAr ? 'جنيه' : 'EGP';
 
             return `
-            <div class="order-card">
+            <div class="order-card${isDelivered ? ' delivered-card' : ''}">
                 <div class="order-card-head">
                     <div>
                         <div class="order-ref">${esc(o.ref)}</div>
                         <div class="order-date-small">${date}</div>
                     </div>
-                    <span class="status-pill ${status}">${statusLabel}</span>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.2rem;">
+                        <span class="status-pill ${status}">${isDelivered ? '✓ ' : ''}${statusLabel}</span>
+                        <span class="status-hint">${statusHint}</span>
+                    </div>
                 </div>
                 <div class="order-card-body">
+                    ${isDelivered ? `<div class="delivered-msg"><span class="dm-icon">🌸</span><span>${DELIVERED_MSG[lang]}</span></div>` : ''}
                     <div class="order-products-mini">${productsHTML || '—'}</div>
                     <div class="order-total-row">
                         <span style="color:var(--text-muted);font-size:0.82rem">${isAr ? 'الإجمالي' : 'Total'}</span>
