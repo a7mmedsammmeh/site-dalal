@@ -512,6 +512,8 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
         </div>
     </div>`;
 
+    //
+
     document.body.insertAdjacentHTML('beforeend', html);
     const overlay = document.getElementById('siteOrderModal');
     requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
