@@ -488,7 +488,7 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             <form id="siteOrderForm" novalidate>
                 <div class="order-field">
                     <label class="order-label" for="soName">${isAr ? 'الاسم' : 'Name'}</label>
-                    <input class="order-input" id="soName" type="text" placeholder="${isAr ? 'اسمك الكريم' : 'Your full name'}" required>
+                    <input class="order-input" id="soName" type="text" placeholder="${isAr ? 'اكتب أسمك' : 'Your full name'}" required>
                 </div>
                 <div class="order-field">
                     <label class="order-label" for="soPhone">${isAr ? 'رقم الهاتف' : 'Phone'}</label>
@@ -665,7 +665,7 @@ function checkoutViaSite() {
             <form id="cartOrderForm" novalidate>
                 <div class="order-field">
                     <label class="order-label" for="coName">${isAr ? 'الاسم' : 'Name'}</label>
-                    <input class="order-input" id="coName" type="text" placeholder="${isAr ? 'اسمك الكريم' : 'Your full name'}" required>
+                    <input class="order-input" id="coName" type="text" placeholder="${isAr ? 'اكتب أسمك' : 'Your full name'}" required>
                 </div>
                 <div class="order-field">
                     <label class="order-label" for="coPhone">${isAr ? 'رقم الهاتف' : 'Phone'}</label>
