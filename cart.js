@@ -132,16 +132,14 @@ function openQuickAddModal(product) {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                        <line x1="3" y1="6" x2="21" y2="6"/>
-                        <path d="M16 10a4 4 0 01-8 0"/>
                     </svg>
                     ${isAr ? 'أضيفي للسلة' : 'Add to Cart'}
                 </button>
-                <button class="btn btn-primary qa-messenger-btn" id="qaMessengerBtn">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                        <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/>
+                <button class="btn btn-primary qa-site-order-btn" id="qaSiteOrderBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                     </svg>
-                    ${isAr ? 'اطلبي الآن' : 'Order Now'}
+                    ${isAr ? 'اطلبي عن طريق الموقع' : 'Order via Website'}
                 </button>
             </div>
         </div>
@@ -190,8 +188,8 @@ function openQuickAddModal(product) {
         closeQA();
     });
 
-    // Order via Messenger
-    document.getElementById('qaMessengerBtn').addEventListener('click', () => {
+    // Order via Website
+    document.getElementById('qaSiteOrderBtn').addEventListener('click', () => {
         if (!_quickSelectedQty) {
             overlay.querySelectorAll('.qa-qty-btn').forEach(b => {
                 b.style.borderColor = '#c0392b';
@@ -199,23 +197,17 @@ function openQuickAddModal(product) {
             });
             return;
         }
-        const lang = localStorage.getItem('dalal-lang') || 'ar';
-        const nameAr = product.name?.ar || product.name;
-        const nameEn = product.name?.en || product.name;
-        const size  = document.getElementById('qaSizeInput')?.value.trim();
-        const color = document.getElementById('qaColorInput')?.value.trim();
-        const notes = document.getElementById('qaNotesInput')?.value.trim();
+        const size  = document.getElementById('qaSizeInput')?.value.trim() || '';
+        const color = document.getElementById('qaColorInput')?.value.trim() || '';
+        const notes = document.getElementById('qaNotesInput')?.value.trim() || '';
 
-        const msg = buildMessengerMsg({
-            lang,
-            productName: lang === 'ar' ? nameAr : nameEn,
-            code:        product.code || null,
-            priceLabel:  _quickSelectedQty.label,
-            priceValue:  _quickSelectedQty.value,
+        closeQA();
+        // Open customer info modal with all product details pre-filled
+        openSiteOrderModal({
+            product,
+            selectedRow: _quickSelectedQty,
             size, color, notes
         });
-        openMessenger(msg);
-        closeQA();
     });
 
     // Drag to dismiss
@@ -386,11 +378,14 @@ function renderCartItems() {
             }
         }
         
+        const productUrl = item.slug ? `product.html#${item.slug}` : `product.html?id=${item.id}`;
         return `
         <div class="cart-item" data-key="${item.key}">
-            <img class="cart-item-img" src="${item.image}" alt="${name}" loading="lazy">
+            <a href="${productUrl}" onclick="closeCart()">
+                <img class="cart-item-img" src="${item.image}" alt="${name}" loading="lazy">
+            </a>
             <div class="cart-item-info">
-                <span class="cart-item-name">${name}</span>
+                <a href="${productUrl}" onclick="closeCart()" class="cart-item-name" style="color:var(--text);text-decoration:none;">${name}</a>
                 <span class="cart-item-tier">${displayLabel}</span>
                 ${item.size  ? `<span class="cart-item-meta">${lang === 'ar' ? 'مقاس' : 'Size'}: ${item.size}</span>`  : ''}
                 ${item.color ? `<span class="cart-item-meta">${lang === 'ar' ? 'لون' : 'Color'}: ${item.color}</span>` : ''}
@@ -438,7 +433,361 @@ function closeCart() {
     document.body.style.overflow = '';
 }
 
-/* ─── Checkout via Messenger ─── */
+/* ─── Site Order Modal (single product with full details) ─── */
+function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
+    const isAr = lang === 'ar';
+    const name = isAr ? (product.name?.ar || product.name) : (product.name?.en || product.name);
+
+    const old = document.getElementById('siteOrderModal');
+    if (old) old.remove();
+
+    const detailsHTML = [
+        `<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:0.3rem 0;">
+            <span style="color:var(--text-muted)">${isAr ? 'الكمية' : 'Qty'}</span>
+            <span style="color:var(--gold)">${selectedRow.label} — ${selectedRow.value}</span>
+        </div>`,
+        size  ? `<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:0.3rem 0;">
+            <span style="color:var(--text-muted)">${isAr ? 'المقاس' : 'Size'}</span>
+            <span style="color:var(--text)">${size}</span>
+        </div>` : '',
+        color ? `<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:0.3rem 0;">
+            <span style="color:var(--text-muted)">${isAr ? 'اللون' : 'Color'}</span>
+            <span style="color:var(--text)">${color}</span>
+        </div>` : '',
+        notes ? `<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:0.3rem 0;">
+            <span style="color:var(--text-muted)">${isAr ? 'ملاحظات' : 'Notes'}</span>
+            <span style="color:var(--text)">${notes}</span>
+        </div>` : '',
+    ].filter(Boolean).join('');
+
+    const html = `
+    <div class="order-overlay" id="siteOrderModal" role="dialog" aria-modal="true">
+        <div class="order-modal">
+            <div class="order-drag-handle"></div>
+            <div class="order-modal-header">
+                <h2 class="order-modal-title">${isAr ? 'تأكيد الطلب' : 'Confirm Order'}</h2>
+                <button class="order-modal-close" id="siteOrderClose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="order-modal-divider"></div>
+
+            <!-- Product summary -->
+            <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r-lg);padding:0.85rem 1rem;margin-bottom:1.25rem;">
+                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
+                    <img src="${product.folder}/${product.main}" alt="${name}"
+                         style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0;">
+                    <span style="font-size:0.9rem;font-weight:500;color:var(--text)">${name}</span>
+                </div>
+                ${detailsHTML}
+            </div>
+
+            <form id="siteOrderForm" novalidate>
+                <div class="order-field">
+                    <label class="order-label" for="soName">${isAr ? 'الاسم' : 'Name'}</label>
+                    <input class="order-input" id="soName" type="text" placeholder="${isAr ? 'اسمك الكريم' : 'Your full name'}" required>
+                </div>
+                <div class="order-field">
+                    <label class="order-label" for="soPhone">${isAr ? 'رقم الهاتف' : 'Phone'}</label>
+                    <input class="order-input" id="soPhone" type="tel" placeholder="01xxxxxxxxx" inputmode="numeric" pattern="[0-9]*" required>
+                </div>
+                <div class="order-field">
+                    <label class="order-label" for="soAddress">${isAr ? 'العنوان' : 'Address'}</label>
+                    <input class="order-input" id="soAddress" type="text" placeholder="${isAr ? 'المحافظة / المدينة / الشارع' : 'Governorate / City / Street'}" required>
+                </div>
+                <div class="order-error" id="soError"></div>
+                <button type="submit" class="order-submit-btn" id="soSubmitBtn">
+                    <span id="soSubmitLabel">${isAr ? 'تأكيد الطلب' : 'Confirm Order'}</span>
+                </button>
+            </form>
+
+            <div class="order-success" id="soSuccess">
+                <div class="order-success-icon">✓</div>
+                <div class="order-success-msg">${isAr ? 'تم تأكيد طلبك بنجاح' : 'Order confirmed successfully'}</div>
+                <div class="order-success-sub">${isAr ? 'سنتواصل معكِ قريباً' : 'We will contact you soon'}</div>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    const overlay = document.getElementById('siteOrderModal');
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
+    document.body.style.overflow = 'hidden';
+
+    const closeModal = () => {
+        overlay.classList.remove('is-open');
+        setTimeout(() => overlay.remove(), 350);
+        document.body.style.overflow = '';
+    };
+
+    document.getElementById('siteOrderClose').addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+    /* Numbers only */
+    overlay.querySelector('#soPhone').addEventListener('input', function () {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+
+    document.getElementById('siteOrderForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const customerName = document.getElementById('soName').value.trim();
+        const phone        = document.getElementById('soPhone').value.trim();
+        const address      = document.getElementById('soAddress').value.trim();
+
+        if (!customerName || !phone || !address) {
+            const errEl = document.getElementById('soError');
+            errEl.textContent = isAr ? 'يرجى ملء جميع الحقول' : 'Please fill in all fields';
+            errEl.classList.add('is-visible');
+            return;
+        }
+
+        const btn   = document.getElementById('soSubmitBtn');
+        const label = document.getElementById('soSubmitLabel');
+        btn.disabled = true;
+        label.innerHTML = '<span class="order-spinner"></span>';
+
+        const priceNum = parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0;
+
+        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : ('DL-' + Math.random().toString(36).slice(2,7).toUpperCase());
+
+        const orderData = {
+            name:    customerName,
+            phone,
+            address,
+            products: [{
+                id:    product.id,
+                name:  typeof product.name === 'object'
+                    ? (isAr ? product.name.ar : (product.name.en || product.name.ar))
+                    : product.name,
+                offer: selectedRow.label,
+                price: selectedRow.value,
+                size:  size  || '',
+                color: color || '',
+                notes: notes || '',
+                code:  product.code || '',
+                qty:   1
+            }],
+            total:     priceNum,
+            status:    'pending',
+            order_ref: orderRef
+        };
+
+        try {
+            const result = await insertOrder(orderData);
+            const savedId = result?.[0]?.id || null;
+
+            if (typeof saveOrderLocally === 'function') {
+                saveOrderLocally({
+                    ref: orderRef, dbId: savedId,
+                    name: customerName, phone,
+                    products: orderData.products,
+                    total: priceNum, status: 'pending',
+                    date: new Date().toISOString()
+                });
+            }
+
+            document.getElementById('siteOrderForm').style.display = 'none';
+            document.getElementById('soSuccess').innerHTML = `
+                <div class="order-success-icon">✓</div>
+                <div class="order-success-msg">${isAr ? 'تم تأكيد طلبك بنجاح' : 'Order confirmed successfully'}</div>
+                <div class="order-success-sub">${isAr ? 'سنتواصل معكِ قريباً' : 'We will contact you soon'}</div>
+                <span style="font-size:0.8rem;color:var(--text-dim);margin-top:0.2rem;display:block">
+                    ${isAr ? 'رقم طلبك' : 'Order ID'}: <strong style="color:var(--gold)">${orderRef}</strong>
+                </span>
+                <a href="track.html?ref=${orderRef}" style="color:var(--gold);text-decoration:underline;font-size:0.82rem;margin-top:0.4rem;display:inline-block">
+                    ${isAr ? 'تتبع طلبك ←' : 'Track your order ←'}
+                </a>`;
+            document.getElementById('soSuccess').classList.add('is-visible');
+            setTimeout(closeModal, 5000);
+        } catch (err) {
+            console.error(err);
+            btn.disabled = false;
+            label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+            const errEl = document.getElementById('soError');
+            errEl.textContent = isAr ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'Something went wrong';
+            errEl.classList.add('is-visible');
+        }
+    });
+}
+
+/* ─── Checkout via Site (single order with all cart items) ─── */
+function checkoutViaSite() {
+    if (cart.length === 0) return;
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
+    const isAr = lang === 'ar';
+
+    // Remove old modal if exists
+    const old = document.getElementById('cartOrderModal');
+    if (old) old.remove();
+
+    const html = `
+    <div class="order-overlay" id="cartOrderModal" role="dialog" aria-modal="true">
+        <div class="order-modal">
+            <div class="order-drag-handle"></div>
+            <div class="order-modal-header">
+                <h2 class="order-modal-title">${isAr ? 'تأكيد الطلب' : 'Confirm Order'}</h2>
+                <button class="order-modal-close" id="cartOrderClose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="order-modal-divider"></div>
+
+            <!-- Cart summary -->
+            <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r-lg);padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;flex-direction:column;gap:0.6rem;">
+                ${cart.map(i => {
+                    const name = lang === 'ar' ? i.nameAr : i.nameEn;
+                    const meta = [
+                        i.size  ? (isAr ? `مقاس: ${i.size}`   : `Size: ${i.size}`)   : '',
+                        i.color ? (isAr ? `لون: ${i.color}`    : `Color: ${i.color}`) : '',
+                        i.notes ? (isAr ? `ملاحظة: ${i.notes}` : `Note: ${i.notes}`) : '',
+                    ].filter(Boolean).join('<br>');
+                    return `<div style="display:flex;align-items:center;gap:0.7rem;">
+                        <img src="${i.image}" alt="${name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:0.83rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name} × ${i.qty}</div>
+                            <div style="font-size:0.75rem;color:var(--text-dim);">${i.priceLabel}</div>
+                            ${meta ? `<div style="font-size:0.72rem;color:var(--text-dim);margin-top:0.1rem;">${meta}</div>` : ''}
+                        </div>
+                        <span style="color:var(--gold);font-size:0.82rem;font-weight:600;flex-shrink:0;">${i.priceValue}</span>
+                    </div>`;
+                }).join('')}
+                <div style="border-top:1px solid var(--border);margin-top:0.2rem;padding-top:0.5rem;display:flex;justify-content:space-between;font-size:0.85rem;font-weight:600;">
+                    <span style="color:var(--text-muted)">${isAr ? 'الإجمالي' : 'Total'}</span>
+                    <span style="color:var(--gold)">${cartTotal().toLocaleString()} ${isAr ? 'جنيه' : 'EGP'}</span>
+                </div>
+            </div>
+
+            <form id="cartOrderForm" novalidate>
+                <div class="order-field">
+                    <label class="order-label" for="coName">${isAr ? 'الاسم' : 'Name'}</label>
+                    <input class="order-input" id="coName" type="text" placeholder="${isAr ? 'اسمك الكريم' : 'Your full name'}" required>
+                </div>
+                <div class="order-field">
+                    <label class="order-label" for="coPhone">${isAr ? 'رقم الهاتف' : 'Phone'}</label>
+                    <input class="order-input" id="coPhone" type="tel" placeholder="01xxxxxxxxx" inputmode="numeric" pattern="[0-9]*" required>
+                </div>
+                <div class="order-field">
+                    <label class="order-label" for="coAddress">${isAr ? 'العنوان' : 'Address'}</label>
+                    <input class="order-input" id="coAddress" type="text" placeholder="${isAr ? 'المحافظة / المدينة / الشارع' : 'Governorate / City / Street'}" required>
+                </div>
+                <div class="order-error" id="coError"></div>
+                <button type="submit" class="order-submit-btn" id="coSubmitBtn">
+                    <span id="coSubmitLabel">${isAr ? 'تأكيد الطلب' : 'Confirm Order'}</span>
+                </button>
+            </form>
+
+            <div class="order-success" id="coSuccess">
+                <div class="order-success-icon">✓</div>
+                <div class="order-success-msg">${isAr ? 'تم تأكيد طلبك بنجاح' : 'Order confirmed successfully'}</div>
+                <div class="order-success-sub">${isAr ? 'سنتواصل معكِ قريباً' : 'We will contact you soon'}</div>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    const overlay = document.getElementById('cartOrderModal');
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
+    document.body.style.overflow = 'hidden';
+
+    const closeModal = () => {
+        overlay.classList.remove('is-open');
+        setTimeout(() => overlay.remove(), 350);
+        document.body.style.overflow = '';
+    };
+
+    document.getElementById('cartOrderClose').addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+    /* Numbers only */
+    overlay.querySelector('#coPhone').addEventListener('input', function () {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+
+    document.getElementById('cartOrderForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name    = document.getElementById('coName').value.trim();
+        const phone   = document.getElementById('coPhone').value.trim();
+        const address = document.getElementById('coAddress').value.trim();
+
+        if (!name || !phone || !address) {
+            const errEl = document.getElementById('coError');
+            errEl.textContent = isAr ? 'يرجى ملء جميع الحقول' : 'Please fill in all fields';
+            errEl.classList.add('is-visible');
+            return;
+        }
+
+        const btn = document.getElementById('coSubmitBtn');
+        const label = document.getElementById('coSubmitLabel');
+        btn.disabled = true;
+        label.innerHTML = '<span class="order-spinner"></span>';
+
+        // Build products array from cart
+        const products = cart.map(i => ({
+            id:    i.id,
+            name:  lang === 'ar' ? i.nameAr : (i.nameEn || i.nameAr),
+            size:  i.size  || '',
+            color: i.color || '',
+            notes: i.notes || '',
+            offer: i.priceLabel,
+            price: i.priceValue,
+            qty:   i.qty,
+            code:  i.code || ''
+        }));
+
+        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : ('DL-' + Math.random().toString(36).slice(2,7).toUpperCase());
+
+        const orderData = {
+            name,
+            phone,
+            address,
+            products,
+            total:     cartTotal(),
+            status:    'pending',
+            order_ref: orderRef
+        };
+
+        try {
+            const result = await insertOrder(orderData);
+            const savedId = result?.[0]?.id || null;
+
+            if (typeof saveOrderLocally === 'function') {
+                saveOrderLocally({
+                    ref: orderRef, dbId: savedId, name, phone,
+                    products, total: cartTotal(), status: 'pending',
+                    date: new Date().toISOString()
+                });
+            }
+
+            document.getElementById('cartOrderForm').style.display = 'none';
+            document.getElementById('coSuccess').innerHTML = `
+                <div class="order-success-icon">✓</div>
+                <div class="order-success-msg">${isAr ? 'تم تأكيد طلبك بنجاح' : 'Order confirmed successfully'}</div>
+                <div class="order-success-sub">${isAr ? 'سنتواصل معكِ قريباً' : 'We will contact you soon'}</div>
+                <span style="font-size:0.8rem;color:var(--text-dim);margin-top:0.2rem;display:block">
+                    ${isAr ? 'رقم طلبك' : 'Order ID'}: <strong style="color:var(--gold)">${orderRef}</strong>
+                </span>
+                <a href="track.html?ref=${orderRef}" style="color:var(--gold);text-decoration:underline;font-size:0.82rem;margin-top:0.4rem;display:inline-block">
+                    ${isAr ? 'تتبع طلبك ←' : 'Track your order ←'}
+                </a>`;
+            document.getElementById('coSuccess').classList.add('is-visible');
+            cartClear();
+            closeCart();
+            setTimeout(closeModal, 5000);
+        } catch (err) {
+            console.error(err);
+            btn.disabled = false;
+            label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+            const errEl = document.getElementById('coError');
+            errEl.textContent = isAr ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'Something went wrong';
+            errEl.classList.add('is-visible');
+        }
+    });
+}
 function checkoutViaMessenger() {
     if (cart.length === 0) return;
     const lang = localStorage.getItem('dalal-lang') || 'ar';
@@ -527,6 +876,12 @@ function injectCartHTML() {
                 </svg>
                 <span id="cartCheckoutLabel">${isAr ? 'اطلبي عبر ماسنجر' : 'Order via Messenger'}</span>
             </button>
+            <button class="btn btn-secondary cart-site-order-btn" onclick="checkoutViaSite()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                <span id="cartSiteOrderLabel">${isAr ? 'اطلبي عن طريق الموقع' : 'Order via Website'}</span>
+            </button>
         </div>
     </aside>
 
@@ -566,6 +921,7 @@ function updateCartLang(lang) {
     set('cartTotalLabel',    isAr ? 'الإجمالي' : 'Total');
     set('cartClearLabel',    isAr ? 'إفراغ السلة' : 'Clear Cart');
     set('cartCheckoutLabel', isAr ? 'اطلبي عبر ماسنجر' : 'Order via Messenger');
+    set('cartSiteOrderLabel', isAr ? 'اطلبي عن طريق الموقع' : 'Order via Website');
     renderCartItems();
 }
 
@@ -613,9 +969,7 @@ function patchProductCards() {
         const orderBtn = document.createElement('a');
         orderBtn.href = productUrl;
         orderBtn.className = 'btn btn-order';
-        orderBtn.textContent = lang === 'ar' ? 'اطلبي الآن' : 'Order Now';
-
-        btnWrap.appendChild(addBtn);
+        orderBtn.textContent = lang === 'ar' ? 'اطلبي الآن' : 'Order Now';        btnWrap.appendChild(addBtn);
         btnWrap.appendChild(orderBtn);
         info.appendChild(btnWrap);
 

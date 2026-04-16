@@ -158,6 +158,13 @@ function applyProductPageLang(lang) {
         addToCartBtn.textContent = lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart';
         if (svg) addToCartBtn.prepend(svg);
     }
+    /* order via site btn */
+    const registerOrderBtn = document.getElementById('registerOrderBtn');
+    if (registerOrderBtn) {
+        const svg = registerOrderBtn.querySelector('svg');
+        registerOrderBtn.textContent = lang === 'ar' ? 'اطلبي الآن عن طريق الموقع' : 'Order via Website';
+        if (svg) registerOrderBtn.prepend(svg);
+    }
     if (backBtn) {
         const svg = backBtn.querySelector('svg');
         backBtn.textContent = t.backToHome;

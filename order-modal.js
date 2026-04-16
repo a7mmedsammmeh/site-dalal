@@ -1,0 +1,324 @@
+/* ═══════════════════════════════════════════════════════════════
+   DALAL — Order Modal
+   ═══════════════════════════════════════════════════════════════ */
+
+(function () {
+    'use strict';
+
+    const T = {
+        ar: {
+            title:      'سجّلي طلبك',
+            name:       'الاسم',
+            namePh:     'اسمك الكريم',
+            phone:      'رقم الهاتف',
+            phonePh:    '01xxxxxxxxx',
+            address:    'العنوان',
+            addressPh:  'المحافظة / المدينة / الشارع',
+            size:       'المقاس',
+            sizePh:     'اختاري المقاس',
+            offer:      'العرض',
+            offerPh:    'اختاري العرض',
+            submit:     'تأكيد الطلب',
+            successMsg: 'تم تأكيد طلبك بنجاح ✓',
+            successSub: 'سنتواصل معكِ قريباً لتأكيد التوصيل',
+            errorMsg:   'حدث خطأ، يرجى المحاولة مرة أخرى',
+            fillAll:    'يرجى ملء جميع الحقول',
+            from:       'يبدأ من',
+        },
+        en: {
+            title:      'Place Your Order',
+            name:       'Name',
+            namePh:     'Your full name',
+            phone:      'Phone',
+            phonePh:    '01xxxxxxxxx',
+            address:    'Address',
+            addressPh:  'Governorate / City / Street',
+            size:       'Size',
+            sizePh:     'Select size',
+            offer:      'Offer',
+            offerPh:    'Select offer',
+            submit:     'Confirm Order',
+            successMsg: 'Order confirmed successfully ✓',
+            successSub: 'We will contact you soon to confirm delivery',
+            errorMsg:   'Something went wrong, please try again',
+            fillAll:    'Please fill in all fields',
+            from:       'From',
+        }
+    };
+
+    let _injected = false;
+    let _product  = null;
+    let _dragStartY = 0, _dragCurrentY = 0, _isDragging = false;
+
+    /* ── Inject HTML once ── */
+    function inject() {
+        if (_injected) return;
+        _injected = true;
+
+        const el = document.createElement('div');
+        el.innerHTML = `
+<div class="order-overlay" id="orderOverlay" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
+  <div class="order-modal" id="orderModalCard">
+    <div class="order-drag-handle" id="orderDragHandle"></div>
+    <div class="order-modal-header">
+      <h2 class="order-modal-title" id="orderModalTitle"></h2>
+      <button class="order-modal-close" id="orderModalClose" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="order-modal-divider"></div>
+    <div class="order-product-preview" id="orderProductPreview">
+      <img id="orderProductImg" src="" alt="" width="52" height="52">
+      <div>
+        <div class="order-product-preview-name" id="orderProductName"></div>
+        <div class="order-product-preview-price" id="orderProductPrice"></div>
+      </div>
+    </div>
+    <form id="orderForm" novalidate>
+      <div class="order-field">
+        <label class="order-label" id="orderLabelName" for="orderInputName"></label>
+        <input class="order-input" id="orderInputName" type="text" autocomplete="name" required>
+      </div>
+      <div class="order-field">
+        <label class="order-label" id="orderLabelPhone" for="orderInputPhone"></label>
+        <input class="order-input" id="orderInputPhone" type="tel" autocomplete="tel" inputmode="numeric" pattern="[0-9]*" required>
+      </div>
+      <div class="order-field">
+        <label class="order-label" id="orderLabelAddress" for="orderInputAddress"></label>
+        <input class="order-input" id="orderInputAddress" type="text" autocomplete="street-address" required>
+      </div>
+      <div class="order-field">
+        <label class="order-label" id="orderLabelSize" for="orderSelectSize"></label>
+        <div class="order-select-wrapper">
+          <select class="order-select" id="orderSelectSize" required></select>
+        </div>
+      </div>
+      <div class="order-field">
+        <label class="order-label" id="orderLabelOffer" for="orderSelectOffer"></label>
+        <div class="order-select-wrapper">
+          <select class="order-select" id="orderSelectOffer" required></select>
+        </div>
+      </div>
+      <div class="order-error" id="orderError"></div>
+      <button type="submit" class="order-submit-btn" id="orderSubmitBtn">
+        <span id="orderSubmitLabel"></span>
+      </button>
+    </form>
+    <div class="order-success" id="orderSuccess">
+      <div class="order-success-icon">✓</div>
+      <div class="order-success-msg" id="orderSuccessMsg"></div>
+      <div class="order-success-sub" id="orderSuccessSub"></div>
+    </div>
+  </div>
+</div>`;
+        document.body.appendChild(el.firstElementChild);
+
+        document.getElementById('orderModalClose').addEventListener('click', closeOrderModal);
+        document.getElementById('orderOverlay').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeOrderModal();
+        });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOrderModal(); });
+        document.getElementById('orderForm').addEventListener('submit', handleSubmit);
+
+        /* Numbers only for phone */
+        document.getElementById('orderInputPhone').addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        /* Drag to dismiss */
+        const card = document.getElementById('orderModalCard');
+        card.addEventListener('touchstart', e => {
+            if (window.innerWidth >= 640 || card.scrollTop > 0) return;
+            _isDragging = true;
+            _dragStartY = e.touches[0].clientY;
+            _dragCurrentY = 0;
+            card.style.transition = 'none';
+        }, { passive: true });
+        document.addEventListener('touchmove', e => {
+            if (!_isDragging) return;
+            const dy = e.touches[0].clientY - _dragStartY;
+            if (dy < 0) return;
+            _dragCurrentY = dy;
+            card.style.transform = `translateY(${dy}px)`;
+            e.preventDefault();
+        }, { passive: false });
+        document.addEventListener('touchend', () => {
+            if (!_isDragging) return;
+            _isDragging = false;
+            card.style.transition = '';
+            if (_dragCurrentY > 120) closeOrderModal();
+            else card.style.transform = '';
+        });
+    }
+
+    /* ── Open ── */
+    function openOrderModal(product) {
+        inject();
+        _product = product;
+
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const t    = T[lang] || T.ar;
+
+        /* Reset */
+        document.getElementById('orderForm').style.display = '';
+        document.getElementById('orderSuccess').classList.remove('is-visible');
+        document.getElementById('orderError').classList.remove('is-visible');
+        document.getElementById('orderForm').reset();
+        document.getElementById('orderModalCard').style.transform = '';
+        const btn = document.getElementById('orderSubmitBtn');
+        btn.disabled = false;
+        document.getElementById('orderSubmitLabel').textContent = t.submit;
+
+        /* Texts */
+        document.getElementById('orderModalTitle').textContent   = t.title;
+        document.getElementById('orderLabelName').textContent    = t.name;
+        document.getElementById('orderInputName').placeholder    = t.namePh;
+        document.getElementById('orderLabelPhone').textContent   = t.phone;
+        document.getElementById('orderInputPhone').placeholder   = t.phonePh;
+        document.getElementById('orderLabelAddress').textContent = t.address;
+        document.getElementById('orderInputAddress').placeholder = t.addressPh;
+        document.getElementById('orderLabelSize').textContent    = t.size;
+        document.getElementById('orderLabelOffer').textContent   = t.offer;
+        document.getElementById('orderSubmitLabel').textContent  = t.submit;
+        document.getElementById('orderSuccessMsg').textContent   = t.successMsg;
+        document.getElementById('orderSuccessSub').textContent   = t.successSub;
+
+        /* Product preview */
+        const name        = typeof product.name === 'object' ? (product.name[lang] || product.name.ar) : product.name;
+        const pricingRows = product.pricing?.[lang] || product.pricing?.ar || [];
+        const startPrice  = pricingRows.length ? pricingRows[0].value : '';
+        document.getElementById('orderProductImg').src           = `${product.folder}/${product.main}`;
+        document.getElementById('orderProductImg').alt           = name;
+        document.getElementById('orderProductName').textContent  = name;
+        document.getElementById('orderProductPrice').textContent = startPrice ? `${t.from} ${startPrice}` : '';
+
+        /* Sizes */
+        const sizeSelect = document.getElementById('orderSelectSize');
+        sizeSelect.innerHTML = `<option value="">${t.sizePh}</option>`;
+        (product.sizes || []).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s; opt.textContent = s;
+            sizeSelect.appendChild(opt);
+        });
+
+        /* Offers */
+        const offerSelect = document.getElementById('orderSelectOffer');
+        offerSelect.innerHTML = `<option value="">${t.offerPh}</option>`;
+        pricingRows.forEach((row, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `${row.label} — ${row.value}`;
+            offerSelect.appendChild(opt);
+        });
+
+        document.getElementById('orderOverlay').classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => document.getElementById('orderInputName').focus(), 400);
+    }
+
+    /* ── Close ── */
+    function closeOrderModal() {
+        const overlay = document.getElementById('orderOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+
+    /* ── Submit ── */
+    async function handleSubmit(e) {
+        e.preventDefault();
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const t    = T[lang] || T.ar;
+
+        const name     = document.getElementById('orderInputName').value.trim();
+        const phone    = document.getElementById('orderInputPhone').value.trim();
+        const address  = document.getElementById('orderInputAddress').value.trim();
+        const sizeVal  = document.getElementById('orderSelectSize').value;
+        const offerIdx = document.getElementById('orderSelectOffer').value;
+
+        if (!name || !phone || !address || !sizeVal || offerIdx === '') {
+            showError(t.fillAll); return;
+        }
+
+        const pricingRows   = _product.pricing?.[lang] || _product.pricing?.ar || [];
+        const selectedOffer = pricingRows[parseInt(offerIdx)];
+        const numericPrice  = parseFloat((selectedOffer?.value || '0').replace(/[^\d.]/g, '')) || 0;
+
+        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : ('DL-' + Math.random().toString(36).slice(2,7).toUpperCase());
+
+        const orderData = {
+            name,
+            phone,
+            address,
+            products: JSON.parse(JSON.stringify([{
+                id:    _product.id,
+                code:  _product.code || '',
+                name:  typeof _product.name === 'object'
+                    ? (lang === 'ar' ? _product.name.ar : (_product.name.en || _product.name.ar))
+                    : _product.name,
+                size:  sizeVal,
+                offer: selectedOffer?.label || '',
+                price: selectedOffer?.value || '',
+                qty:   1
+            }])),
+            total:     numericPrice,
+            status:    'pending',
+            order_ref: orderRef
+        };
+
+        const btn   = document.getElementById('orderSubmitBtn');
+        const label = document.getElementById('orderSubmitLabel');
+        btn.disabled = true;
+        label.innerHTML = `<span class="order-spinner"></span>`;
+        hideError();
+
+        try {
+            const result = await insertOrder(orderData);
+            const savedId = result?.[0]?.id || null;
+
+            if (typeof saveOrderLocally === 'function') {
+                saveOrderLocally({
+                    ref: orderRef, dbId: savedId, name, phone,
+                    products: orderData.products,
+                    total: numericPrice, status: 'pending',
+                    date: new Date().toISOString()
+                });
+            }
+
+            document.getElementById('orderForm').style.display = 'none';
+            const lang = localStorage.getItem('dalal-lang') || 'ar';
+            const t    = T[lang] || T.ar;
+            document.getElementById('orderSuccessMsg').textContent = t.successMsg;
+            document.getElementById('orderSuccessSub').innerHTML =
+                `${t.successSub}<br>
+                <span style="font-size:0.8rem;color:var(--text-dim);margin-top:0.4rem;display:block">
+                    ${lang === 'ar' ? 'رقم طلبك' : 'Order ID'}: <strong style="color:var(--gold)">${orderRef}</strong>
+                </span>
+                <a href="track.html?ref=${orderRef}" style="color:var(--gold);text-decoration:underline;font-size:0.82rem;margin-top:0.4rem;display:inline-block">
+                    ${lang === 'ar' ? 'تتبع طلبك ←' : 'Track your order ←'}
+                </a>`;
+            document.getElementById('orderSuccess').classList.add('is-visible');
+            setTimeout(closeOrderModal, 5000);
+        } catch (err) {
+            console.error('Order error:', err);
+            btn.disabled = false;
+            label.textContent = t.submit;
+            showError(t.errorMsg);
+        }
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('orderError');
+        el.textContent = msg;
+        el.classList.add('is-visible');
+    }
+    function hideError() {
+        document.getElementById('orderError').classList.remove('is-visible');
+    }
+
+    window.openOrderModal  = openOrderModal;
+    window.closeOrderModal = closeOrderModal;
+
+})();

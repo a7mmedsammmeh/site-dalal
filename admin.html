@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DALAL — لوحة التحكم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Poppins:wght@300;400;500;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="images/dalal-logo.png">
+<style>
+:root {
+    --bg:         #0D0D0D;
+    --bg-light:   #141414;
+    --bg-card:    #1A1A1A;
+    --gold:       #E0C097;
+    --gold-dim:   #C4A67A;
+    --gold-glow:  rgba(224,192,151,0.12);
+    --text:       #F5F0EB;
+    --text-muted: #A89B8C;
+    --text-dim:   #6B6158;
+    --border:     rgba(224,192,151,0.15);
+    --border-h:   rgba(224,192,151,0.4);
+    --r:          4px;
+    --r-lg:       8px;
+    --green:      #4caf7d;
+    --blue:       #5b9bd5;
+    --red:        #e05c5c;
+    --tr:         0.25s ease;
+}
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:16px; -webkit-font-smoothing:antialiased; }
+body { font-family:'Tajawal','Poppins',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; }
+a { text-decoration:none; color:inherit; }
+button { border:none; background:none; cursor:pointer; font-family:inherit; color:inherit; }
+
+/* Header */
+.admin-header {
+    background:var(--bg-light); border-bottom:1px solid var(--border);
+    padding:0 1.5rem; height:64px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100; gap:1rem;
+}
+.admin-header-left { display:flex; align-items:center; gap:1rem; }
+.admin-logo { font-family:'Playfair Display',serif; font-size:1.2rem; font-weight:700; color:var(--gold); letter-spacing:0.12em; text-transform:uppercase; white-space:nowrap; }
+.admin-logo span { font-family:'Tajawal',sans-serif; font-size:0.8rem; font-weight:400; color:var(--text-muted); letter-spacing:0.04em; margin-inline-start:0.6rem; }
+.admin-header-right { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; }
+.admin-refresh-btn { display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:var(--text-muted); border:1px solid var(--border); border-radius:var(--r); padding:0.45rem 0.75rem; transition:border-color var(--tr),color var(--tr); white-space:nowrap; }
+.admin-refresh-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
+.admin-refresh-btn svg { transition:transform 0.5s ease; flex-shrink:0; }
+.admin-refresh-btn:hover svg { transform:rotate(180deg); }
+.admin-back-link { font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:0.35rem; transition:color var(--tr); white-space:nowrap; border:1px solid var(--border); border-radius:var(--r); padding:0.45rem 0.75rem; }
+.admin-back-link:hover { color:var(--gold); border-color:var(--gold-dim); }
+.refresh-indicator { font-size:0.72rem; color:var(--text-dim); display:flex; align-items:center; gap:0.35rem; }
+.refresh-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse-dot 2s infinite; flex-shrink:0; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+/* hide-mobile handled in responsive section below */
+
+/* Main */
+.admin-main { max-width:1280px; margin:0 auto; padding:1.5rem 1.5rem 4rem; }
+
+/* Stats */
+.admin-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem; }
+@media(max-width:768px){ .admin-stats{grid-template-columns:repeat(2,1fr);gap:0.75rem;} }
+@media(max-width:400px){ .admin-stats{grid-template-columns:repeat(2,1fr);gap:0.5rem;} }
+
+/* Responsive header */
+@media(max-width:600px){
+    .admin-header { padding:0 1rem; height:56px; }
+    .admin-logo span { display:none; }
+    .hide-mobile { display:none !important; }
+    .admin-refresh-btn { padding:0.4rem 0.5rem; }
+    .admin-back-link { padding:0.4rem 0.5rem; }
+    .admin-header-right { gap:0.3rem; }
+}
+.stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:1.25rem 1.5rem; transition:border-color var(--tr); }
+.stat-card:hover { border-color:var(--border-h); }
+.stat-label { font-size:0.75rem; color:var(--text-muted); letter-spacing:0.06em; margin-bottom:0.5rem; }
+.stat-value { font-size:2rem; font-weight:700; color:var(--gold); line-height:1; }
+.stat-card.stat-confirmed .stat-value { color:var(--green); }
+.stat-card.stat-shipped   .stat-value { color:var(--blue); }
+
+/* Search */
+.admin-search-wrap {
+    display: flex; align-items: center; gap: 0.6rem;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 0.6rem 1rem;
+    margin-bottom: 1rem;
+    transition: border-color var(--tr);
+}
+.admin-search-wrap:focus-within { border-color: var(--gold-dim); }
+.admin-search-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: inherit; font-size: 0.85rem;
+    direction: rtl;
+}
+.admin-search-input::placeholder { color: var(--text-dim); }
+
+/* Filters */
+.admin-filters { display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+.filter-btn { font-size:0.8rem; padding:0.45rem 1.1rem; border-radius:20px; border:1px solid var(--border); color:var(--text-muted); transition:all var(--tr); white-space:nowrap; }
+.filter-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
+.filter-btn.active { background:var(--gold); border-color:var(--gold); color:var(--bg); font-weight:600; }
+
+/* Table */
+.admin-table-wrap { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
+.admin-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.admin-table th { background:var(--bg-light); color:var(--text-muted); font-weight:500; font-size:0.75rem; letter-spacing:0.06em; padding:0.85rem 1rem; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
+.admin-table td { padding:0.9rem 1rem; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text); }
+.admin-table tr:last-child td { border-bottom:none; }
+.admin-table tr:hover td { background:rgba(224,192,151,0.03); }
+.order-num { font-size:0.75rem; color:var(--text-dim); font-family:'Poppins',monospace; }
+.order-products-list { display:flex; flex-direction:column; gap:0.25rem; }
+.order-product-item { font-size:0.8rem; color:var(--text-muted); background:var(--bg-light); border-radius:var(--r); padding:0.25rem 0.5rem; display:inline-block; }
+.order-total { color:var(--gold-dim); font-weight:600; white-space:nowrap; }
+/* Status select — custom styled */
+.status-select {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.35rem 0.9rem;
+    cursor: pointer;
+    outline: none;
+    transition: all var(--tr);
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 130px;
+    text-align: center;
+}
+.status-select option {
+    background: #1A1A1A;
+    color: #F5F0EB;
+    font-weight: 500;
+}
+.status-select:focus { box-shadow: 0 0 0 2px rgba(224,192,151,0.15); }
+.status-select.s-pending   { color: #E0C097; border-color: rgba(224,192,151,0.5); background: rgba(224,192,151,0.08); }
+.status-select.s-confirmed { color: #4caf7d; border-color: rgba(76,175,125,0.5);  background: rgba(76,175,125,0.08); }
+.status-select.s-shipped   { color: #5b9bd5; border-color: rgba(91,155,213,0.5);  background: rgba(91,155,213,0.08); }
+.status-select.s-delivered { color: #4caf7d; border-color: rgba(76,175,125,0.6);  background: rgba(76,175,125,0.12); }
+.status-select.s-cancelled { color: #e05c5c; border-color: rgba(224,92,92,0.5);   background: rgba(224,92,92,0.08); }
+.order-date { font-size:0.78rem; color:var(--text-dim); white-space:nowrap; }
+.del-btn {
+    display:inline-flex; align-items:center; gap:0.3rem;
+    font-size:0.75rem; color:var(--text-dim);
+    border:1px solid transparent; border-radius:var(--r);
+    padding:0.3rem 0.5rem; cursor:pointer; background:transparent; font-family:inherit;
+    transition:color var(--tr), border-color var(--tr), background var(--tr);
+}
+.del-btn:hover { color:var(--red); border-color:rgba(224,92,92,0.3); background:rgba(224,92,92,0.06); }
+
+/* Mobile cards */
+@media(max-width:900px){ .admin-table-wrap{background:transparent;border:none;} .admin-table{display:none;} .admin-cards{display:flex;flex-direction:column;gap:0.85rem;} }
+@media(min-width:901px){ .admin-cards{display:none;} }
+
+/* New mobile card */
+.mc {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    transition: border-color var(--tr);
+}
+.mc:hover { border-color: var(--border-h); }
+
+.mc-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.75rem; padding: 0.85rem 1rem;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border);
+}
+.mc-head-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.mc-name { font-size: 0.92rem; font-weight: 600; color: var(--text); }
+.mc-ref  { font-size: 0.72rem; color: var(--gold); font-family: 'Poppins', monospace; letter-spacing: 0.06em; }
+
+.mc-body { padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.mc-row  { display: flex; gap: 0.5rem; font-size: 0.82rem; align-items: flex-start; }
+.mc-lbl  { color: var(--text-dim); min-width: 60px; flex-shrink: 0; font-size: 0.75rem; padding-top: 0.1rem; }
+.mc-val  { color: var(--text-muted); word-break: break-word; }
+.mc-row-products { align-items: flex-start; }
+
+.mc-products { display: flex; flex-direction: column; gap: 0.4rem; flex: 1; }
+.mc-product { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); padding: 0.4rem 0.6rem; }
+.mc-product-name { font-size: 0.82rem; font-weight: 600; color: var(--text); margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+.mc-product-details { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; }
+.mc-product-details span { font-size: 0.72rem; color: var(--text-dim); }
+.mc-price { color: var(--gold) !important; font-weight: 600 !important; }
+
+.mc-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.65rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-light);
+}
+.mc-foot-left { display: flex; flex-direction: column; gap: 0.1rem; }
+.mc-date  { font-size: 0.7rem; color: var(--text-dim); }
+.mc-total { font-size: 0.88rem; font-weight: 700; color: var(--gold); }
+
+/* Empty */
+.admin-empty { text-align:center; padding:5rem 2rem; color:var(--text-dim); }
+.admin-empty-icon { font-size:3rem; margin-bottom:1rem; opacity:0.4; }
+.admin-empty-title { font-size:1.1rem; color:var(--text-muted); margin-bottom:0.5rem; }
+
+/* Skeleton */
+.skeleton-cell { height:14px; background:linear-gradient(90deg,var(--bg-light) 25%,rgba(224,192,151,0.05) 50%,var(--bg-light) 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:var(--r); }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Product detail card in table */
+.pd-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 0.55rem 0.75rem;
+    margin-bottom: 0.4rem;
+    min-width: 180px;
+}
+.pd-card:last-child { margin-bottom: 0; }
+.pd-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+}
+.pd-code {
+    font-size: 0.7rem;
+    color: var(--bg);
+    background: var(--gold-dim);
+    font-family: 'Poppins', monospace;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+    margin-inline-start: 0.3rem;
+}
+.pd-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: baseline;
+    font-size: 0.78rem;
+    line-height: 1.6;
+}
+.pd-lbl {
+    color: var(--text-dim);
+    min-width: 48px;
+    flex-shrink: 0;
+}
+.pd-val { color: var(--text-muted); }
+.pd-price { color: var(--gold); font-weight: 600; }
+.pd-note { color: var(--text-dim); font-style: italic; }
+
+/* Toast */
+.admin-toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:var(--bg-card); border:1px solid var(--border-h); border-radius:var(--r-lg); padding:0.75rem 1.5rem; font-size:0.85rem; color:var(--gold); z-index:9999; opacity:0; transition:opacity 0.3s ease; pointer-events:none; white-space:nowrap; }
+.admin-toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<header class="admin-header">
+    <div class="admin-header-left">
+        <a href="index.html" class="admin-back-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            الموقع
+        </a>
+        <div class="admin-logo">DALAL <span>لوحة التحكم</span></div>
+    </div>
+    <div class="admin-header-right">
+        <div class="refresh-indicator">
+            <div class="refresh-dot"></div>
+            <span id="refreshCountdown" class="hide-mobile">تحديث تلقائي</span>
+        </div>
+        <button class="admin-refresh-btn" onclick="loadOrders()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span class="hide-mobile">تحديث</span>
+        </button>
+        <button class="admin-refresh-btn" onclick="confirmDeleteAll()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            <span class="hide-mobile">حذف الكل</span>
+        </button>
+        <button class="admin-refresh-btn" onclick="adminLogout()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span class="hide-mobile">خروج</span>
+        </button>
+    </div>
+</header>
+
+<main class="admin-main">
+    <div class="admin-stats">
+        <div class="stat-card"><div class="stat-label">إجمالي الطلبات</div><div class="stat-value" id="statTotal">—</div></div>
+        <div class="stat-card stat-pending"><div class="stat-label">قيد الانتظار</div><div class="stat-value" id="statPending">—</div></div>
+        <div class="stat-card stat-confirmed"><div class="stat-label">مؤكدة</div><div class="stat-value" id="statConfirmed">—</div></div>
+        <div class="stat-card stat-shipped"><div class="stat-label">تم الشحن</div><div class="stat-value" id="statShipped">—</div></div>
+    </div>
+
+    <!-- Search -->
+    <div class="admin-search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="color:var(--text-dim);flex-shrink:0">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="adminSearch" class="admin-search-input"
+               placeholder="بحث بكود الطلب (DL-XXXXX) أو كود المنتج (BL-001)..."
+               oninput="handleSearch(this.value)">
+        <button id="adminSearchClear" onclick="clearSearch()" style="display:none;color:var(--text-dim);font-size:1rem;line-height:1;padding:0 0.3rem;">✕</button>
+    </div>
+
+    <div class="admin-filters" id="adminFilters">
+        <button class="filter-btn active" data-filter="all">الكل</button>
+        <button class="filter-btn" data-filter="pending">قيد الانتظار</button>
+        <button class="filter-btn" data-filter="confirmed">مؤكدة</button>
+        <button class="filter-btn" data-filter="shipped">تم الشحن</button>
+        <button class="filter-btn" data-filter="delivered">تم التسليم</button>
+        <button class="filter-btn" data-filter="cancelled">ملغية</button>
+    </div>
+
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>#</th><th>الاسم</th><th>الهاتف</th><th>العنوان</th>
+                    <th>المنتجات</th><th>الإجمالي</th><th>الحالة</th><th>التاريخ</th><th></th>
+                </tr>
+            </thead>
+            <tbody id="ordersTableBody"></tbody>
+        </table>
+    </div>
+    <div class="admin-cards" id="adminCards"></div>
+</main>
+
+<div class="admin-toast" id="adminToast"></div>
+
+<script src="supabase.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    let _all = [], _filter = 'all', _timer, _countdown = 30;
+
+    const STATUS = {
+        pending:   'قيد الانتظار',
+        confirmed: 'مؤكدة',
+        shipped:   'تم الشحن',
+        delivered: 'تم التسليم',
+        cancelled: 'ملغية'
+    };
+
+    // ─── Auth ───
+    async function initAdmin() {
+        const db = await getSupabase();
+        const { data: { session } } = await db.auth.getSession();
+        if (session) {
+            loadOrders();
+        } else {
+            document.body.style.overflow = 'hidden';
+            showLoginUI(db);
+        }
+    }
+
+    function showLoginUI(db) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="loginOverlay" style="position:fixed;inset:0;z-index:99999;background:#0D0D0D;display:flex;align-items:center;justify-content:center;font-family:'Tajawal','Poppins',sans-serif;animation:loginFadeIn 0.4s ease;">
+            <style>
+                @keyframes loginFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+                #loginBox{background:#1A1A1A;border:1px solid rgba(224,192,151,0.2);border-radius:12px;padding:2.5rem 2rem;width:100%;max-width:380px;margin:1rem;}
+                #loginBox h1{font-family:'Playfair Display',serif;color:#E0C097;font-size:1.8rem;letter-spacing:0.2em;text-align:center;margin-bottom:0.3rem;}
+                #loginBox p{color:#6B6158;font-size:0.82rem;text-align:center;margin-bottom:2rem;}
+                .lf{margin-bottom:1.1rem;} .ll{display:block;font-size:0.75rem;color:#A89B8C;letter-spacing:0.08em;margin-bottom:0.4rem;}
+                .li{width:100%;background:#141414;border:1px solid rgba(224,192,151,0.15);border-radius:4px;color:#F5F0EB;font-family:inherit;font-size:0.9rem;padding:0.75rem 1rem;outline:none;transition:border-color 0.25s;}
+                .li:focus{border-color:#C4A67A;}
+                .lb{width:100%;background:#E0C097;color:#0D0D0D;border:1px solid #E0C097;border-radius:4px;font-family:inherit;font-size:0.88rem;font-weight:700;letter-spacing:0.1em;padding:0.95rem;cursor:pointer;margin-top:0.5rem;transition:background 0.3s,color 0.3s;}
+                .lb:hover{background:transparent;color:#E0C097;} .lb:disabled{opacity:0.6;cursor:not-allowed;}
+                .le{color:#e05c5c;font-size:0.8rem;text-align:center;margin-top:0.75rem;display:none;}
+                .ld{height:1px;background:rgba(224,192,151,0.1);margin:1.5rem 0;}
+                .ls{display:inline-block;width:16px;height:16px;border:2px solid rgba(13,13,13,0.3);border-top-color:#0D0D0D;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-left:6px;}
+                @keyframes spin{to{transform:rotate(360deg)}}
+            </style>
+            <div id="loginBox">
+                <h1>DALAL</h1><p>لوحة التحكم</p>
+                <div class="ld"></div>
+                <div class="lf"><label class="ll">البريد الإلكتروني</label><input class="li" id="loginEmail" type="email" placeholder="admin@dalal.com" autocomplete="email"></div>
+                <div class="lf"><label class="ll">كلمة المرور</label><input class="li" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+                <button class="lb" id="loginSubmit">دخول</button>
+                <div class="le" id="loginError">البريد الإلكتروني أو كلمة المرور غير صحيحة</div>
+            </div>
+        </div>`);
+
+        async function tryLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass  = document.getElementById('loginPass').value;
+            if (!email || !pass) return;
+            const btn = document.getElementById('loginSubmit');
+            btn.disabled = true;
+            btn.innerHTML = 'جاري التحقق <span class="ls"></span>';
+            const { error } = await db.auth.signInWithPassword({ email, password: pass });
+            if (error) {
+                btn.disabled = false; btn.textContent = 'دخول';
+                const err = document.getElementById('loginError');
+                err.style.display = 'block';
+                document.getElementById('loginPass').value = '';
+                setTimeout(() => err.style.display = 'none', 3000);
+            } else {
+                const ov = document.getElementById('loginOverlay');
+                ov.style.transition = 'opacity 0.3s'; ov.style.opacity = '0';
+                setTimeout(() => { ov.remove(); document.body.style.overflow = ''; loadOrders(); }, 300);
+            }
+        }
+        document.getElementById('loginSubmit').addEventListener('click', tryLogin);
+        document.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+        setTimeout(() => document.getElementById('loginEmail').focus(), 100);
+    }
+
+    window.adminLogout = async function() {
+        const db = await getSupabase();
+        await db.auth.signOut();
+        location.reload();
+    };
+
+    // ─── Orders ───
+    let _search = '';
+
+    window.handleSearch = function(val) {
+        _search = val.trim().toLowerCase();
+        document.getElementById('adminSearchClear').style.display = _search ? 'block' : 'none';
+        render();
+    };
+
+    window.clearSearch = function() {
+        document.getElementById('adminSearch').value = '';
+        _search = '';
+        document.getElementById('adminSearchClear').style.display = 'none';
+        render();
+    };
+
+    function getFiltered() {
+        let list = _filter === 'all' ? _all : _all.filter(o => o.status === _filter);
+        if (!_search) return list;
+        return list.filter(o => {
+            // Search by order ref
+            if (o.order_ref && o.order_ref.toLowerCase().includes(_search)) return true;
+            // Search by product code
+            const products = Array.isArray(o.products) ? o.products
+                : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
+            return products.some(p => p.code && p.code.toLowerCase().includes(_search));
+        });
+    }
+
+    window.loadOrders = async function loadOrders() {
+        showSkeleton();
+        try {
+            _all = await fetchOrders();
+            updateStats();
+            render();
+        } catch (err) {
+            console.error(err);
+            showEmpty('حدث خطأ في تحميل الطلبات');
+        }
+        resetCountdown();
+    }
+
+    function updateStats() {
+        document.getElementById('statTotal').textContent     = _all.length;
+        document.getElementById('statPending').textContent   = _all.filter(o => o.status === 'pending').length;
+        document.getElementById('statConfirmed').textContent = _all.filter(o => o.status === 'confirmed').length;
+        document.getElementById('statShipped').textContent   = _all.filter(o => o.status === 'shipped').length;
+    }
+
+    function render() {
+        const list = getFiltered();
+        renderTable(list);
+        renderCards(list);
+    }
+
+    function renderTable(orders) {
+        const tbody = document.getElementById('ordersTableBody');
+        if (!orders.length) {
+            const msg = _search
+                ? `لا توجد طلبات تطابق "<strong>${esc(_search)}</strong>"`
+                : 'لا توجد طلبات بعد';
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-dim)">${msg}</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = orders.map((o, i) => `
+            <tr>
+                <td class="order-num">
+                    ${String(i+1).padStart(3,'0')}
+                    ${o.order_ref ? `<div style="font-family:'Poppins',monospace;font-size:0.7rem;color:var(--gold);letter-spacing:0.06em;margin-top:2px">${esc(o.order_ref)}</div>` : ''}
+                </td>
+                <td style="font-weight:500">${esc(o.name||'—')}</td>
+                <td style="direction:ltr;text-align:right">${esc(o.phone||'—')}</td>
+                <td style="max-width:150px;font-size:0.8rem;color:var(--text-muted)">${esc(o.address||'—')}</td>
+                <td>${parseProducts(o.products)}</td>
+                <td class="order-total">${o.total ? o.total+' ج' : '—'}</td>
+                <td><select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this)">${statusOpts(o.status)}</select></td>
+                <td class="order-date">${fmtDate(o.created_at)}</td>
+                <td>
+                    <button class="del-btn" onclick="confirmDelete('${o.id}')" title="حذف">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    </button>
+                </td>
+            </tr>`).join('');
+    }
+
+    function renderCards(orders) {
+        const c = document.getElementById('adminCards');
+        if (!orders.length) {
+            const msg = _search
+                ? `لا توجد طلبات تطابق "${esc(_search)}"`
+                : 'لا توجد طلبات بعد';
+            c.innerHTML = `<div class="admin-empty"><div class="admin-empty-icon">🔍</div><div class="admin-empty-title">${msg}</div></div>`;
+            return;
+        }
+        c.innerHTML = orders.map((o, i) => {
+            const products = Array.isArray(o.products) ? o.products
+                : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
+
+            const productsHTML = products.map(p => `
+                <div class="mc-product">
+                    <div class="mc-product-name">
+                        ${esc(p.name)}
+                        ${p.code ? `<span class="pd-code">${esc(p.code)}</span>` : ''}
+                    </div>
+                    <div class="mc-product-details">
+                        ${p.offer ? `<span>${esc(p.offer)}</span>` : ''}
+                        ${p.size  ? `<span>مقاس: ${esc(p.size)}</span>` : ''}
+                        ${p.color ? `<span>لون: ${esc(p.color)}</span>` : ''}
+                        ${p.price ? `<span class="mc-price">${esc(p.price)}</span>` : ''}
+                    </div>
+                </div>`).join('');
+
+            return `
+            <div class="mc">
+                <!-- Header row -->
+                <div class="mc-head">
+                    <div class="mc-head-info">
+                        <span class="mc-name">${esc(o.name||'—')}</span>
+                        <span class="mc-ref">${o.order_ref ? esc(o.order_ref) : '#'+String(i+1).padStart(3,'0')}</span>
+                    </div>
+                    <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this)">${statusOpts(o.status)}</select>
+                </div>
+
+                <!-- Info rows -->
+                <div class="mc-body">
+                    <div class="mc-row">
+                        <span class="mc-lbl">الهاتف</span>
+                        <span class="mc-val" style="direction:ltr">${esc(o.phone||'—')}</span>
+                    </div>
+                    <div class="mc-row">
+                        <span class="mc-lbl">العنوان</span>
+                        <span class="mc-val">${esc(o.address||'—')}</span>
+                    </div>
+                    <div class="mc-row mc-row-products">
+                        <span class="mc-lbl">المنتجات</span>
+                        <div class="mc-products">${productsHTML || '—'}</div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="mc-foot">
+                    <div class="mc-foot-left">
+                        <span class="mc-date">${fmtDate(o.created_at)}</span>
+                        <span class="mc-total">${o.total ? o.total.toLocaleString()+' ج' : '—'}</span>
+                    </div>
+                    <button class="del-btn" onclick="confirmDelete('${o.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        حذف
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function parseProducts(json) {
+        try {
+            const items = Array.isArray(json) ? json : (typeof json === 'string' ? JSON.parse(json) : (json || []));
+            if (!items.length) return '<span style="color:var(--text-dim)">—</span>';
+            return items.map(p => {
+                const rows = [
+                    `<div class="pd-name">${esc(p.name)}${p.code ? ` <span class="pd-code">${esc(p.code)}</span>` : ''}</div>`,
+                    p.offer ? `<div class="pd-row"><span class="pd-lbl">الكمية</span><span class="pd-val">${esc(p.offer)}</span></div>` : '',
+                    p.price ? `<div class="pd-row"><span class="pd-lbl">السعر</span><span class="pd-val pd-price">${esc(p.price)}</span></div>` : '',
+                    p.size  ? `<div class="pd-row"><span class="pd-lbl">المقاس</span><span class="pd-val">${esc(p.size)}</span></div>` : '',
+                    p.color ? `<div class="pd-row"><span class="pd-lbl">اللون</span><span class="pd-val">${esc(p.color)}</span></div>` : '',
+                    p.notes ? `<div class="pd-row"><span class="pd-lbl">ملاحظة</span><span class="pd-val pd-note">${esc(p.notes)}</span></div>` : '',
+                    p.qty > 1 ? `<div class="pd-row"><span class="pd-lbl">الكمية ×</span><span class="pd-val">${p.qty}</span></div>` : '',
+                ].filter(Boolean).join('');
+                return `<div class="pd-card">${rows}</div>`;
+            }).join('');
+        } catch { return `<span style="color:var(--text-dim);font-size:0.78rem">${esc(String(json||'—'))}</span>`; }
+    }
+
+    function statusOpts(current) {
+        return Object.entries(STATUS).map(([v, l]) =>
+            `<option value="${v}"${current===v?' selected':''}>${l}</option>`).join('');
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return '—';
+        try {
+            const d = new Date(iso);
+            return d.toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'})
+                 + ' ' + d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+        } catch { return iso; }
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    window.confirmDelete = function(id) {
+        if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
+        doDelete(id);
+    };
+
+    window.confirmDeleteAll = function() {
+        if (!confirm('هل أنت متأكد من حذف جميع الطلبات؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+        if (!confirm('تأكيد نهائي — سيتم حذف كل الطلبات.')) return;
+        doDeleteAll();
+    };
+
+    async function doDeleteAll() {
+        try {
+            await deleteAllOrders();
+            _all = [];
+            updateStats();
+            render();
+            toast('تم حذف جميع الطلبات ✓');
+        } catch (err) {
+            console.error(err);
+            toast('فشل الحذف، حاول مرة أخرى');
+        }
+    }
+
+    async function doDelete(id) {
+        try {
+            await deleteOrder(id);
+            _all = _all.filter(o => String(o.id) !== String(id));
+            updateStats();
+            render();
+            toast('تم حذف الطلب ✓');
+        } catch (err) {
+            console.error(err);
+            toast('فشل الحذف، حاول مرة أخرى');
+        }
+    }
+
+    window.changeStatus = async function(sel) {
+        const id = sel.getAttribute('data-id');
+        const status = sel.value;
+        sel.className = `status-select s-${status}`;
+        try {
+            await updateOrderStatus(id, status);
+            const o = _all.find(x => String(x.id) === String(id));
+            if (o) o.status = status;
+            updateStats();
+            toast('تم تحديث الحالة ✓');
+        } catch { toast('فشل التحديث، حاول مرة أخرى'); }
+    };
+
+    function showSkeleton() {
+        document.getElementById('ordersTableBody').innerHTML = Array(5).fill(0).map(() =>
+            `<tr>${Array(8).fill(0).map(() => `<td><div class="skeleton-cell" style="width:${60+Math.random()*35}%"></div></td>`).join('')}</tr>`
+        ).join('');
+        document.getElementById('adminCards').innerHTML = Array(3).fill(0).map(() =>
+            `<div class="order-card">${Array(4).fill(0).map(() =>
+                `<div style="margin-bottom:0.75rem"><div class="skeleton-cell" style="width:100%;height:14px"></div></div>`
+            ).join('')}</div>`
+        ).join('');
+    }
+
+    function showEmpty(msg) {
+        document.getElementById('ordersTableBody').innerHTML =
+            `<tr><td colspan="8" style="text-align:center;padding:3rem;color:var(--text-dim)">${msg}</td></tr>`;
+        document.getElementById('adminCards').innerHTML =
+            `<div class="admin-empty"><div class="admin-empty-icon">📦</div><div class="admin-empty-title">${msg}</div></div>`;
+    }
+
+    function toast(msg) {
+        const el = document.getElementById('adminToast');
+        el.textContent = msg; el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    function resetCountdown() {
+        clearInterval(_timer); _countdown = 30;
+        _timer = setInterval(() => {
+            _countdown--;
+            const el = document.getElementById('refreshCountdown');
+            if (el) el.textContent = `تحديث خلال ${_countdown}ث`;
+            if (_countdown <= 0) loadOrders();
+        }, 1000);
+    }
+
+    document.getElementById('adminFilters').addEventListener('click', e => {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _filter = btn.getAttribute('data-filter');
+        render();
+    });
+
+    // loadOrders called by checkAuth after session verified
+    initAdmin();
+})();
+</script>
+</body>
+</html>

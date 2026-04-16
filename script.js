@@ -22,6 +22,7 @@ function applyLanguage(lang) {
     set('navLinkCollection', t.navCollection); set('navLinkCollectionP', t.navCollection);
     set('navLinkWhyDalal', t.navWhyDalal);     set('navLinkWhyDalalP', t.navWhyDalal);
     set('navLinkContact', t.navContact);       set('navLinkContactP', t.navContact);
+    set('navLinkOrdersP', t.navOrders);        set('navLinkOrders', t.navOrders);
 
     document.querySelectorAll('.lang-toggle').forEach(btn => {
         btn.textContent = t.langToggleLabel;
@@ -97,6 +98,12 @@ function applyLanguage(lang) {
     setS('shippingItem1P', t.shippingItem1);
     setS('shippingItem2P', t.shippingItem2);
     setS('shippingItem3P', t.shippingItem3);
+
+    /* orders & track pages */
+    setS('ordersPageTitle', t.ordersPageTitle);
+    setS('ordersPageSub',   t.ordersPageSub);
+    setS('trackPageTitle',  t.trackPageTitle);
+    setS('trackPageSub',    t.trackPageSub);
 
     /* product cards */
     if (typeof rerenderProducts === 'function') rerenderProducts(lang);
@@ -226,3 +233,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { threshold: 0.3 }).observe(heroSection);
     }
 });
+
+
+/* ─── Help Popover ─── */
+(function () {
+    let _activePopover = null;
+
+    window.showHelpPopover = function(btn, contentHTML, title) {
+        // Close existing
+        if (_activePopover) {
+            _activePopover.classList.remove('show');
+            setTimeout(() => _activePopover?.remove(), 200);
+            if (_activePopover._btn === btn) { _activePopover = null; return; }
+        }
+
+        const pop = document.createElement('div');
+        pop.className = 'help-popover';
+        pop._btn = btn;
+        pop.innerHTML = `
+            <button class="help-popover-close" onclick="this.closest('.help-popover').classList.remove('show');setTimeout(()=>this.closest('.help-popover')?.remove(),200)">✕</button>
+            <div class="help-popover-title">💡 ${title || 'كيف يعمل؟'}</div>
+            ${contentHTML}`;
+        document.body.appendChild(pop);
+        _activePopover = pop;
+
+        // Position near button
+        const rect = btn.getBoundingClientRect();
+        const popW = 280;
+        let left = rect.left + rect.width / 2 - popW / 2;
+        left = Math.max(12, Math.min(left, window.innerWidth - popW - 12));
+        let top = rect.bottom + 8;
+        if (top + 200 > window.innerHeight) top = rect.top - 210;
+
+        pop.style.left = left + 'px';
+        pop.style.top  = top + 'px';
+
+        requestAnimationFrame(() => pop.classList.add('show'));
+
+        // Close on outside click
+        setTimeout(() => {
+            document.addEventListener('click', function handler(e) {
+                if (!pop.contains(e.target) && e.target !== btn) {
+                    pop.classList.remove('show');
+                    setTimeout(() => pop.remove(), 200);
+                    _activePopover = null;
+                    document.removeEventListener('click', handler);
+                }
+            });
+        }, 10);
+    };
+})();

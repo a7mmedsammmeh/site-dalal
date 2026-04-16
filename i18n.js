@@ -6,7 +6,7 @@ const DALAL_I18N = {
     ar: {
         langCode: 'ar', dir: 'rtl', fontClass: 'lang-ar',
         navHome: 'الرئيسية', navCollection: 'تشكيلة دلال',
-        navWhyDalal: 'لماذا دلال', navContact: 'تواصل معنا',
+        navWhyDalal: 'لماذا دلال', navContact: 'تواصل معنا', navOrders: 'طلباتي',
         langToggleLabel: 'EN',
         heroTagline: 'أناقة تستحقينها',
         heroSubtitle: 'ملابس داخلية فاخرة مصنوعة من الحرير والدانتيل والحب — للمرأة التي تحتضن ثقتها بنفسها.',
@@ -38,6 +38,10 @@ const DALAL_I18N = {
         shippingItem1:   'توصيل لجميع المحافظات',
         shippingItem2:   'الدفع عند الاستلام',
         shippingItem3:   'توصيل سريع (٢–٤ أيام)',
+        ordersPageTitle: 'طلباتي',
+        ordersPageSub:   'جميع طلباتك المسجلة على هذا الجهاز',
+        trackPageTitle:  'تتبع طلبك',
+        trackPageSub:    'أدخلي رقم الطلب (مثال: DL-AB123)',
         pageTitles: {
             home:       'دلال — ملابس داخلية فاخرة',
             products:   'دلال — التشكيلة الكاملة',
@@ -56,7 +60,7 @@ const DALAL_I18N = {
     en: {
         langCode: 'en', dir: 'ltr', fontClass: 'lang-en',
         navHome: 'Home', navCollection: 'Collection',
-        navWhyDalal: 'Why DALAL', navContact: 'Contact',
+        navWhyDalal: 'Why DALAL', navContact: 'Contact', navOrders: 'My Orders',
         langToggleLabel: 'AR',
         heroTagline: 'Elegance You Deserve',
         heroSubtitle: 'Premium lingerie crafted with silk, lace & love — for the woman who embraces her confidence.',
@@ -88,6 +92,10 @@ const DALAL_I18N = {
         shippingItem1:   'Shipping to all governorates',
         shippingItem2:   'Cash on delivery',
         shippingItem3:   'Fast delivery (2–4 days)',
+        ordersPageTitle: 'My Orders',
+        ordersPageSub:   'All orders saved on this device',
+        trackPageTitle:  'Track Your Order',
+        trackPageSub:    'Enter your order number (e.g. DL-AB123)',
         pageTitles: {
             home:       'DALAL — Luxury Lingerie',
             products:   'DALAL — Full Collection',

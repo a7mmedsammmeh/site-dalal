@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دلال — طلباتي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="images/dalal-logo.png">
+<link rel="stylesheet" href="style.css">
+<style>
+.orders-page {
+    min-height: 100vh;
+    background: var(--bg);
+    padding: 7rem 1.5rem 4rem;
+}
+.orders-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+.orders-logo  { font-family: var(--font-en); font-size: 1.4rem; letter-spacing: 0.2em; color: var(--gold); margin-bottom: 0.4rem; }
+.orders-title { font-size: clamp(1.2rem,3vw,1.6rem); color: var(--text); letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+.orders-sub   { font-size: 0.88rem; color: var(--text-muted); }
+
+.orders-list  { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+
+.order-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    animation: fadeUp 0.3s ease forwards;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.order-card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.9rem 1.2rem;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border);
+    gap: 0.75rem; flex-wrap: wrap;
+}
+.order-ref {
+    font-family: 'Poppins', monospace;
+    font-size: 0.9rem; font-weight: 600;
+    color: var(--gold); letter-spacing: 0.08em;
+}
+.order-date-small { font-size: 0.72rem; color: var(--text-dim); }
+
+.status-pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.75rem; font-weight: 600;
+    padding: 0.25rem 0.75rem; border-radius: 20px;
+    white-space: nowrap;
+}
+.status-pill.pending   { background:rgba(224,192,151,0.12); color:var(--gold);   border:1px solid rgba(224,192,151,0.3); }
+.status-pill.confirmed { background:rgba(76,175,125,0.12);  color:#4caf7d;       border:1px solid rgba(76,175,125,0.3); }
+.status-pill.shipped   { background:rgba(91,155,213,0.12);  color:#5b9bd5;       border:1px solid rgba(91,155,213,0.3); }
+.status-pill.delivered { background:rgba(76,175,125,0.18);  color:#4caf7d;       border:1px solid rgba(76,175,125,0.4); }
+.status-pill.cancelled { background:rgba(224,92,92,0.12);   color:#e05c5c;       border:1px solid rgba(224,92,92,0.3); }
+
+.order-card-body { padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+
+.order-products-mini { display: flex; flex-direction: column; gap: 0.3rem; }
+.order-product-mini {
+    font-size: 0.82rem; color: var(--text-muted);
+    background: var(--bg-light); border-radius: var(--r);
+    padding: 0.3rem 0.6rem;
+}
+.order-product-mini strong { color: var(--text); }
+
+.order-total-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 0.6rem; border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+}
+.order-total-val { color: var(--gold); font-weight: 700; font-size: 1rem; }
+
+.order-card-actions {
+    display: flex; gap: 0.5rem; padding: 0.75rem 1.2rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-light);
+}
+.oc-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    font-size: 0.78rem; font-weight: 500; letter-spacing: 0.06em;
+    padding: 0.55rem 0.75rem; border-radius: var(--r);
+    border: 1px solid var(--border); color: var(--text-muted);
+    background: transparent; cursor: pointer; font-family: inherit;
+    transition: all 0.25s ease;
+}
+.oc-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.oc-btn.primary { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+.oc-btn.primary:hover { background: transparent; color: var(--gold); }
+.oc-btn.cancel-btn { color: #e05c5c; border-color: rgba(224,92,92,0.3); }
+.oc-btn.cancel-btn:hover { background: rgba(224,92,92,0.08); border-color: #e05c5c; color: #e05c5c; }
+
+.orders-empty {
+    text-align: center; padding: 4rem 2rem; color: var(--text-dim);
+    max-width: 400px; margin: 0 auto;
+}
+.orders-empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+.orders-empty-title { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+.orders-empty-sub   { font-size: 0.85rem; margin-bottom: 1.5rem; }
+
+.copy-feedback {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: var(--bg-card); border: 1px solid var(--border-h);
+    border-radius: var(--r-lg); padding: 0.6rem 1.2rem;
+    font-size: 0.82rem; color: var(--gold);
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999;
+}
+.copy-feedback.show { opacity: 1; }
+</style>
+</head>
+<body class="lang-ar">
+
+    <!-- HEADER -->
+    <header id="header" class="header">
+        <nav class="navbar">
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html"           class="nav-link" id="navLinkHomeP">الرئيسية</a></li>
+                <li><a href="products.html"        class="nav-link" id="navLinkCollectionP">تشكيلة دلال</a></li>
+                <li><a href="index.html#why-dalal" class="nav-link" id="navLinkWhyDalalP">لماذا دلال</a></li>
+                <li><a href="orders.html"          class="nav-link" id="navLinkOrdersP">طلباتي</a></li>
+                <li><a href="index.html#footer"    class="nav-link" id="navLinkContactP">تواصل معنا</a></li>
+            </ul>
+            <div class="nav-controls">
+                <div class="nav-controls-icons">
+                    <a href="https://www.facebook.com/dalal.lingerie/" target="_blank" rel="noopener noreferrer" class="nav-icon-btn" aria-label="Facebook">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    </a>
+                    <a href="https://www.instagram.com/dalal.lingerie1/" target="_blank" rel="noopener noreferrer" class="nav-icon-btn" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                    </a>
+                    <button class="lang-toggle" aria-label="Switch language">EN</button>
+                    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                </div>
+                <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+<div class="orders-page page-fade-in">
+    <div class="orders-header">
+        <div class="orders-logo">DALAL</div>
+        <h1 class="orders-title" id="ordersPageTitle">طلباتي</h1>
+        <p class="orders-sub" id="ordersPageSub">جميع طلباتك المسجلة على هذا الجهاز</p>
+    </div>
+    <div class="orders-list" id="ordersList"></div>
+</div>
+
+<div class="copy-feedback" id="copyFeedback">تم النسخ ✓</div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-top">
+            <div class="footer-brand">
+                <div class="img-wrap">
+                    <img src="images/dalal-logo.png" alt="DALAL" class="footer-logo" style="opacity:0;transition:opacity 0.4s ease;" onload="this.style.opacity='1';this.closest('.img-wrap').classList.add('loaded')" onerror="this.style.opacity='1';this.closest('.img-wrap').classList.add('loaded')">
+                </div>
+                <p class="footer-tagline" id="footerTagline">أناقة تستحقينها</p>
+            </div>
+            <div class="footer-links">
+                <h4 class="footer-heading" id="footerQuickLinks">روابط سريعة</h4>
+                <ul>
+                    <li><a href="index.html"    id="footerLinkHome">الرئيسية</a></li>
+                    <li><a href="products.html" id="footerLinkAllProducts">جميع المنتجات</a></li>
+                    <li><a href="orders.html"   id="footerLinkOrders">طلباتي</a></li>
+                    <li><a href="track.html"    id="footerLinkTrack">تتبع طلبك</a></li>
+                </ul>
+            </div>
+            <div class="footer-social">
+                <h4 class="footer-heading" id="footerConnect">تواصلي معنا</h4>
+                <div class="social-icons">
+                    <a href="https://www.facebook.com/dalal.lingerie/" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
+                    <a href="https://www.instagram.com/dalal.lingerie1/" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a>
+                    <a href="https://m.me/dalal.lingerie" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Messenger"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/></svg></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-bottom">
+            <p id="footerRights">© 2026 دلال. جميع الحقوق محفوظة.</p>
+            <p class="footer-credit" id="footerCraft">صُنع بأناقة</p>
+        </div>
+    </footer>
+
+<script src="i18n.js"></script>
+<script src="script.js"></script>
+<script src="my-orders.js"></script>
+<script src="supabase.js"></script>
+<script>
+(function () {
+
+    const STATUS_LABELS = {
+        ar: { pending:'قيد المراجعة', confirmed:'تم التأكيد', shipped:'في الطريق', delivered:'تم التسليم', cancelled:'ملغي' },
+        en: { pending:'Under Review',  confirmed:'Confirmed',   shipped:'On the Way', delivered:'Delivered',    cancelled:'Cancelled' }
+    };
+
+    function render() {
+        const lang   = localStorage.getItem('dalal-lang') || 'ar';
+        const isAr   = lang === 'ar';
+        const orders = getLocalOrders();
+        const list   = document.getElementById('ordersList');
+
+        if (!orders.length) {
+            list.innerHTML = `
+                <div class="orders-empty">
+                    <div class="orders-empty-icon">📦</div>
+                    <div class="orders-empty-title">${isAr ? 'لا توجد طلبات بعد' : 'No orders yet'}</div>
+                    <div class="orders-empty-sub">${isAr ? 'طلباتك ستظهر هنا بعد تأكيدها' : 'Your orders will appear here after confirmation'}</div>
+                    <a href="products.html" class="btn btn-secondary" style="display:inline-flex;margin:0 auto;">
+                        ${isAr ? 'تسوّقي الآن' : 'Shop Now'}
+                    </a>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = orders.map(o => {
+            const labels = STATUS_LABELS[lang] || STATUS_LABELS.ar;
+            const status = o.status || 'pending';
+            const statusLabel = labels[status] || status;
+            const date = o.date ? new Date(o.date).toLocaleDateString(isAr ? 'ar-EG' : 'en-US', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+
+            const productsHTML = (o.products || []).map(p => {
+                const details = [p.offer, p.size, p.color].filter(Boolean).join(' · ');
+                return `<div class="order-product-mini"><strong>${esc(p.name)}</strong>${details ? ' — ' + esc(details) : ''}</div>`;
+            }).join('');
+
+            const currency = isAr ? 'جنيه' : 'EGP';
+
+            return `
+            <div class="order-card">
+                <div class="order-card-head">
+                    <div>
+                        <div class="order-ref">${esc(o.ref)}</div>
+                        <div class="order-date-small">${date}</div>
+                    </div>
+                    <span class="status-pill ${status}">${statusLabel}</span>
+                </div>
+                <div class="order-card-body">
+                    <div class="order-products-mini">${productsHTML || '—'}</div>
+                    <div class="order-total-row">
+                        <span style="color:var(--text-muted);font-size:0.82rem">${isAr ? 'الإجمالي' : 'Total'}</span>
+                        <span class="order-total-val">${o.total ? o.total.toLocaleString() + ' ' + currency : '—'}</span>
+                    </div>
+                </div>
+                <div class="order-card-actions">
+                    <button class="oc-btn" onclick="doCopy('${esc(o.ref)}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        ${isAr ? 'نسخ رقم الطلب' : 'Copy Order ID'}
+                    </button>
+                    <a href="track.html?ref=${esc(o.ref)}" class="oc-btn primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        ${isAr ? 'تتبع الطلب' : 'Track Order'}
+                    </a>
+                    ${o.status === 'pending' ? `
+                    <button class="oc-btn cancel-btn" onclick="cancelOrder('${esc(o.ref)}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        ${isAr ? 'إلغاء الطلب' : 'Cancel Order'}
+                    </button>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    window.cancelOrder = async function(ref) {
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const msg  = lang === 'ar' ? 'هل أنت متأكدة من إلغاء هذا الطلب؟' : 'Are you sure you want to cancel this order?';
+        if (!confirm(msg)) return;
+
+        try {
+            const db = await getSupabase();
+            const { error } = await db
+                .from('orders')
+                .update({ status: 'cancelled' })
+                .eq('order_ref', ref);
+            if (error) throw error;
+
+            // Update localStorage
+            const orders = getLocalOrders();
+            const o = orders.find(x => x.ref === ref);
+            if (o) { o.status = 'cancelled'; localStorage.setItem('dalal-my-orders', JSON.stringify(orders)); }
+
+            render();
+        } catch {
+            alert(lang === 'ar' ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'Something went wrong');
+        }
+    };
+
+    window.doCopy = function(ref) {
+        copyOrderRef(ref);
+        const fb = document.getElementById('copyFeedback');
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        fb.textContent = lang === 'ar' ? 'تم النسخ ✓' : 'Copied ✓';
+        fb.classList.add('show');
+        setTimeout(() => fb.classList.remove('show'), 2000);
+    };
+
+    function esc(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    render();
+
+    // Sync with Supabase — remove deleted orders
+    syncLocalOrders().then(render);
+
+    // Re-render on language change
+    document.querySelectorAll('.lang-toggle').forEach(btn => {
+        btn.addEventListener('click', () => setTimeout(render, 150));
+    });
+
+    // Apply saved language on load
+    if (typeof applyLanguage === 'function') {
+        applyLanguage(localStorage.getItem('dalal-lang') || 'ar');
+    }
+
+})();
+</script>
+</body>
+</html>

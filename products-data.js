@@ -88,11 +88,10 @@ function createProductCard(product) {
             <div class="product-info">
                 <h3 class="product-name">${name}</h3>
                 ${startPrice ? `<p class="product-start-price">${lang === 'ar' ? 'يبدأ من' : 'From'} <span>${startPrice}</span></p>` : ''}
-                <a href="${productUrl}" class="btn btn-order">
-                    ${lang === 'ar' ? 'اطلبي الآن' : 'Order Now'}
-                </a>
             </div>
         </a>
+        <div class="product-info-actions">
+        </div>
     `;
 
     return article;
