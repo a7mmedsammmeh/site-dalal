@@ -609,6 +609,16 @@ function initProductPage() {
         orderBtn.addEventListener('click', openModal);
     }
 
+    /* Wishlist button on main image */
+    if (typeof createWishlistBtn === 'function') {
+        const mainWrapper = document.querySelector('.main-image-wrapper');
+        if (mainWrapper) {
+            const existing = mainWrapper.querySelector('.wishlist-btn');
+            if (existing) existing.remove();
+            mainWrapper.appendChild(createWishlistBtn(product.id));
+        }
+    }
+
     /* Modal close */
     document.getElementById('modalClose')?.addEventListener('click', closeModal);
     document.getElementById('orderModal')?.addEventListener('click', e => {

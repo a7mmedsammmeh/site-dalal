@@ -46,6 +46,64 @@ function openMessenger(msg) {
     window.open(`https://m.me/dalal.lingerie?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
 }
 
+/* ─── Wishlist ─── */
+const WISHLIST_KEY = 'dalal-wishlist';
+
+function getWishlist() {
+    try { return JSON.parse(localStorage.getItem(WISHLIST_KEY)) || []; }
+    catch { return []; }
+}
+
+function saveWishlist(list) {
+    localStorage.setItem(WISHLIST_KEY, JSON.stringify(list));
+}
+
+function isWishlisted(id) {
+    return getWishlist().includes(+id);
+}
+
+function toggleWishlist(id) {
+    id = +id;
+    let list = getWishlist();
+    const idx = list.indexOf(id);
+    if (idx === -1) list.push(id);
+    else list.splice(idx, 1);
+    saveWishlist(list);
+    updateWishlistBadge();
+    // Update all heart buttons for this product
+    document.querySelectorAll(`.wishlist-btn[data-id="${id}"]`).forEach(btn => {
+        updateHeartBtn(btn, list.includes(id));
+    });
+}
+
+function updateHeartBtn(btn, active) {
+    btn.setAttribute('aria-pressed', active);
+    btn.querySelector('svg').setAttribute('fill', active ? '#e05c5c' : 'none');
+    btn.querySelector('svg').setAttribute('stroke', active ? '#e05c5c' : 'currentColor');
+    btn.style.opacity = active ? '1' : '';
+}
+
+function createWishlistBtn(productId) {
+    const active = isWishlisted(productId);
+    const btn = document.createElement('button');
+    btn.className = 'wishlist-btn';
+    btn.dataset.id = productId;
+    btn.setAttribute('aria-label', 'أضيفي للمفضلة');
+    btn.setAttribute('aria-pressed', active);
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="${active ? '#e05c5c' : 'none'}" stroke="${active ? '#e05c5c' : 'currentColor'}" stroke-width="2" width="16" height="16"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+    btn.style.opacity = active ? '1' : '';
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleWishlist(productId);
+        // pop animation
+        btn.classList.remove('wishlist-pop');
+        void btn.offsetWidth;
+        btn.classList.add('wishlist-pop');
+    });
+    return btn;
+}
+
 /* ─── Success sound ─── */
 function playSuccessSound() {
     try {
@@ -606,6 +664,7 @@ function openCart() {
     if (overlay) overlay.classList.add('active');
     if (sticky)  sticky.style.display = 'none';
     document.body.style.overflow = 'hidden';
+    if (drawer) initDrawerSwipe(drawer, closeCart);
 
     // Render recently viewed in empty cart
     if (cart.length === 0) renderCartRecentlyViewed();
@@ -1268,5 +1327,141 @@ document.addEventListener('DOMContentLoaded', () => {
     // Keyboard close
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') closeCart();
+    });
+});
+
+/* ─── Swipe to dismiss drawers (mobile) ─── */
+function initDrawerSwipe(drawer, closeFn) {
+    if (!drawer || drawer._swipeInit) return;
+    drawer._swipeInit = true;
+
+    let startX = 0, startY = 0, currentX = 0, startTime = 0, dragging = false;
+
+    drawer.addEventListener('touchstart', e => {
+        startX    = e.touches[0].clientX;
+        startY    = e.touches[0].clientY;
+        startTime = Date.now();
+        currentX  = 0;
+        dragging  = true;
+        drawer.style.transition = 'none';
+    }, { passive: true });
+
+    drawer.addEventListener('touchmove', e => {
+        if (!dragging) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = Math.abs(e.touches[0].clientY - startY);
+        if (dy > Math.abs(dx)) return;
+        const isRTL = document.documentElement.dir === 'rtl';
+        const swipeClose = isRTL ? dx > 0 : dx < 0;
+        if (!swipeClose) return;
+        currentX = dx;
+        drawer.style.transform = `translateX(${dx}px)`;
+    }, { passive: true });
+
+    drawer.addEventListener('touchend', () => {
+        if (!dragging) return;
+        dragging = false;
+        drawer.style.transition = '';
+        const isRTL    = document.documentElement.dir === 'rtl';
+        const elapsed  = Date.now() - startTime;
+        const velocity = Math.abs(currentX) / elapsed; // px/ms
+        // Close if: dragged > 80px OR fast flick (velocity > 0.3 px/ms with > 20px drag)
+        const shouldClose = isRTL
+            ? (currentX > 80 || (velocity > 0.3 && currentX > 20))
+            : (currentX < -80 || (velocity > 0.3 && currentX < -20));
+        if (shouldClose) {
+            closeFn();
+        } else {
+            drawer.style.transform = '';
+        }
+    });
+}
+
+/* ─── Wishlist Drawer ─── */
+function updateWishlistBadge() {
+    const count = getWishlist().length;
+    document.querySelectorAll('#wishlistBadge').forEach(el => {
+        el.textContent = count;
+        el.style.display = count > 0 ? 'flex' : 'none';
+    });
+}
+
+function renderWishlistItems() {
+    const container = document.getElementById('wishlistItems');
+    const emptyEl   = document.getElementById('wishlistEmpty');
+    if (!container) return;
+
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
+    const ids  = getWishlist();
+
+    if (!ids.length) {
+        container.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'flex';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    // Update texts
+    const titleEl = document.getElementById('wishlistTitle');
+    const emptyTxt = document.getElementById('wishlistEmptyText');
+    const emptyHint = document.getElementById('wishlistEmptyHint');
+    if (titleEl)    titleEl.textContent    = lang === 'ar' ? 'المفضلة' : 'Wishlist';
+    if (emptyTxt)   emptyTxt.textContent   = lang === 'ar' ? 'قائمة المفضلة فارغة' : 'Your wishlist is empty';
+    if (emptyHint)  emptyHint.textContent  = lang === 'ar' ? 'اضغطي على القلب على أي منتج لإضافته' : 'Tap the heart on any product to save it';
+
+    if (typeof DALAL_PRODUCTS_MAP === 'undefined') {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = ids.map(id => {
+        const p = DALAL_PRODUCTS_MAP[id];
+        if (!p) return '';
+        const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
+        const url  = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
+        const pricingRows = p.pricing?.[lang] || p.pricing?.ar || [];
+        const price = pricingRows.length ? pricingRows[0].value : '';
+        return `
+        <div class="wishlist-item" data-id="${id}">
+            <img class="wishlist-item-img" src="${p.folder}/${p.main}" alt="${name}" loading="lazy">
+            <div class="wishlist-item-info">
+                <a href="${url}" class="wishlist-item-name" onclick="closeWishlist()">${name}</a>
+                ${price ? `<span class="wishlist-item-price">${lang === 'ar' ? 'يبدأ من' : 'From'} ${price}</span>` : ''}
+            </div>
+            <button class="wishlist-item-remove" onclick="removeFromWishlist(${id})" aria-label="إزالة">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>`;
+    }).join('');
+}
+
+function removeFromWishlist(id) {
+    toggleWishlist(id);
+    updateWishlistBadge();
+    renderWishlistItems();
+}
+
+function openWishlist() {
+    renderWishlistItems();
+    const drawer = document.getElementById('wishlistDrawer');
+    document.getElementById('wishlistOverlay')?.classList.add('active');
+    if (!drawer) return;
+    drawer.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    initDrawerSwipe(drawer, closeWishlist);
+}
+
+function closeWishlist() {
+    document.getElementById('wishlistDrawer')?.classList.remove('open');
+    document.getElementById('wishlistOverlay')?.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Update badge on page load
+document.addEventListener('DOMContentLoaded', () => {
+    updateWishlistBadge();
+    // Bind wishlist toggle button
+    document.querySelectorAll('#wishlistToggle').forEach(btn => {
+        btn.addEventListener('click', openWishlist);
     });
 });
