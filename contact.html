@@ -3,8 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="دلال — تواصل معنا. راسلينا عبر فيسبوك أو إنستغرام أو ماسنجر.">
+    <meta name="keywords" content="دلال, تواصل معنا, ملابس داخلية فاخرة, مصر">
+    <meta name="author" content="DALAL">
     <meta name="theme-color" content="#0D0D0D">
-    <title>دلال — الصفحة غير موجودة</title>
+    <title>دلال — تواصل معنا</title>
+
+    <meta property="og:type"        content="website">
+    <meta property="og:site_name"   content="DALAL">
+    <meta property="og:title"       content="دلال — تواصل معنا">
+    <meta property="og:description" content="راسلينا عبر فيسبوك أو إنستغرام أو ماسنجر — نرد في أقرب وقت.">
+    <meta property="og:image"       content="https://www.dalalwear.shop/images/dalal-logo.png">
+    <meta property="og:url"         content="https://www.dalalwear.shop/contact.html">
+    <meta property="og:locale"      content="ar_EG">
+
+    <link rel="canonical" href="https://www.dalalwear.shop/contact.html">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=Poppins:wght@300;400;500;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -12,62 +26,171 @@
     <link rel="stylesheet" href="style.css">
 
     <style>
-        .not-found-page {
-            min-height: calc(100vh - 200px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 7rem 2rem 4rem;
-        }
-        .not-found-container {
+        /* ── Page Hero ── */
+        .page-hero {
+            padding: 140px 2rem 80px;
             text-align: center;
-            max-width: 480px;
-            animation: fadeUp 0.5s ease forwards;
+            background: linear-gradient(180deg, rgba(224,192,151,0.06) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
         }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .not-found-brand {
+        .page-hero-brand {
             font-family: var(--font-en);
-            font-size: 1.4rem;
-            letter-spacing: 0.25em;
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 400;
             color: var(--gold);
-            margin-bottom: 2.5rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
         }
-        .not-found-code {
-            font-size: clamp(5rem, 20vw, 8rem);
-            font-weight: 700;
-            color: var(--gold);
-            line-height: 1;
-            opacity: 0.15;
-            margin-bottom: 1rem;
-            font-family: var(--font-en);
+        .page-hero-divider {
+            width: 60px;
+            height: 1px;
+            background: var(--gold);
+            margin: 1rem auto;
+            opacity: 0.5;
         }
-        .not-found-title {
-            font-size: clamp(1.2rem, 4vw, 1.6rem);
-            font-weight: 500;
-            color: var(--text);
-            margin-bottom: 0.75rem;
-            letter-spacing: 0.04em;
-        }
-        .not-found-text {
-            font-size: 0.9rem;
+        .page-hero-title {
+            font-family: var(--font-ar);
+            font-size: clamp(1rem, 2.5vw, 1.3rem);
             color: var(--text-muted);
-            line-height: 1.7;
-            margin-bottom: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 0.15em;
         }
-        .not-found-divider {
+
+        /* ── Contact Layout ── */
+        .contact-section {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 80px 2rem;
+        }
+        .contact-block {
+            margin-bottom: 70px;
+        }
+        .contact-block:last-child { margin-bottom: 0; }
+
+        .contact-label {
+            font-family: var(--font-en);
+            font-size: 0.7rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+        .contact-heading {
+            font-family: var(--font-ar);
+            font-size: clamp(1.4rem, 3vw, 2rem);
+            color: var(--text);
+            font-weight: 500;
+            margin-bottom: 1.2rem;
+            line-height: 1.5;
+        }
+        .contact-divider {
             width: 40px;
             height: 1px;
-            background: var(--border);
-            margin: 2rem auto;
+            background: var(--gold);
+            margin: 0 0 2.5rem;
+            opacity: 0.4;
         }
-        .btn-group {
+        .contact-text {
+            font-family: var(--font-ar);
+            font-size: clamp(0.9rem, 1.8vw, 1rem);
+            color: var(--text-muted);
+            font-weight: 300;
+            line-height: 2;
+            margin-bottom: 0.8rem;
+        }
+
+        /* ── Channel Cards ── */
+        .channels-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+        }
+        @media (max-width: 580px) {
+            .channels-grid { grid-template-columns: 1fr; }
+        }
+        .channel-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 2rem 1.5rem;
             display: flex;
-            gap: 0.75rem;
-            justify-content: center;
-            flex-wrap: wrap;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+            transition: border-color var(--tr), box-shadow var(--tr);
+            text-decoration: none;
+            color: inherit;
+        }
+        .channel-card:hover {
+            border-color: var(--border-h);
+            box-shadow: 0 0 30px rgba(224,192,151,0.12);
+        }
+        .channel-card.primary {
+            border-color: rgba(224,192,151,0.3);
+            background: linear-gradient(135deg, #1A1A1A 0%, rgba(224,192,151,0.04) 100%);
+        }
+        .channel-icon {
+            width: 40px;
+            height: 40px;
+            color: var(--gold);
+            opacity: 0.9;
+        }
+        .channel-name {
+            font-family: var(--font-ar);
+            font-size: 1rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+        .channel-name-en {
+            font-family: var(--font-en);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            margin-top: 0.15rem;
+        }
+        .channel-action {
+            font-family: var(--font-ar);
+            font-size: 0.82rem;
+            color: var(--gold);
+            opacity: 0.8;
+            margin-top: auto;
+        }
+        .channel-card.primary .channel-action {
+            opacity: 1;
+            font-weight: 500;
+        }
+
+        /* ── Hours Table ── */
+        .hours-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+        }
+        .hours-table tr {
+            border-bottom: 1px solid var(--border);
+        }
+        .hours-table tr:last-child { border-bottom: none; }
+        .hours-table td {
+            padding: 0.9rem 0;
+            font-family: var(--font-ar);
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            font-weight: 300;
+        }
+        .hours-table td:first-child {
+            color: var(--text);
+            font-weight: 400;
+            padding-left: 2rem;
+        }
+        .hours-note {
+            font-family: var(--font-ar);
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 1.2rem;
+            font-style: italic;
         }
     </style>
 </head>
@@ -111,41 +234,74 @@
         </nav>
     </header>
 
-    <main class="not-found-page">
-        <div class="not-found-container">
-            <div class="not-found-brand">DALAL</div>
+    <!-- PAGE HERO -->
+    <section class="page-hero fade-in">
+        <p class="page-hero-brand">DALAL</p>
+        <div class="page-hero-divider"></div>
+        <p class="page-hero-title" id="contactHeroTitle">تواصل معنا &nbsp;·&nbsp; Contact Us</p>
+    </section>
 
-            <div class="not-found-code">404</div>
+    <!-- MAIN CONTENT -->
+    <main>
+        <div class="contact-section">
 
-            <h1 class="not-found-title">الصفحة غير موجودة</h1>
-            <p class="not-found-text">يبدو أن الرابط الذي أدخلتِه غير صحيح أو أن الصفحة تم نقلها.</p>
+            <!-- Channels -->
+            <div class="contact-block scroll-reveal">
+                <p class="contact-label">Get In Touch</p>
+                <h2 class="contact-heading" id="contactChannelsTitle">قنوات التواصل</h2>
+                <div class="contact-divider"></div>
+                <p class="contact-text" id="contactChannelsDesc">نسعد بالتواصل معكِ عبر أي من القنوات التالية — أسرع رد يكون عبر الماسنجر.</p>
 
-            <div class="not-found-divider"></div>
+                <div class="channels-grid">
 
-            <div class="btn-group">
-                <a href="index.html" class="btn btn-primary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        <polyline points="9 22 9 12 15 12 15 22"/>
-                    </svg>
-                    الرئيسية
-                </a>
-                <a href="products.html" class="btn btn-secondary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                        <line x1="3" y1="6" x2="21" y2="6"/>
-                        <path d="M16 10a4 4 0 0 1-8 0"/>
-                    </svg>
-                    تسوّقي الآن
-                </a>
-                <a href="track.html" class="btn btn-secondary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    تتبع طلبك
-                </a>
+                    <!-- Messenger (primary) -->
+                    <a href="https://m.me/dalal.lingerie" target="_blank" rel="noopener noreferrer" class="channel-card primary">
+                        <svg class="channel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/>
+                        </svg>
+                        <div>
+                            <p class="channel-name" id="channelName1">ماسنجر</p>
+                        </div>
+                        <p class="channel-action" id="channelAction1">راسلينا الآن ←</p>
+                    </a>
+
+                    <!-- Facebook -->
+                    <a href="https://www.facebook.com/dalal.lingerie/" target="_blank" rel="noopener noreferrer" class="channel-card">
+                        <svg class="channel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                        <div>
+                            <p class="channel-name" id="channelName2">فيسبوك</p>
+                        </div>
+                        <p class="channel-action" id="channelAction2">زوري صفحتنا ←</p>
+                    </a>
+
+                    <!-- Instagram -->
+                    <a href="https://www.instagram.com/dalal.lingerie1/" target="_blank" rel="noopener noreferrer" class="channel-card">
+                        <svg class="channel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                        </svg>
+                        <div>
+                            <p class="channel-name" id="channelName3">إنستغرام</p>
+                        </div>
+                        <p class="channel-action" id="channelAction3">تابعينا ←</p>
+                    </a>
+
+                    <!-- Email -->
+                    <a href="mailto:info@dalalwear.shop" class="channel-card">
+                        <svg class="channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2"/>
+                            <path d="M2 7l10 7 10-7"/>
+                        </svg>
+                        <div>
+                            <p class="channel-name" id="channelName4">البريد الإلكتروني</p>
+                        </div>
+                        <p class="channel-action">info@dalalwear.shop</p>
+                    </a>
+
+                </div>
             </div>
+
         </div>
     </main>
 

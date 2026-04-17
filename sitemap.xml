@@ -15,6 +15,24 @@
   </url>
 
   <url>
+    <loc>https://www.dalalwear.shop/about.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://www.dalalwear.shop/contact.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://www.dalalwear.shop/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <url>
     <loc>https://www.dalalwear.shop/track.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

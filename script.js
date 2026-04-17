@@ -68,6 +68,12 @@ function applyLanguage(lang) {
     set('footerLinkWhyDalal', t.navWhyDalal);
     set('footerLinkOrders', t.navOrders);
     set('footerLinkTrack', t.footerTrack);
+    set('footerLinkAbout',   t.footerAbout);
+    set('footerLinkContact', t.footerContact);
+    set('footerLinkPrivacy', t.footerPrivacy);
+    set('footerBottomAbout',   t.footerAbout);
+    set('footerBottomContact', t.footerContact);
+    set('footerBottomPrivacy', t.footerPrivacy);
 
     /* mobile sticky */
     const stickyBtn = document.getElementById('mobileStickyBtn');
@@ -108,6 +114,34 @@ function applyLanguage(lang) {
     setS('trackPageSub',    t.trackPageSub);
     setS('trackFromDeviceLabel', t.trackFromDevice);
     setS('trackFromDeviceLink',  t.trackFromDeviceLink);
+
+    /* about page */
+    setS('aboutHeroTitle',    t.aboutHeroTitle);
+    setS('aboutStoryTitle',   t.aboutStoryTitle);
+    setS('aboutStoryP1',      t.aboutStoryP1);
+    setS('aboutStoryP2',      t.aboutStoryP2);
+    setS('aboutValuesTitle',  t.aboutValuesTitle);
+    setS('aboutMissionTitle', t.aboutMissionTitle);
+    setS('aboutMissionQuote', t.aboutMissionQuote);
+    setS('aboutPromiseTitle', t.aboutPromiseTitle);
+    setS('aboutPromiseP1',    t.aboutPromiseP1);
+    setS('aboutShopNow',      t.aboutShopNow);
+    setS('valueTitle1', t.valueTitle1); setS('valueDesc1', t.valueDesc1);
+    setS('valueTitle2', t.valueTitle2); setS('valueDesc2', t.valueDesc2);
+    setS('valueTitle3', t.valueTitle3); setS('valueDesc3', t.valueDesc3);
+
+    /* contact page */
+    setS('contactHeroTitle',     t.contactHeroTitle);
+    setS('contactChannelsTitle', t.contactChannelsTitle);
+    setS('contactChannelsDesc',  t.contactChannelsDesc);
+    setS('channelName1',   t.channelName1);   setS('channelAction1', t.channelAction1);
+    setS('channelName2',   t.channelName2);   setS('channelAction2', t.channelAction2);
+    setS('channelName3',   t.channelName3);   setS('channelAction3', t.channelAction3);
+    setS('channelName4',   t.channelName4);
+
+    /* privacy page */
+    setS('privacyHeroTitle',  t.privacyHeroTitle);
+    setS('privacyContactBtn', t.privacyContactBtn);
 
     /* product cards */
     if (typeof rerenderProducts === 'function') rerenderProducts(lang);

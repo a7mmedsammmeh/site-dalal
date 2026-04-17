@@ -1413,3 +1413,17 @@ body.lang-en .btn-ghost { font-family: var(--font-body); }
 }
 body.lang-en .sticky-order-btn { font-family: var(--font-body); }
 .sticky-order-btn:active { background: transparent; color: var(--gold); }
+
+/* ─── Footer email link ─── */
+.footer-email {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.15s;
+    letter-spacing: 0.02em;
+}
+.footer-email:hover { color: var(--gold); }

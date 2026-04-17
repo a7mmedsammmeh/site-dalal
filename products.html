@@ -35,7 +35,7 @@
                 <li><a href="index.html#products"  class="nav-link" id="navLinkCollectionP">تشكيلة دلال</a></li>
                 <li><a href="index.html#why-dalal" class="nav-link" id="navLinkWhyDalalP">لماذا دلال</a></li>
                 <li><a href="orders.html"          class="nav-link" id="navLinkOrdersP">طلباتي</a></li>
-                <li><a href="index.html#footer"    class="nav-link" id="navLinkContactP">تواصل معنا</a></li>
+                <li><a href="contact.html"         class="nav-link" id="navLinkContactP">تواصل معنا</a></li>
             </ul>
 
             <div class="nav-controls">
@@ -105,9 +105,9 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="footer">
+    <footer id="footer" class="footer">
         <div class="footer-top">
-            <div class="footer-brand">
+            <div class="footer-brand scroll-reveal">
                 <div class="img-wrap">
                     <img src="images/dalal-logo.png" alt="DALAL" class="footer-logo"
                          style="opacity:0;transition:opacity 0.4s ease;"
@@ -116,16 +116,19 @@
                 </div>
                 <p class="footer-tagline" id="footerTagline">أناقة تستحقينها</p>
             </div>
-            <div class="footer-links">
+            <div class="footer-links scroll-reveal">
                 <h4 class="footer-heading" id="footerQuickLinks">روابط سريعة</h4>
                 <ul>
                     <li><a href="index.html"    id="footerLinkHome">الرئيسية</a></li>
-                    <li><a href="products.html" id="footerLinkAllProducts">جميع المنتجات</a></li>
+                    <li><a href="products.html" id="footerLinkAllProducts">تشكيلة دلال</a></li>
                     <li><a href="orders.html"   id="footerLinkOrders">طلباتي</a></li>
                     <li><a href="track.html"    id="footerLinkTrack">تتبع طلبك</a></li>
+                    <li><a href="about.html"    id="footerLinkAbout">من نحن</a></li>
+                    <li><a href="contact.html"  id="footerLinkContact">تواصل معنا</a></li>
+                    <li><a href="privacy.html"  id="footerLinkPrivacy">سياسة الخصوصية</a></li>
                 </ul>
             </div>
-            <div class="footer-social">
+            <div class="footer-social scroll-reveal">
                 <h4 class="footer-heading" id="footerConnect">تواصلي معنا</h4>
                 <div class="social-icons">
                     <a href="https://www.facebook.com/dalal.lingerie/" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Facebook">
@@ -138,11 +141,22 @@
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/></svg>
                     </a>
                 </div>
+                <a href="mailto:info@dalalwear.shop" class="footer-email">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+                    info@dalalwear.shop
+                </a>
             </div>
         </div>
         <div class="footer-divider"></div>
         <div class="footer-bottom">
             <p id="footerRights">© 2026 دلال. جميع الحقوق محفوظة.</p>
+            <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;justify-content:center;">
+                <a href="privacy.html" id="footerBottomPrivacy" style="font-size:0.75rem;color:var(--text-dim);text-decoration:none;transition:color 0.15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color=''">سياسة الخصوصية</a>
+                <span style="color:var(--border);font-size:0.7rem;">·</span>
+                <a href="about.html"   id="footerBottomAbout" style="font-size:0.75rem;color:var(--text-dim);text-decoration:none;transition:color 0.15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color=''">من نحن</a>
+                <span style="color:var(--border);font-size:0.7rem;">·</span>
+                <a href="contact.html" id="footerBottomContact" style="font-size:0.75rem;color:var(--text-dim);text-decoration:none;transition:color 0.15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color=''">تواصل معنا</a>
+            </div>
             <p class="footer-credit" id="footerCraft">صُنع بأناقة</p>
         </div>
     </footer>
