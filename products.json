@@ -117,7 +117,7 @@
   },
   {
     "id": 5,
-    "slug": "lycra",
+    "slug": "lycra-1",
     "code": "LY-007",
     "name": { "ar": "ليكرا", "en": "Lycra" },
     "description": {
@@ -146,7 +146,7 @@
   },
   {
     "id": 6,
-    "slug": "lycra",
+    "slug": "lycra-2",
     "code": "LY-007",
     "name": { "ar": "ليكرا", "en": "Lycra" },
     "description": {

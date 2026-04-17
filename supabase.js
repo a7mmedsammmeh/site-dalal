@@ -76,3 +76,37 @@ async function deleteAllOrders() {
         .neq('id', '00000000-0000-0000-0000-000000000000'); // delete all rows
     if (error) throw error;
 }
+
+async function fetchReviews(limit = 20) {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('reviews')
+        .select('*')
+        .eq('is_visible', true)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+    if (error) throw error;
+    return data;
+}
+
+async function fetchAllReviews() {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('reviews')
+        .select('*')
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+}
+
+async function deleteReview(id) {
+    const db = await getSupabase();
+    const { error } = await db.from('reviews').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function toggleReviewVisibility(id, visible) {
+    const db = await getSupabase();
+    const { error } = await db.from('reviews').update({ is_visible: visible }).eq('id', id);
+    if (error) throw error;
+}

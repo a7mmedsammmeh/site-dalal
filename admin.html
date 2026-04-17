@@ -64,15 +64,90 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 @media(max-width:768px){ .admin-stats{grid-template-columns:repeat(2,1fr);gap:0.75rem;} }
 @media(max-width:400px){ .admin-stats{grid-template-columns:repeat(2,1fr);gap:0.5rem;} }
 
-/* Responsive header */
+/* Responsive — mobile */
 @media(max-width:600px){
-    .admin-header { padding:0 1rem; height:56px; }
+    body { overflow-x: hidden; }
+    .admin-header { padding:0 0.75rem; height:56px; }
     .admin-logo span { display:none; }
     .hide-mobile { display:none !important; }
-    .admin-refresh-btn { padding:0.4rem 0.5rem; }
-    .admin-back-link { padding:0.4rem 0.5rem; }
-    .admin-header-right { gap:0.3rem; }
+    .admin-refresh-btn { padding:0.35rem 0.4rem; min-width:30px; font-size:0.72rem; }
+    .admin-back-link { padding:0.35rem 0.4rem; }
+    .admin-header-right { gap:0.2rem; }
+    .admin-main { padding:0.75rem 0.75rem 4rem; }
+    .stat-card { padding:0.75rem 0.85rem; }
+    .stat-value { font-size:1.5rem; }
+    .stat-label { font-size:0.7rem; }
+    .admin-search-wrap { padding:0.5rem 0.75rem; flex-wrap:wrap; }
+    .admin-search-input { min-width:0; }
+    .admin-filters { gap:0.3rem; }
+    .filter-btn { font-size:0.7rem; padding:0.3rem 0.65rem; }
+    #dateFrom, #dateTo { font-size:0.72rem; padding:0.3rem 0.4rem; max-width:140px; }
+    .mc-head { padding:0.7rem 0.85rem; }
+    .mc-body { padding:0.6rem 0.85rem; }
+    .mc-foot { padding:0.55rem 0.85rem; }
+    .status-select { min-width:110px; font-size:0.72rem; padding:0.3rem 0.6rem; }
 }
+
+/* Hamburger */
+.admin-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 34px; height: 34px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    cursor: pointer;
+    padding: 0 8px;
+}
+.admin-hamburger span {
+    display: block;
+    height: 1.5px;
+    background: var(--text-muted);
+    border-radius: 2px;
+    transition: all 0.25s;
+}
+.admin-hamburger.open span:nth-child(1) { transform: translateY(5.5px) rotate(45deg); }
+.admin-hamburger.open span:nth-child(2) { opacity: 0; }
+.admin-hamburger.open span:nth-child(3) { transform: translateY(-5.5px) rotate(-45deg); }
+@media(max-width:600px) { .admin-hamburger { display:flex; } }
+
+/* Mobile dropdown */
+.admin-mobile-menu {
+    display: none;
+    position: fixed;
+    top: 56px; left: 0; right: 0;
+    z-index: 998;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: menuSlideDown 0.2s ease forwards;
+}
+@keyframes menuSlideDown {
+    from { opacity:0; transform:translateY(-8px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+.admin-mobile-menu.open { display: block; }
+.admin-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+    text-align: right;
+    transition: background 0.15s, color 0.15s;
+    border-bottom: 1px solid var(--border);
+}
+.admin-menu-item:last-child { border-bottom: none; }
+.admin-menu-item:hover { background: var(--bg-light); }
 .stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:1.25rem 1.5rem; transition:border-color var(--tr); }
 .stat-card:hover { border-color:var(--border-h); }
 .stat-label { font-size:0.75rem; color:var(--text-muted); letter-spacing:0.06em; margin-bottom:0.5rem; }
@@ -271,24 +346,56 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <div class="refresh-dot"></div>
             <span id="refreshCountdown" class="hide-mobile">تحديث تلقائي</span>
         </div>
-        <button class="admin-refresh-btn" onclick="loadOrders()">
+        <button class="admin-refresh-btn hide-mobile" onclick="loadOrders()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            <span class="hide-mobile">تحديث</span>
+            تحديث
         </button>
-        <button class="admin-refresh-btn" onclick="confirmDeleteAll()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
+        <button class="admin-refresh-btn hide-mobile" onclick="confirmDeleteAll()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            <span class="hide-mobile">حذف الكل</span>
+            حذف الكل
         </button>
-        <button class="admin-refresh-btn" onclick="adminLogout()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
+        <button class="admin-refresh-btn hide-mobile" onclick="adminLogout()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            <span class="hide-mobile">خروج</span>
+            خروج
         </button>
-        <button class="admin-refresh-btn" onclick="showExportMenu()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
+        <button class="admin-refresh-btn hide-mobile" onclick="showReviewsPanel()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            التقييمات
+        </button>
+        <button class="admin-refresh-btn hide-mobile" onclick="showExportMenu()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span class="hide-mobile">تصدير</span>
+            تصدير
+        </button>
+        <!-- Mobile hamburger -->
+        <button class="admin-hamburger" id="adminHamburger" onclick="toggleAdminMenu()" aria-label="القائمة">
+            <span></span><span></span><span></span>
         </button>
     </div>
 </header>
+
+<!-- Mobile dropdown menu -->
+<div id="adminMobileMenu" class="admin-mobile-menu">
+    <button class="admin-menu-item" onclick="loadOrders();toggleAdminMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        تحديث الطلبات
+    </button>
+    <button class="admin-menu-item" onclick="showReviewsPanel();toggleAdminMenu()" style="color:#4caf7d;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        التقييمات
+    </button>
+    <button class="admin-menu-item" onclick="showExportMenu();toggleAdminMenu()" style="color:#4caf7d;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        تصدير
+    </button>
+    <button class="admin-menu-item" onclick="confirmDeleteAll();toggleAdminMenu()" style="color:#e05c5c;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        حذف الكل
+    </button>
+    <button class="admin-menu-item" onclick="adminLogout()" style="color:#e05c5c;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        خروج
+    </button>
+</div>
 
 <main class="admin-main">
     <div class="admin-stats">
@@ -370,7 +477,28 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
 <div class="admin-toast" id="adminToast"></div>
 
+<!-- Reviews Panel -->
+<div id="reviewsPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
+    <div style="max-width:900px;margin:0 auto;width:100%;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:0.5rem;flex-wrap:wrap;">
+            <h2 style="color:var(--gold);font-size:1.05rem;letter-spacing:0.08em;">التقييمات</h2>
+            <div style="display:flex;gap:0.4rem;align-items:center;">
+                <button onclick="deleteAllReviews()" class="admin-refresh-btn" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);font-size:0.72rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                    <span>حذف الكل</span>
+                </button>
+                <button onclick="hideReviewsPanel()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>إغلاق</span>
+                </button>
+            </div>
+        </div>
+        <div id="reviewsList"></div>
+    </div>
+</div>
+
 <script src="supabase.js"></script>
+<script src="products-data.js"></script>
 <script>
 (function () {
     'use strict';
@@ -456,6 +584,22 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         await db.auth.signOut();
         location.reload();
     };
+
+    window.toggleAdminMenu = function() {
+        const menu = document.getElementById('adminMobileMenu');
+        const btn  = document.getElementById('adminHamburger');
+        menu.classList.toggle('open');
+        btn.classList.toggle('open');
+    };
+    // Close menu on outside click
+    document.addEventListener('click', e => {
+        const menu = document.getElementById('adminMobileMenu');
+        const btn  = document.getElementById('adminHamburger');
+        if (menu?.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.remove('open');
+            btn.classList.remove('open');
+        }
+    });
 
     // ─── Orders ───
     let _search = '';
@@ -1035,6 +1179,178 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             })
             .subscribe();
     }
+
+    // ─── Reviews ───
+    window.showReviewsPanel = async function() {
+        document.getElementById('reviewsPanel').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        const list = document.getElementById('reviewsList');
+        list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim)">جاري التحميل...</div>';
+        try {
+            const reviews = await fetchAllReviews();
+
+            if (!reviews.length) {
+                list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim)">لا توجد تقييمات بعد</div>';
+                return;
+            }
+
+            const general  = reviews.filter(r => !r.product_id);
+            const products = reviews.filter(r =>  r.product_id);
+            const byProduct = {};
+            products.forEach(r => {
+                if (!byProduct[r.product_id]) byProduct[r.product_id] = [];
+                byProduct[r.product_id].push(r);
+            });
+
+            const renderCard = (r) => {
+                const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+                const date  = new Date(r.created_at).toLocaleDateString('ar-EG', {day:'2-digit',month:'short',year:'numeric'});
+                return `
+                <div style="border-bottom:1px solid var(--border);padding:0.9rem 0;">
+                    <div style="display:flex;gap:0.75rem;align-items:flex-start;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.35rem;flex-wrap:wrap;">
+                                <span style="color:#E0C097;font-size:0.95rem;letter-spacing:0.1em;">${stars}</span>
+                                <span style="font-size:0.82rem;font-weight:600;color:var(--text)">${esc(r.reviewer_name || 'مجهول')}</span>
+                                ${r.order_ref ? `<span style="font-family:'Poppins',monospace;font-size:0.7rem;color:var(--gold);opacity:0.7">${esc(r.order_ref)}</span>` : ''}
+                                <span style="font-size:0.7rem;color:var(--text-dim);margin-inline-start:auto">${date}</span>
+                            </div>
+                            ${r.comment ? `<p style="font-size:0.83rem;color:var(--text-muted);line-height:1.6;margin:0">${esc(r.comment)}</p>` : '<p style="font-size:0.8rem;color:var(--text-dim);margin:0;font-style:italic">بدون تعليق</p>'}
+                        </div>
+                        <div style="display:flex;gap:0.35rem;flex-shrink:0;">
+                            <button class="del-btn" onclick="toggleReview('${r.id}', ${!r.is_visible})" style="font-size:0.72rem;${r.is_visible ? '' : 'color:#4caf7d;border-color:rgba(76,175,125,0.3)'}">
+                                ${r.is_visible ? 'إخفاء' : 'إظهار'}
+                            </button>
+                            <button class="del-btn" onclick="removeReview('${r.id}')" style="font-size:0.72rem;">حذف</button>
+                        </div>
+                    </div>
+                </div>`;
+            };
+
+            const getProductName = (pid) => {
+                if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && DALAL_PRODUCTS_MAP[+pid]) {
+                    const p = DALAL_PRODUCTS_MAP[+pid];
+                    const name = typeof p.name === 'object' ? (p.name.ar || p.name.en) : p.name;
+                    const slug = p.slug ? ` · <span style="font-family:'Poppins',monospace;font-size:0.68rem;letter-spacing:0.04em">${p.code || ''}</span>` : '';
+                    return name + slug;
+                }
+                return `منتج #${pid}`;
+            };
+
+            // Build tabs
+            const tabs = [
+                { key: 'general', label: `عام (${general.length})`, reviews: general },
+                ...Object.entries(byProduct).map(([pid, pReviews]) => ({
+                    key: pid,
+                    label: `${getProductName(pid)} (${pReviews.length})`,
+                    reviews: pReviews
+                }))
+            ];
+
+            let activeTab = tabs[0].key;
+
+            const renderTab = (key) => {
+                activeTab = key;
+                list.querySelectorAll('.rv-tab-btn').forEach(b =>
+                    b.style.cssText = b.dataset.key === key
+                        ? 'background:var(--gold);color:var(--bg);border-color:var(--gold);'
+                        : 'background:transparent;color:var(--text-muted);border-color:var(--border);'
+                );
+                renderTabActions(key);
+                const tab = tabs.find(t => t.key === key);
+                const content = list.querySelector('#rv-content');
+                if (!content) return;
+                content.style.opacity = '0';
+                setTimeout(() => {
+                    content.innerHTML = tab.reviews.length
+                        ? tab.reviews.map(renderCard).join('')
+                        : '<p style="color:var(--text-dim);font-size:0.82rem;padding:1rem 0">لا توجد تقييمات</p>';
+                    content.style.opacity = '1';
+                }, 150);
+            };
+
+            list.innerHTML = `
+                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center;padding-bottom:1rem;border-bottom:1px solid var(--border);overflow-x:hidden;">
+                    ${tabs.map(t => `
+                        <button class="rv-tab-btn" data-key="${t.key}"
+                            style="font-size:0.78rem;padding:0.45rem 1rem;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:all 0.2s;white-space:nowrap;flex-shrink:0;${t.key === activeTab ? 'background:var(--gold);color:var(--bg);border-color:var(--gold);' : 'background:var(--bg-card);color:var(--text-muted);'}">
+                            ${t.label}
+                        </button>`).join('')}
+                </div>
+                <div id="rv-tab-actions" style="margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);"></div>
+                <div id="rv-content" style="transition:opacity 0.15s;"></div>
+            `;
+
+            const renderTabActions = (key) => {
+                const actEl = list.querySelector('#rv-tab-actions');
+                if (!actEl) return;
+                const isGeneral = key === 'general';
+                actEl.innerHTML = `
+                    <button onclick="deleteTabReviews('${key}')"
+                        style="font-size:0.75rem;color:#e05c5c;background:transparent;border:1px solid rgba(224,92,92,0.3);border-radius:var(--r);padding:0.35rem 0.75rem;cursor:pointer;font-family:inherit;transition:all 0.2s;display:inline-flex;align-items:center;gap:0.35rem;"
+                        onmouseover="this.style.background='rgba(224,92,92,0.08)'" onmouseout="this.style.background='transparent'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        ${isGeneral ? 'حذف جميع التقييمات العامة' : 'حذف تقييمات هذا المنتج'}
+                    </button>
+                `;
+            };
+
+            list.querySelectorAll('.rv-tab-btn').forEach(b =>
+                b.addEventListener('click', () => renderTab(b.dataset.key))
+            );
+
+            renderTab(activeTab);
+        } catch(e) {
+            list.innerHTML = `<div style="text-align:center;padding:2rem;color:#e05c5c">حدث خطأ: ${e.message}</div>`;
+        }
+    };
+
+    window.deleteAllReviews = async function() {
+        if (!confirm('هل أنت متأكد من حذف جميع التقييمات؟ لا يمكن التراجع.')) return;
+        try {
+            const db = await getSupabase();
+            const { error } = await db.from('reviews').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            if (error) throw error;
+            showReviewsPanel();
+        } catch { alert('حدث خطأ'); }
+    };
+
+    window.deleteTabReviews = async function(key) {
+        const isGeneral = key === 'general';
+        const msg = isGeneral
+            ? 'هل أنت متأكد من حذف جميع التقييمات العامة؟'
+            : 'هل أنت متأكد من حذف جميع تقييمات هذا المنتج؟';
+        if (!confirm(msg)) return;
+        try {
+            const db = await getSupabase();
+            let query = db.from('reviews').delete();
+            if (isGeneral) query = query.is('product_id', null);
+            else           query = query.eq('product_id', +key);
+            const { error } = await query;
+            if (error) throw error;
+            showReviewsPanel();
+        } catch { alert('حدث خطأ'); }
+    };
+
+    window.hideReviewsPanel = function() {
+        document.getElementById('reviewsPanel').style.display = 'none';
+        document.body.style.overflow = '';
+    };
+
+    window.removeReview = async function(id) {
+        if (!confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
+        try {
+            await deleteReview(id);
+            showReviewsPanel();
+        } catch { alert('حدث خطأ'); }
+    };
+
+    window.toggleReview = async function(id, visible) {
+        try {
+            await toggleReviewVisibility(id, visible);
+            showReviewsPanel();
+        } catch { alert('حدث خطأ'); }
+    };
 
     // loadOrders called by checkAuth after session verified
     initAdmin();

@@ -6,7 +6,93 @@ let currentProduct   = null;
 let selectedQtyOption  = null;
 let selectedSize       = null;
 
-/* ─── Update meta tags for SEO & social sharing ─── */
+/* ─── Load product reviews ─── */
+async function loadProductReviews(product, lang) {
+    const isAr = lang === 'ar';
+    const PER_PAGE = 3;
+
+    try {
+        const db = await getSupabase();
+        const { data: reviews } = await db
+            .from('reviews')
+            .select('*')
+            .eq('is_visible', true)
+            .eq('product_id', product.id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        const section  = document.getElementById('productReviewsSection');
+        const grid     = document.getElementById('productReviewsGrid');
+        const titleEl  = document.getElementById('productReviewsTitle');
+        const writeBtn = document.getElementById('writeReviewBtn');
+        const writeLbl = document.getElementById('writeReviewLabel');
+
+        if (titleEl) titleEl.textContent = isAr ? 'تقييمات المنتج' : 'Product Reviews';
+        if (writeLbl) writeLbl.textContent = isAr ? 'اكتبي تقييمك' : 'Write a Review';
+        if (writeBtn) {
+            const slug = product.slug || '';
+            writeBtn.href = `review.html?product_id=${product.id}${slug ? '&slug='+slug : ''}&lang=${lang}`;
+        }
+        if (section) section.style.display = '';
+
+        if (!reviews || !reviews.length) {
+            if (grid) grid.innerHTML = `<p style="font-size:0.85rem;color:var(--text-dim);padding:0.5rem 0">${isAr ? 'لا توجد تقييمات بعد — كوني أول من يقيّم!' : 'No reviews yet — be the first!'}</p>`;
+            return;
+        }
+
+        const renderCard = (r) => {
+            const stars = Array.from({length:5},(_,i) =>
+                `<svg width="13" height="13" viewBox="0 0 24 24" fill="${i<r.rating?'#E0C097':'none'}" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
+            ).join('');
+            const name = r.reviewer_name || (isAr ? 'عميلة مجهولة' : 'Anonymous');
+            const date = new Date(r.created_at).toLocaleDateString(isAr?'ar-EG':'en-US',{month:'short',year:'numeric'});
+            return `
+            <div class="product-review-card">
+                <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+                    <div class="review-stars-pub" style="direction:ltr">${stars}</div>
+                    <span style="font-size:0.82rem;font-weight:500;color:var(--text)">${name.replace(/</g,'&lt;')}</span>
+                    <span style="font-size:0.72rem;color:var(--text-dim);margin-inline-start:auto">${date}</span>
+                </div>
+                ${r.comment ? `<p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;margin:0">${r.comment.replace(/</g,'&lt;')}</p>` : ''}
+            </div>`;
+        };
+
+        let currentPage = 0;
+        const totalPages = Math.ceil(reviews.length / PER_PAGE);
+
+        const renderPage = (page) => {
+            currentPage = page;
+            const slice = reviews.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+
+            // Animate out then in
+            grid.style.opacity = '0';
+            grid.style.transform = 'translateY(6px)';
+            grid.style.transition = 'opacity 0.2s, transform 0.2s';
+
+            setTimeout(() => {
+                grid.innerHTML = slice.map(renderCard).join('');
+
+                // Pagination
+                if (totalPages > 1) {
+                    const pag = document.createElement('div');
+                    pag.className = 'reviews-pagination';
+                    pag.innerHTML = Array.from({length: totalPages}, (_,i) =>
+                        `<button class="reviews-page-btn${i===page?' active':''}" data-p="${i}">${i+1}</button>`
+                    ).join('');
+                    pag.querySelectorAll('.reviews-page-btn').forEach(b =>
+                        b.addEventListener('click', () => renderPage(+b.dataset.p))
+                    );
+                    grid.appendChild(pag);
+                }
+
+                grid.style.opacity = '1';
+                grid.style.transform = 'translateY(0)';
+            }, 200);
+        };
+
+        renderPage(0);
+    } catch { /* silent */ }
+}
 function updateProductMeta(product, lang) {
     const name     = getProductName(product, lang);
     const nameEn   = getProductName(product, 'en');
@@ -396,6 +482,9 @@ function initProductPage() {
 
     /* Update meta tags for SEO & social sharing */
     updateProductMeta(product, lang);
+
+    /* Load product reviews */
+    loadProductReviews(product, lang);
 
     /* Main image — replace skeleton in wrapper */
     const mainWrapper = document.querySelector('.main-image-wrapper');

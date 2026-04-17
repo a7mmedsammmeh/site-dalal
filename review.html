@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دلال — شاركي تجربتك</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/dalal-logo.png">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .review-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6rem 1.5rem 4rem;
+            background: var(--bg);
+        }
+        .review-card {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 2.5rem 2rem;
+            animation: fadeUp 0.4s ease forwards;
+        }
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(16px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .review-brand {
+            font-family: var(--font-en);
+            font-size: 1.4rem;
+            letter-spacing: 0.25em;
+            color: var(--gold);
+            text-align: center;
+            margin-bottom: 0.4rem;
+        }
+        .review-title {
+            text-align: center;
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            letter-spacing: 0.04em;
+        }
+        .review-ref {
+            text-align: center;
+            font-family: 'Poppins', monospace;
+            font-size: 0.82rem;
+            color: var(--gold);
+            background: var(--bg-light);
+            border-radius: var(--r);
+            padding: 0.4rem 1rem;
+            display: inline-block;
+            margin: 0 auto 1.75rem;
+            letter-spacing: 0.08em;
+        }
+        .review-ref-wrap { text-align: center; }
+
+        /* Stars */
+        .stars-wrap {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.75rem;
+            direction: ltr;
+        }
+        .star-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.2rem;
+            transition: transform 0.15s;
+            line-height: 1;
+        }
+        .star-btn:hover { transform: scale(1.2); }
+        .star-btn svg { display: block; }
+        .star-btn .star-fill { display: none; }
+        .star-btn.active .star-fill { display: block; }
+        .star-btn.active .star-empty { display: none; }
+
+        /* Fields */
+        .review-field { margin-bottom: 1.1rem; }
+        .review-label {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            letter-spacing: 0.06em;
+            margin-bottom: 0.4rem;
+        }
+        .review-input, .review-textarea {
+            width: 100%;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.9rem;
+            padding: 0.75rem 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+            resize: none;
+        }
+        .review-input:focus, .review-textarea:focus { border-color: var(--gold-dim); }
+        .review-input::placeholder, .review-textarea::placeholder { color: var(--text-dim); }
+
+        .review-submit {
+            width: 100%;
+            background: var(--gold);
+            color: var(--bg);
+            border: 1px solid var(--gold);
+            border-radius: var(--r);
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 600;
+            padding: 0.95rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            transition: background 0.15s, color 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
+        .review-submit:hover:not(:disabled) { background: transparent; color: var(--gold); }
+        .review-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .review-success {
+            text-align: center;
+            padding: 1.5rem 0;
+            display: none;
+        }
+        .review-success-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .review-success-msg {
+            font-size: 1.05rem;
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .review-success-sub {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .review-error {
+            font-size: 0.8rem;
+            color: #e05c5c;
+            text-align: center;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .already-reviewed {
+            text-align: center;
+            padding: 1rem 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="lang-ar">
+
+    <div class="review-page">
+        <div class="review-card">
+            <div class="review-brand">DALAL</div>
+            <p class="review-title" id="reviewTitle">شاركي تجربتك معنا</p>
+
+            <div class="review-ref-wrap">
+                <span class="review-ref" id="reviewRef"></span>
+            </div>
+
+            <div id="reviewForm">
+                <!-- Stars -->
+                <div class="stars-wrap" id="starsWrap" aria-label="التقييم">
+                    <button class="star-btn" data-val="1" type="button" aria-label="1 نجمة">
+                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </button>
+                    <button class="star-btn" data-val="2" type="button" aria-label="2 نجمة">
+                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </button>
+                    <button class="star-btn" data-val="3" type="button" aria-label="3 نجوم">
+                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </button>
+                    <button class="star-btn" data-val="4" type="button" aria-label="4 نجوم">
+                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </button>
+                    <button class="star-btn" data-val="5" type="button" aria-label="5 نجوم">
+                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </button>
+                </div>
+
+                <div class="review-field">
+                    <label class="review-label" id="labelName" for="reviewName">اسمك (اختياري)</label>
+                    <input type="text" id="reviewName" class="review-input" placeholder="مثال: سارة م.">
+                </div>
+
+                <div class="review-field">
+                    <label class="review-label" id="labelComment" for="reviewComment">تجربتك مع دلال</label>
+                    <textarea id="reviewComment" class="review-textarea" rows="4" placeholder="شاركينا رأيك في المنتج والتوصيل..."></textarea>
+                </div>
+
+                <button class="review-submit" id="reviewSubmit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+                    <span id="reviewSubmitLabel">إرسال التقييم</span>
+                </button>
+                <p class="review-error" id="reviewError"></p>
+            </div>
+
+            <div class="review-success" id="reviewSuccess">
+                <div class="review-success-icon">🌸</div>
+                <p class="review-success-msg" id="successMsg">شكراً لكِ!</p>
+                <p class="review-success-sub" id="successSub">تقييمك وصلنا وسعدنا بتجربتك معنا</p>
+                <a id="backLink" href="index.html" style="display:inline-block;margin-top:1.25rem;color:var(--gold);font-size:0.85rem;text-decoration:none;">← العودة للرئيسية</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="i18n.js"></script>
+    <script src="supabase.js"></script>
+    <script>
+    (function() {
+        const params     = new URLSearchParams(window.location.search);
+        const ref        = params.get('ref') || '';
+        const productId  = params.get('product_id') ? parseInt(params.get('product_id')) : null;
+        const lang       = params.get('lang') || localStorage.getItem('dalal-lang') || 'ar';
+        const isAr       = lang === 'ar';
+
+        // Apply lang
+        document.documentElement.lang = lang;
+        document.documentElement.dir  = isAr ? 'rtl' : 'ltr';
+        document.body.className = isAr ? 'lang-ar' : 'lang-en';
+
+        // Translations
+        const T = {
+            ar: {
+                title:        'شاركي تجربتك معنا',
+                labelName:    'اسمك (اختياري)',
+                namePh:       'مثال: سارة م.',
+                labelComment: 'تجربتك مع دلال',
+                commentPh:    'شاركينا رأيك في المنتج والتوصيل...',
+                submitBtn:    'إرسال التقييم',
+                errorRating:  'يرجى اختيار تقييم بالنجوم أولاً',
+                errorFail:    'حدث خطأ، يرجى المحاولة مرة أخرى',
+                successMsg:   'شكراً لكِ!',
+                successSub:   'تقييمك وصلنا وسعدنا بتجربتك معنا',
+                backHome:     '← العودة للرئيسية',
+            },
+            en: {
+                title:        'Share Your Experience',
+                labelName:    'Your name (optional)',
+                namePh:       'e.g. Sarah M.',
+                labelComment: 'Your experience with DALAL',
+                commentPh:    'Tell us about the product and delivery...',
+                submitBtn:    'Submit Review',
+                errorRating:  'Please select a star rating first',
+                errorFail:    'Something went wrong, please try again',
+                successMsg:   'Thank you!',
+                successSub:   'Your review has been received',
+                backHome:     '← Back to Home',
+            }
+        };
+        const t = T[isAr ? 'ar' : 'en'];
+
+        // Apply translations
+        document.getElementById('reviewTitle').textContent       = t.title;
+        document.getElementById('labelName').textContent         = t.labelName;
+        document.getElementById('reviewName').placeholder        = t.namePh;
+        document.getElementById('labelComment').textContent      = t.labelComment;
+        document.getElementById('reviewComment').placeholder     = t.commentPh;
+        document.getElementById('reviewSubmitLabel').textContent = t.submitBtn;
+        document.getElementById('successMsg').textContent        = t.successMsg;
+        document.getElementById('successSub').textContent        = t.successSub;
+
+        // Back link — go to product page if product_id exists, else home
+        const backLink = document.getElementById('backLink');
+        if (backLink) {
+            const slug = params.get('slug');
+            if (productId) {
+                const href = slug ? `product.html#${slug}` : `product.html?id=${productId}`;
+                backLink.href = href;
+                backLink.textContent = isAr ? '← العودة للمنتج' : '← Back to Product';
+            } else {
+                backLink.textContent = t.backHome;
+            }
+        }
+
+        // Show ref
+        if (ref) document.getElementById('reviewRef').textContent = ref;
+        else document.querySelector('.review-ref-wrap').style.display = 'none';
+
+        // Stars
+        let selectedRating = 0;
+        const stars = document.querySelectorAll('.star-btn');
+
+        stars.forEach(btn => {
+            btn.addEventListener('mouseenter', () => highlightStars(+btn.dataset.val));
+            btn.addEventListener('mouseleave', () => highlightStars(selectedRating));
+            btn.addEventListener('click', () => {
+                selectedRating = +btn.dataset.val;
+                highlightStars(selectedRating);
+            });
+        });
+
+        function highlightStars(val) {
+            stars.forEach(b => b.classList.toggle('active', +b.dataset.val <= val));
+        }
+
+        // Submit
+        document.getElementById('reviewSubmit').addEventListener('click', async () => {
+            const errEl = document.getElementById('reviewError');
+            errEl.style.display = 'none';
+
+            if (!selectedRating) {
+                errEl.textContent = t.errorRating;
+                errEl.style.display = 'block';
+                return;
+            }
+
+            const btn = document.getElementById('reviewSubmit');
+            btn.disabled = true;
+            document.getElementById('reviewSubmitLabel').innerHTML = '<span class="order-loading-dots"><span></span><span></span><span></span></span>';
+
+            try {
+                const db = await getSupabase();
+                const { error } = await db.from('reviews').insert([{
+                    order_ref:     ref || null,
+                    product_id:    productId,
+                    reviewer_name: document.getElementById('reviewName').value.trim() || null,
+                    rating:        selectedRating,
+                    comment:       document.getElementById('reviewComment').value.trim() || null,
+                    is_visible:    true
+                }]);
+                if (error) throw error;
+
+                document.getElementById('reviewForm').style.display    = 'none';
+                document.getElementById('reviewSuccess').style.display = 'block';
+            } catch {
+                btn.disabled = false;
+                document.getElementById('reviewSubmitLabel').textContent = t.submitBtn;
+                errEl.textContent = t.errorFail;
+                errEl.style.display = 'block';
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
