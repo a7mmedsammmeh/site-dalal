@@ -46,6 +46,28 @@ function openMessenger(msg) {
     window.open(`https://m.me/dalal.lingerie?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
 }
 
+/* ─── Success sound ─── */
+function playSuccessSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523, 659, 784]; // C5, E5, G5 — major chord arpeggio
+        notes.forEach((freq, i) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const start = ctx.currentTime + i * 0.1;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(0.18, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+            osc.start(start);
+            osc.stop(start + 0.35);
+        });
+    } catch { /* silent fail */ }
+}
+
 /* ─── Contact modal before Messenger ─── */
 function openMessengerWithContact(buildMsg) {
     const lang = localStorage.getItem('dalal-lang') || 'ar';
@@ -117,7 +139,7 @@ function openMessengerWithContact(buildMsg) {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 }
-function cartAdd(product, selectedRow, qty = 1, extras = {}) {
+function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, flyProduct = null) {
     const key = `${product.id}_${selectedRow.label}_${Date.now()}`;
     cart.push({
         key,
@@ -138,7 +160,9 @@ function cartAdd(product, selectedRow, qty = 1, extras = {}) {
     saveCart();
     updateCartUI();
     showAddToCartToast(product);
-    animateCartIcon();
+    playSuccessSound();
+    if (sourceEl) flyToCart(sourceEl, flyProduct || product);
+    else animateCartIcon();
 }
 
 /* ─── Quick-add modal (shown when clicking "Add to Cart" from cards) ─── */
@@ -254,7 +278,7 @@ function openQuickAddModal(product) {
         const color = document.getElementById('qaColorInput')?.value.trim() || '';
         const notes = document.getElementById('qaNotesInput')?.value.trim() || '';
         // qty is always 1 — priceValue is the total price for the selected tier
-        cartAdd(product, _quickSelectedQty, 1, { size, color, notes });
+        cartAdd(product, _quickSelectedQty, 1, { size, color, notes }, document.getElementById('qaAddCartBtn'), product);
         closeQA();
     });
 
@@ -367,6 +391,65 @@ function animateCartIcon() {
     });
 }
 
+/* ─── Fly-to-cart animation ─── */
+function flyToCart(sourceEl, product) {
+    const cartBtn = document.querySelector('.cart-icon-btn');
+    if (!cartBtn || !sourceEl) return;
+
+    const srcRect  = sourceEl.getBoundingClientRect();
+    const destRect = cartBtn.getBoundingClientRect();
+
+    const imgSrc = product?.folder && product?.main
+        ? `${product.folder}/${product.main}`
+        : null;
+
+    // Start size = same as product card image area
+    const startSize = 120;
+    const endSize   = 20;
+
+    const startX = srcRect.left + srcRect.width  / 2 - startSize / 2;
+    const startY = srcRect.top  + srcRect.height / 2 - startSize / 2;
+    const destX  = destRect.left + destRect.width  / 2;
+    const destY  = destRect.top  + destRect.height / 2;
+
+    // Inject keyframes dynamically
+    const animId = 'fly-' + Date.now();
+    const style  = document.createElement('style');
+    style.textContent = `
+        @keyframes ${animId} {
+            0%   { top:${startY}px; left:${startX}px; width:${startSize}px; height:${startSize}px; transform:rotate(0deg) scale(1);   opacity:1; }
+            60%  { transform:rotate(200deg) scale(0.5); opacity:1; }
+            85%  { top:${destY - endSize/2}px; left:${destX - endSize/2}px; width:${endSize}px; height:${endSize}px; transform:rotate(340deg) scale(0.3); opacity:0.8; }
+            100% { top:${destY - endSize/2}px; left:${destX - endSize/2}px; width:${endSize}px; height:${endSize}px; transform:rotate(360deg) scale(0);   opacity:0; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    const el = document.createElement(imgSrc ? 'img' : 'div');
+    if (imgSrc) { el.src = imgSrc; el.alt = ''; }
+
+    el.style.cssText = `
+        position: fixed;
+        width: ${startSize}px; height: ${startSize}px;
+        border-radius: 10px;
+        ${imgSrc ? 'object-fit: cover;' : 'background: var(--gold);'}
+        z-index: 99999;
+        pointer-events: none;
+        top: ${startY}px;
+        left: ${startX}px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        border: 1.5px solid rgba(224,192,151,0.4);
+        animation: ${animId} 0.7s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
+    `;
+    document.body.appendChild(el);
+
+    setTimeout(() => {
+        el.remove();
+        style.remove();
+        animateCartIcon();
+    }, 720);
+}
+
 /* ─── Toast notification ─── */
 function showAddToCartToast(product) {
     const lang = localStorage.getItem('dalal-lang') || 'ar';
@@ -467,6 +550,37 @@ function renderCartItems() {
     }
 }
 
+/* ─── Recently Viewed in cart ─── */
+function renderCartRecentlyViewed() {
+    const container = document.getElementById('cartRecentlyViewed');
+    if (!container) return;
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('dalal-recently-viewed')) || []; } catch {}
+    if (!list.length) return;
+
+    container.innerHTML = `
+        <p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.75rem;letter-spacing:0.06em;">
+            ${lang === 'ar' ? 'شاهدتِ مؤخراً' : 'Recently Viewed'}
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;">
+            ${list.slice(0, 3).map(p => {
+                const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
+                const url  = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
+                return `
+                    <a href="${url}" onclick="closeCart()" style="text-decoration:none;color:inherit;">
+                        <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color 0.15s;">
+                            <img src="${p.folder}/${p.main}" alt="${name}" loading="lazy"
+                                 style="width:100%;aspect-ratio:1;object-fit:cover;display:block;opacity:0;transition:opacity 0.3s"
+                                 onload="this.style.opacity='1'" onerror="this.style.opacity='0.3'">
+                            <div style="font-size:0.68rem;color:var(--text-dim);padding:0.3rem 0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+                        </div>
+                    </a>`;
+            }).join('')}
+        </div>
+    `;
+}
+
 /* ─── Drawer open/close ─── */
 function openCart() {
     renderCartItems();
@@ -477,6 +591,9 @@ function openCart() {
     if (overlay) overlay.classList.add('active');
     if (sticky)  sticky.style.display = 'none';
     document.body.style.overflow = 'hidden';
+
+    // Render recently viewed in empty cart
+    if (cart.length === 0) renderCartRecentlyViewed();
 }
 
 function closeCart() {
@@ -605,7 +722,7 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
         const btn   = document.getElementById('soSubmitBtn');
         const label = document.getElementById('soSubmitLabel');
         btn.disabled = true;
-        label.innerHTML = '<span class="order-spinner"></span>';
+        label.innerHTML = '<span class="order-loading-dots"><span></span><span></span><span></span></span>';
 
         const priceNum = parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0;
 
@@ -805,16 +922,24 @@ function checkoutViaSite() {
         const address = document.getElementById('coAddress').value.trim();
 
         if (!name || !phone || !address) {
-            const errEl = document.getElementById('coError');
-            errEl.textContent = isAr ? 'يرجى ملء جميع الحقول' : 'Please fill in all fields';
-            errEl.classList.add('is-visible');
+            const shake = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.classList.remove('input-error');
+                void el.offsetWidth;
+                el.classList.add('input-error');
+                setTimeout(() => el.classList.remove('input-error'), 600);
+            };
+            if (!name)    shake('coName');
+            if (!phone)   shake('coPhone');
+            if (!address) shake('coAddress');
             return;
         }
 
         const btn = document.getElementById('coSubmitBtn');
         const label = document.getElementById('coSubmitLabel');
         btn.disabled = true;
-        label.innerHTML = '<span class="order-spinner"></span>';
+        label.innerHTML = '<span class="order-loading-dots"><span></span><span></span><span></span></span>';
 
         // Build products array from cart
         const products = cart.map(i => ({
@@ -867,6 +992,7 @@ function checkoutViaSite() {
                     ${isAr ? 'تتبع طلبك ←' : 'Track your order ←'}
                 </a>`;
             document.getElementById('coSuccess').classList.add('is-visible');
+            playSuccessSound();
             cartClear(true);
             closeCart();
             setTimeout(closeModal, 5000);
@@ -952,6 +1078,16 @@ function injectCartHTML() {
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
             </svg>
             <p id="cartEmptyText">${isAr ? 'السلة فارغة' : 'Your cart is empty'}</p>
+            <a href="products.html" onclick="closeCart()"
+               class="btn btn-secondary"
+               style="margin-top:0.75rem;font-size:0.82rem;padding:0.65rem 1.5rem;display:inline-flex;align-items:center;gap:0.4rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                <span id="cartShopNowLabel">${isAr ? 'تسوّقي الآن' : 'Shop Now'}</span>
+            </a>
+            <div id="cartRecentlyViewed" style="margin-top:1.25rem;width:100%;"></div>
         </div>
 
         <div id="cartItems" class="cart-items-list"></div>
@@ -1021,6 +1157,7 @@ function updateCartLang(lang) {
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
     set('cartDrawerTitle', isAr ? 'سلة التسوق' : 'Shopping Cart');
     set('cartEmptyText',   isAr ? 'السلة فارغة' : 'Your cart is empty');
+    set('cartShopNowLabel', isAr ? 'تسوّقي الآن' : 'Shop Now');
     set('cartTotalLabel',    isAr ? 'الإجمالي' : 'Total');
     set('cartClearLabel',    isAr ? 'إفراغ السلة' : 'Clear Cart');
     set('cartCheckoutLabel', isAr ? 'الطلب عبر ماسنجر' : 'Order via Messenger');

@@ -6,6 +6,132 @@ let currentProduct   = null;
 let selectedQtyOption  = null;
 let selectedSize       = null;
 
+/* ─── Update meta tags for SEO & social sharing ─── */
+function updateProductMeta(product, lang) {
+    const name     = getProductName(product, lang);
+    const nameEn   = getProductName(product, 'en');
+    const desc     = product.description?.[lang] || product.description?.ar || `${name} — دلال للملابس الداخلية الفاخرة`;
+    const imgPath  = `${product.folder}/${product.main}`;
+    const baseUrl  = 'https://www.dalalwear.shop';
+    const pageUrl  = product.slug
+        ? `${baseUrl}/product.html#${product.slug}`
+        : `${baseUrl}/product.html?id=${product.id}`;
+    const imgUrl   = imgPath.startsWith('http') ? imgPath : `${baseUrl}/${imgPath}`;
+
+    // Starting price
+    const pricingRows = product.pricing?.ar || [];
+    const startPrice  = pricingRows.length
+        ? parseFloat(pricingRows[0].value.replace(/[^\d.]/g, '')) || ''
+        : '';
+
+    const setMeta = (id, attr, val) => {
+        const el = document.getElementById(id);
+        if (el && val) el.setAttribute(attr, val);
+    };
+
+    // Page title & description
+    document.title = `${name} — دلال`;
+    const descEl = document.querySelector('meta[name="description"]');
+    if (descEl) descEl.setAttribute('content', desc);
+
+    // Open Graph
+    setMeta('ogTitle',       'content', `${name} — DALAL`);
+    setMeta('ogDescription', 'content', desc);
+    setMeta('ogImage',       'content', imgUrl);
+    setMeta('ogUrl',         'content', pageUrl);
+    if (startPrice) setMeta('ogPrice', 'content', String(startPrice));
+
+    // Twitter
+    setMeta('twTitle',       'content', `${name} — DALAL`);
+    setMeta('twDescription', 'content', desc);
+    setMeta('twImage',       'content', imgUrl);
+
+    // Canonical URL
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+        canonical = document.createElement('link');
+        canonical.rel = 'canonical';
+        document.head.appendChild(canonical);
+    }
+    canonical.href = pageUrl;
+
+    // JSON-LD structured data (Google rich results)
+    let jsonLd = document.getElementById('product-jsonld');
+    if (!jsonLd) {
+        jsonLd = document.createElement('script');
+        jsonLd.id   = 'product-jsonld';
+        jsonLd.type = 'application/ld+json';
+        document.head.appendChild(jsonLd);
+    }
+    jsonLd.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type':    'Product',
+        name:       nameEn || name,
+        description: desc,
+        image:      imgUrl,
+        url:        pageUrl,
+        brand: { '@type': 'Brand', name: 'DALAL' },
+        offers: {
+            '@type':         'Offer',
+            priceCurrency:   'EGP',
+            price:           startPrice || 0,
+            availability:    'https://schema.org/InStock',
+            seller: { '@type': 'Organization', name: 'DALAL' }
+        }
+    });
+}
+const RV_KEY     = 'dalal-recently-viewed';
+const RV_MAX     = 6;
+
+function saveRecentlyViewed(product) {
+    if (!product?.id) return;
+    let list = getRecentlyViewed();
+    list = list.filter(p => p.id !== product.id); // remove if already exists
+    list.unshift({ id: product.id, slug: product.slug || null, folder: product.folder, main: product.main, name: product.name });
+    if (list.length > RV_MAX) list = list.slice(0, RV_MAX);
+    localStorage.setItem(RV_KEY, JSON.stringify(list));
+}
+
+function getRecentlyViewed() {
+    try { return JSON.parse(localStorage.getItem(RV_KEY)) || []; }
+    catch { return []; }
+}
+
+function clearRecentlyViewed() {
+    localStorage.removeItem(RV_KEY);
+    const section = document.getElementById('recentlyViewedSection');
+    if (section) section.style.display = 'none';
+    // also clear in cart if open
+    const cartRV = document.getElementById('cartRecentlyViewed');
+    if (cartRV) cartRV.innerHTML = '';
+}
+window.clearRecentlyViewed = clearRecentlyViewed;
+
+function renderRecentlyViewed(currentId) {
+    const lang    = localStorage.getItem('dalal-lang') || 'ar';
+    const list    = getRecentlyViewed().filter(p => p.id !== currentId);
+    const section = document.getElementById('recentlyViewedSection');
+    const grid    = document.getElementById('recentlyViewedGrid');
+    const title   = document.getElementById('recentlyViewedTitle');
+    if (!section || !grid || !list.length) return;
+
+    if (title) title.textContent = lang === 'ar' ? 'شاهدتِ مؤخراً' : 'Recently Viewed';
+
+    grid.innerHTML = list.map(p => {
+        const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
+        const url  = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
+        return `
+            <a href="${url}" class="rv-card">
+                <img src="${p.folder}/${p.main}" alt="${name}" loading="lazy"
+                     style="opacity:0;transition:opacity 0.3s"
+                     onload="this.style.opacity='1'" onerror="this.style.opacity='0.3'">
+                <div class="rv-card-name">${name}</div>
+            </a>`;
+    }).join('');
+
+    section.style.display = '';
+}
+
 /* ─── Modal helpers ─── */
 function openModal() {
     document.getElementById('orderModal').classList.add('active');
@@ -264,6 +390,13 @@ function initProductPage() {
 
     currentProduct = product;
 
+    /* Save & render recently viewed */
+    saveRecentlyViewed(product);
+    renderRecentlyViewed(product.id);
+
+    /* Update meta tags for SEO & social sharing */
+    updateProductMeta(product, lang);
+
     /* Main image — replace skeleton in wrapper */
     const mainWrapper = document.querySelector('.main-image-wrapper');
     if (mainWrapper) {
@@ -368,10 +501,39 @@ function initProductPage() {
 
     /* Apply language — fills productName, pricingTitle, pricingList */
     applyProductPageLang(lang);
+
+    /* Sticky order bar — show after scrolling past the main order button */
+    const stickyBar = document.getElementById('stickyOrderBar');
+    const stickyLbl = document.getElementById('stickyOrderLabel');
+    const mainBtn   = document.getElementById('registerOrderBtn');
+
+    if (stickyBar && mainBtn) {
+        const onScroll = () => {
+            const btnBottom = mainBtn.getBoundingClientRect().bottom;
+            if (btnBottom < 0) {
+                stickyBar.classList.add('visible');
+            } else {
+                stickyBar.classList.remove('visible');
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        // update label on lang change
+        document.addEventListener('dalal-lang-change', () => {
+            const l = localStorage.getItem('dalal-lang') || 'ar';
+            if (stickyLbl) stickyLbl.textContent = l === 'ar' ? 'اطلبي الآن' : 'Order Now';
+        });
+    }
 }
 
 /* ─── Bind help buttons once (lang-aware) ─── */
 document.addEventListener('DOMContentLoaded', showProductSkeleton);
 document.addEventListener('dalal:products-ready', initProductPage);
 if (Object.keys(DALAL_PRODUCTS_MAP).length > 0) initProductPage();
+
+// Re-init when navigating between products on the same page
+window.addEventListener('hashchange', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showProductSkeleton();
+    if (Object.keys(DALAL_PRODUCTS_MAP).length > 0) initProductPage();
+});
 

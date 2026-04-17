@@ -327,6 +327,33 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         <button class="filter-btn" data-filter="cancelled">ملغية</button>
     </div>
 
+    <!-- Date filter -->
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+        <span style="font-size:0.75rem;color:var(--text-dim);letter-spacing:0.06em;">التاريخ:</span>
+        <button class="filter-btn active" id="dateFilterAll"    onclick="setDateFilter('all')">الكل</button>
+        <button class="filter-btn"        id="dateFilterToday"  onclick="setDateFilter('today')">اليوم</button>
+        <button class="filter-btn"        id="dateFilter7"      onclick="setDateFilter('7d')">آخر 7 أيام</button>
+        <button class="filter-btn"        id="dateFilter30"     onclick="setDateFilter('30d')">آخر 30 يوم</button>
+    </div>
+
+    <!-- Custom date range -->
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+        <span style="font-size:0.75rem;color:var(--text-dim);letter-spacing:0.06em;">من:</span>
+        <input type="datetime-local" id="dateFrom"
+               style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:0.78rem;padding:0.35rem 0.6rem;outline:none;cursor:pointer;"
+               onchange="applyCustomDateFilter()">
+        <span style="font-size:0.75rem;color:var(--text-dim);">إلى:</span>
+        <input type="datetime-local" id="dateTo"
+               style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:0.78rem;padding:0.35rem 0.6rem;outline:none;cursor:pointer;"
+               onchange="applyCustomDateFilter()">
+        <button onclick="clearCustomDateFilter()"
+                style="font-size:0.75rem;color:var(--text-dim);background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:0.35rem 0.6rem;cursor:pointer;font-family:inherit;transition:color 0.15s,border-color 0.15s;"
+                onmouseover="this.style.color='var(--gold)';this.style.borderColor='var(--gold-dim)'"
+                onmouseout="this.style.color='';this.style.borderColor=''">
+            مسح
+        </button>
+    </div>
+
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
@@ -348,7 +375,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 (function () {
     'use strict';
 
-    let _all = [], _filter = 'all', _timer, _countdown = 30;
+    let _all = [], _filter = 'all', _dateFilter = 'all', _timer, _countdown = 30;
 
     const STATUS = {
         pending:   'قيد الانتظار',
@@ -364,6 +391,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         const { data: { session } } = await db.auth.getSession();
         if (session) {
             loadOrders();
+            subscribeToNewOrders();
         } else {
             document.body.style.overflow = 'hidden';
             showLoginUI(db);
@@ -415,7 +443,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             } else {
                 const ov = document.getElementById('loginOverlay');
                 ov.style.transition = 'opacity 0.3s'; ov.style.opacity = '0';
-                setTimeout(() => { ov.remove(); document.body.style.overflow = ''; loadOrders(); }, 300);
+                setTimeout(() => { ov.remove(); document.body.style.overflow = ''; loadOrders(); subscribeToNewOrders(); }, 300);
             }
         }
         document.getElementById('loginSubmit').addEventListener('click', tryLogin);
@@ -460,31 +488,78 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     function getFiltered() {
         let list = _filter === 'all' ? _all : _all.filter(o => o.status === _filter);
+
+        // Date filter
+        if (_dateFilter !== 'all') {
+            const now   = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            list = list.filter(o => {
+                if (!o.created_at) return false;
+                const d = new Date(o.created_at);
+                if (_dateFilter === 'today')  return d >= today;
+                if (_dateFilter === '7d')     return d >= new Date(today - 6 * 86400000);
+                if (_dateFilter === '30d')    return d >= new Date(today - 29 * 86400000);
+                if (_dateFilter === 'custom') {
+                    const from = document.getElementById('dateFrom')?.value;
+                    const to   = document.getElementById('dateTo')?.value;
+                    if (from && d < new Date(from)) return false;
+                    if (to   && d > new Date(to))   return false;
+                    return true;
+                }
+                return true;
+            });
+        }
+
         if (!_search) return list;
 
         const type = document.getElementById('searchType')?.value || 'ref';
-
         return list.filter(o => {
             const q = _search.toLowerCase();
             switch (type) {
-                case 'ref':
-                    return o.order_ref && o.order_ref.toLowerCase().includes(q);
-                case 'name':
-                    return o.name && o.name.toLowerCase().includes(q);
-                case 'phone':
-                    return o.phone && o.phone.includes(_search);
-                case 'email':
-                    return o.email && o.email.toLowerCase().includes(q);
+                case 'ref':     return o.order_ref && o.order_ref.toLowerCase().includes(q);
+                case 'name':    return o.name && o.name.toLowerCase().includes(q);
+                case 'phone':   return o.phone && o.phone.includes(_search);
+                case 'email':   return o.email && o.email.toLowerCase().includes(q);
                 case 'product': {
                     const products = Array.isArray(o.products) ? o.products
                         : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
                     return products.some(p => p.code && p.code.toLowerCase().includes(q));
                 }
-                default:
-                    return false;
+                default: return false;
             }
         });
     }
+
+    window.setDateFilter = function(val) {
+        _dateFilter = val;
+        // clear custom inputs when using quick filters
+        document.getElementById('dateFrom').value = '';
+        document.getElementById('dateTo').value   = '';
+        ['all','today','7d','30d'].forEach(k => {
+            const btn = document.getElementById('dateFilter' + (k === 'all' ? 'All' : k === 'today' ? 'Today' : k === '7d' ? '7' : '30'));
+            if (btn) btn.classList.toggle('active', k === val);
+        });
+        render();
+    };
+
+    window.applyCustomDateFilter = function() {
+        const from = document.getElementById('dateFrom').value;
+        const to   = document.getElementById('dateTo').value;
+        if (!from && !to) return;
+        // deactivate quick filter buttons
+        ['All','Today','7','30'].forEach(k => {
+            const btn = document.getElementById('dateFilter' + k);
+            if (btn) btn.classList.remove('active');
+        });
+        _dateFilter = 'custom';
+        render();
+    };
+
+    window.clearCustomDateFilter = function() {
+        document.getElementById('dateFrom').value = '';
+        document.getElementById('dateTo').value   = '';
+        setDateFilter('all');
+    };
 
     window.loadOrders = async function loadOrders() {
         showSkeleton();
@@ -535,7 +610,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <td class="order-total">${o.total ? o.total+' ج' : '—'}</td>
                 <td><select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this)">${statusOpts(o.status)}</select></td>
                 <td class="order-date">${fmtDate(o.created_at)}</td>
-                <td>
+                <td style="display:flex;gap:0.3rem;align-items:center;">
+                    <button class="del-btn" onclick="printOrder('${o.id}')" title="طباعة">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    </button>
                     <button class="del-btn" onclick="confirmDelete('${o.id}')" title="حذف">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     </button>
@@ -609,6 +687,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                         <span class="mc-date">${fmtDate(o.created_at)}</span>
                         <span class="mc-total">${o.total ? o.total.toLocaleString()+' ج' : '—'}</span>
                     </div>
+                    <button class="del-btn" onclick="printOrder('${o.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        طباعة
+                    </button>
                     <button class="del-btn" onclick="confirmDelete('${o.id}')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                         حذف
@@ -654,6 +736,99 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     function esc(s) {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+
+    window.printOrder = function(id) {
+        const o = _all.find(x => x.id === id);
+        if (!o) return;
+
+        const products = Array.isArray(o.products) ? o.products
+            : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
+
+        const productsHTML = products.map(p => `
+            <tr>
+                <td>${esc(p.name || '')}${p.code ? ` <span style="background:#E0C097;color:#000;font-size:10px;padding:1px 5px;border-radius:3px">${esc(p.code)}</span>` : ''}</td>
+                <td>${esc(p.offer || '')}${p.size ? ` | مقاس: ${esc(p.size)}` : ''}${p.color ? ` | لون: ${esc(p.color)}` : ''}</td>
+                <td style="text-align:left">${esc(p.price || '')}</td>
+            </tr>
+            ${p.notes ? `<tr><td colspan="3" style="color:#666;font-size:11px;padding-top:0">ملاحظة: ${esc(p.notes)}</td></tr>` : ''}
+        `).join('');
+
+        const statusLabels = { pending:'قيد المراجعة', confirmed:'تم التأكيد', shipped:'في الطريق', delivered:'تم التسليم', cancelled:'ملغي' };
+
+        const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>طلب ${esc(o.order_ref || '')}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 30px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; border-bottom:2px solid #111; padding-bottom:16px; }
+  .brand { font-size:22px; font-weight:bold; letter-spacing:4px; }
+  .brand small { display:block; font-size:10px; font-weight:normal; letter-spacing:1px; color:#666; margin-top:2px; }
+  .ref { font-size:11px; color:#666; text-align:left; }
+  .ref strong { font-size:14px; color:#111; display:block; }
+  .section { margin-bottom:18px; }
+  .section-title { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#888; margin-bottom:6px; border-bottom:1px solid #eee; padding-bottom:4px; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 20px; }
+  .info-row { font-size:12px; }
+  .info-row span { color:#666; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { background:#f5f5f5; padding:7px 8px; text-align:right; font-weight:600; border:1px solid #ddd; }
+  td { padding:7px 8px; border:1px solid #ddd; vertical-align:top; }
+  .total-row td { font-weight:bold; font-size:14px; background:#f9f9f9; }
+  .status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:bold; background:#f0f0f0; }
+  .footer { margin-top:30px; text-align:center; font-size:10px; color:#aaa; border-top:1px solid #eee; padding-top:12px; }
+  @media print { body { padding:15px; } }
+<\/style>
+<\/head>
+<body>
+  <div class="header">
+    <div class="brand">DALAL <small>أناقة تستحقينها</small></div>
+    <div class="ref">
+      <strong>${esc(o.order_ref || '—')}</strong>
+      ${fmtDate(o.created_at)}<br>
+      <span class="status-badge">${statusLabels[o.status] || o.status}</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">بيانات العميل</div>
+    <div class="info-grid">
+      <div class="info-row"><span>الاسم: </span>${esc(o.name || '—')}</div>
+      <div class="info-row"><span>الهاتف: </span><span dir="ltr">${esc(o.phone || '—')}</span></div>
+      <div class="info-row" style="grid-column:1/-1"><span>العنوان: </span>${esc(o.address || '—')}</div>
+      ${o.email ? `<div class="info-row" style="grid-column:1/-1"><span>الإيميل: </span>${esc(o.email)}</div>` : ''}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">المنتجات</div>
+    <table>
+      <thead><tr><th>المنتج</th><th>التفاصيل</th><th style="text-align:left">السعر</th></tr></thead>
+      <tbody>
+        ${productsHTML}
+        <tr class="total-row">
+          <td colspan="2">الإجمالي</td>
+          <td style="text-align:left">${o.total ? o.total.toLocaleString() + ' جنيه' : '—'}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">DALAL — جميع الحقوق محفوظة © 2026</div>
+
+<\/body>
+<\/html>`;
+
+        const w = window.open('', '_blank', 'width=700,height=900');
+        if (w) {
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+            setTimeout(() => w.print(), 500);
+        }
+    };
 
     window.confirmDelete = function(id) {
         if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
@@ -813,6 +988,53 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         _filter = btn.getAttribute('data-filter');
         render();
     });
+
+    // ─── Admin notification sound ───
+    function playAdminSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            // Two-tone alert: low then high
+            [[440, 0], [660, 0.18]].forEach(([freq, delay]) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                const t = ctx.currentTime + delay;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+                osc.start(t);
+                osc.stop(t + 0.5);
+            });
+        } catch { /* silent fail */ }
+    }
+
+    function showAdminToast(msg) {
+        let toast = document.getElementById('adminToast');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    // ─── Realtime subscription ───
+    async function subscribeToNewOrders() {
+        const db = await getSupabase();
+        db.channel('admin-orders')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'orders'
+            }, (payload) => {
+                const order = payload.new;
+                playAdminSound();
+                showAdminToast(`🛍️ طلب جديد — ${order.name || ''} (${order.order_ref || ''})`);
+                loadOrders(); // refresh the table
+            })
+            .subscribe();
+    }
 
     // loadOrders called by checkAuth after session verified
     initAdmin();

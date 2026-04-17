@@ -263,7 +263,16 @@
         const offerIdx = document.getElementById('orderSelectOffer').value;
 
         if (!name || !phone || !address || !sizeVal || offerIdx === '') {
-            showError(t.fillAll); return;
+            if (!name)    shakeInput('orderInputName');
+            if (!phone)   shakeInput('orderInputPhone');
+            if (!address) shakeInput('orderInputAddress');
+            if (!sizeVal || offerIdx === '') {
+                document.querySelectorAll('.order-select').forEach(s => {
+                    if (!s.value) { s.classList.add('input-error'); setTimeout(() => s.classList.remove('input-error'), 600); }
+                });
+            }
+            hideError();
+            return;
         }
 
         const pricingRows   = _product.pricing?.[lang] || _product.pricing?.ar || [];
@@ -297,7 +306,7 @@
         const btn   = document.getElementById('orderSubmitBtn');
         const label = document.getElementById('orderSubmitLabel');
         btn.disabled = true;
-        label.innerHTML = `<span class="order-spinner"></span>`;
+        label.innerHTML = `<span class="order-loading-dots"><span></span><span></span><span></span></span>`;
         hideError();
 
         try {
@@ -326,6 +335,7 @@
                     ${lang === 'ar' ? 'تتبع طلبك ←' : 'Track your order ←'}
                 </a>`;
             document.getElementById('orderSuccess').classList.add('is-visible');
+            if (typeof playSuccessSound === 'function') playSuccessSound();
             setTimeout(closeOrderModal, 5000);
         } catch (err) {
             console.error('Order error:', err);
@@ -342,6 +352,15 @@
     }
     function hideError() {
         document.getElementById('orderError').classList.remove('is-visible');
+    }
+
+    function shakeInput(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('input-error');
+        void el.offsetWidth; // reflow to restart animation
+        el.classList.add('input-error');
+        setTimeout(() => el.classList.remove('input-error'), 600);
     }
 
     window.openOrderModal  = openOrderModal;

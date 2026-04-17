@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دلال — الصفحة غير موجودة</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Tajawal:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/images/dalal-logo.png">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0D0D0D;
+            color: #F5F0EB;
+            font-family: 'Tajawal', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 480px;
+            animation: fadeUp 0.5s ease forwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            letter-spacing: 0.25em;
+            color: #E0C097;
+            margin-bottom: 2.5rem;
+        }
+
+        .code {
+            font-size: clamp(5rem, 20vw, 8rem);
+            font-weight: 700;
+            color: #E0C097;
+            line-height: 1;
+            opacity: 0.15;
+            margin-bottom: 1rem;
+            font-family: 'Playfair Display', serif;
+        }
+
+        h1 {
+            font-size: clamp(1.2rem, 4vw, 1.6rem);
+            font-weight: 500;
+            color: #F5F0EB;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.04em;
+        }
+
+        p {
+            font-size: 0.9rem;
+            color: #A89B8C;
+            line-height: 1.7;
+            margin-bottom: 2.5rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            border: 1px solid;
+        }
+
+        .btn-primary {
+            background: #E0C097;
+            color: #0D0D0D;
+            border-color: #E0C097;
+        }
+        .btn-primary:hover {
+            background: transparent;
+            color: #E0C097;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #A89B8C;
+            border-color: rgba(224,192,151,0.2);
+        }
+        .btn-secondary:hover {
+            border-color: #E0C097;
+            color: #E0C097;
+        }
+
+        .divider {
+            width: 40px;
+            height: 1px;
+            background: rgba(224,192,151,0.2);
+            margin: 2rem auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="brand">DALAL</div>
+
+        <div class="code">404</div>
+
+        <h1>الصفحة غير موجودة</h1>
+        <p>يبدو أن الرابط الذي أدخلتِه غير صحيح أو أن الصفحة تم نقلها.</p>
+
+        <div class="divider"></div>
+
+        <div class="btn-group">
+            <a href="/" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                الرئيسية
+            </a>
+            <a href="/products" class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                تسوّقي الآن
+            </a>
+            <a href="/track" class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                تتبع طلبك
+            </a>
+        </div>
+    </div>
+</body>
+</html>
