@@ -283,6 +283,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             <span class="hide-mobile">خروج</span>
         </button>
+        <button class="admin-refresh-btn" onclick="showExportMenu()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span class="hide-mobile">تصدير</span>
+        </button>
     </div>
 </header>
 
@@ -300,8 +304,17 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input type="text" id="adminSearch" class="admin-search-input"
-               placeholder="بحث بكود الطلب (DL-XXXXX) أو كود المنتج (BL-001)..."
+               placeholder="بحث..."
                oninput="handleSearch(this.value)">
+        <!-- Search type selector -->
+        <select id="searchType" onchange="handleSearch(document.getElementById('adminSearch').value)"
+                style="background:var(--bg-light);border:none;border-right:1px solid var(--border);color:var(--text-muted);font-family:inherit;font-size:0.78rem;padding:0.3rem 0.5rem;outline:none;cursor:pointer;flex-shrink:0;border-radius:0;">
+            <option value="ref">رقم الطلب</option>
+            <option value="name">الاسم</option>
+            <option value="phone">الهاتف</option>
+            <option value="email">الإيميل</option>
+            <option value="product">كود المنتج</option>
+        </select>
         <button id="adminSearchClear" onclick="clearSearch()" style="display:none;color:var(--text-dim);font-size:1rem;line-height:1;padding:0 0.3rem;">✕</button>
     </div>
 
@@ -422,6 +435,19 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.handleSearch = function(val) {
         _search = val.trim().toLowerCase();
         document.getElementById('adminSearchClear').style.display = _search ? 'block' : 'none';
+
+        // Update placeholder based on type
+        const type = document.getElementById('searchType')?.value || 'ref';
+        const placeholders = {
+            ref:     'مثال: DL-XXXXX',
+            name:    'اكتب اسم العميل...',
+            phone:   'اكتب رقم الهاتف...',
+            email:   'اكتب الإيميل...',
+            product: 'اكتب كود المنتج...'
+        };
+        const input = document.getElementById('adminSearch');
+        if (input) input.placeholder = placeholders[type] || 'بحث...';
+
         render();
     };
 
@@ -435,13 +461,28 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     function getFiltered() {
         let list = _filter === 'all' ? _all : _all.filter(o => o.status === _filter);
         if (!_search) return list;
+
+        const type = document.getElementById('searchType')?.value || 'ref';
+
         return list.filter(o => {
-            // Search by order ref
-            if (o.order_ref && o.order_ref.toLowerCase().includes(_search)) return true;
-            // Search by product code
-            const products = Array.isArray(o.products) ? o.products
-                : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
-            return products.some(p => p.code && p.code.toLowerCase().includes(_search));
+            const q = _search.toLowerCase();
+            switch (type) {
+                case 'ref':
+                    return o.order_ref && o.order_ref.toLowerCase().includes(q);
+                case 'name':
+                    return o.name && o.name.toLowerCase().includes(q);
+                case 'phone':
+                    return o.phone && o.phone.includes(_search);
+                case 'email':
+                    return o.email && o.email.toLowerCase().includes(q);
+                case 'product': {
+                    const products = Array.isArray(o.products) ? o.products
+                        : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
+                    return products.some(p => p.code && p.code.toLowerCase().includes(q));
+                }
+                default:
+                    return false;
+            }
         });
     }
 
@@ -618,6 +659,72 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
         doDelete(id);
     };
+
+    // ─── Export ───
+    window.showExportMenu = function() {
+        const choice = prompt(
+            'اختر نوع التصدير:\n1 — كل الطلبات (Excel)\n2 — الإيميلات فقط\n3 — أرقام الموبايل فقط\n\nاكتب رقم الاختيار:'
+        )
+        if (!choice) return
+        if (choice.trim() === '1') exportAllExcel()
+        else if (choice.trim() === '2') exportEmails()
+        else if (choice.trim() === '3') exportPhones()
+    }
+
+    function exportAllExcel() {
+        if (!_all.length) return alert('لا توجد طلبات')
+        const rows = [
+            ['رقم الطلب', 'الاسم', 'الهاتف', 'الإيميل', 'العنوان', 'الإجمالي', 'الحالة', 'التاريخ', 'المنتجات']
+        ]
+        _all.forEach(o => {
+            const products = Array.isArray(o.products) ? o.products
+                : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : [])
+            const productsStr = products.map(p =>
+                [p.name, p.offer, p.size ? 'مقاس:'+p.size : '', p.color ? 'لون:'+p.color : '', p.notes ? 'ملاحظة:'+p.notes : '', p.price]
+                .filter(Boolean).join(' | ')
+            ).join(' / ')
+            rows.push([
+                o.order_ref || '',
+                o.name || '',
+                o.phone || '',
+                o.email || '',
+                o.address || '',
+                o.total || '',
+                o.status || '',
+                o.created_at ? new Date(o.created_at).toLocaleDateString('ar-EG') : '',
+                productsStr
+            ])
+        })
+        downloadCSV(rows, 'dalal-orders.csv')
+    }
+
+    function exportEmails() {
+        const emails = _all.map(o => o.email).filter(Boolean)
+        if (!emails.length) return alert('لا توجد إيميلات مسجلة')
+        const rows = [['الإيميل'], ...emails.map(e => [e])]
+        downloadCSV(rows, 'dalal-emails.csv')
+    }
+
+    function exportPhones() {
+        const phones = _all.map(o => o.phone).filter(Boolean)
+        if (!phones.length) return alert('لا توجد أرقام مسجلة')
+        const rows = [['رقم الهاتف'], ...phones.map(p => [p])]
+        downloadCSV(rows, 'dalal-phones.csv')
+    }
+
+    function downloadCSV(rows, filename) {
+        const bom = '\uFEFF' // UTF-8 BOM for Arabic in Excel
+        const csv = bom + rows.map(r =>
+            r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+        ).join('\n')
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+        const url  = URL.createObjectURL(blob)
+        const a    = document.createElement('a')
+        a.href     = url
+        a.download = filename
+        a.click()
+        URL.revokeObjectURL(url)
+    }
 
     window.confirmDeleteAll = function() {
         if (!confirm('هل أنت متأكد من حذف جميع الطلبات؟ لا يمكن التراجع عن هذا الإجراء.')) return;

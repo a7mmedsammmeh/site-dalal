@@ -21,25 +21,101 @@ function saveCart() {
 }
 
 /* ─── Central messenger message builder ─── */
-function buildMessengerMsg({ lang, productName, code, priceLabel, priceValue, size, color, notes }) {
+function buildMessengerMsg({ lang, productName, code, priceLabel, priceValue, size, color, notes, phone, email }) {
     const codeStr = code ? ` — Code: [${code}]` : '';
     if (lang === 'ar') {
         let msg = `DALAL — طلب جديد${codeStr}\n\nالمنتج: ${productName}\nالكمية: ${priceLabel} — ${priceValue}`;
         if (size)  msg += `\nالمقاس: ${size}`;
         if (color) msg += `\nاللون: ${color}`;
         if (notes) msg += `\nملاحظات: ${notes}`;
+        if (phone) msg += `\n\nرقم الهاتف: ${phone}`;
+        if (email) msg += `\nالإيميل: ${email}`;
         return msg;
     } else {
         let msg = `DALAL — New Order${codeStr}\n\nProduct: ${productName}\nQuantity: ${priceLabel} — ${priceValue}`;
         if (size)  msg += `\nSize: ${size}`;
         if (color) msg += `\nColor: ${color}`;
         if (notes) msg += `\nNotes: ${notes}`;
+        if (phone) msg += `\n\nPhone: ${phone}`;
+        if (email) msg += `\nEmail: ${email}`;
         return msg;
     }
 }
 
 function openMessenger(msg) {
     window.open(`https://m.me/dalal.lingerie?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+}
+
+/* ─── Contact modal before Messenger ─── */
+function openMessengerWithContact(buildMsg) {
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
+    const isAr = lang === 'ar';
+
+    const old = document.getElementById('messengerContactModal');
+    if (old) old.remove();
+
+    const html = `
+    <div class="order-overlay" id="messengerContactModal" role="dialog" aria-modal="true">
+        <div class="order-modal" style="max-width:400px;">
+            <div class="order-drag-handle"></div>
+            <div class="order-modal-header">
+                <h2 class="order-modal-title">${isAr ? 'قبل ما نكمل...' : 'Before we continue...'}</h2>
+                <button class="order-modal-close" id="mcClose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="order-modal-divider"></div>
+            <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.6;">
+                ${isAr ? 'أضيفي رقمك وإيميلك عشان نقدر نتواصل معاكِ بسهولة — اختياري تماماً' : 'Add your phone & email so we can reach you easily — completely optional'}
+            </p>
+            <div class="order-field">
+                <label class="order-label" for="mcPhone">${isAr ? 'رقم الهاتف' : 'Phone'}</label>
+                <input class="order-input" id="mcPhone" type="tel" inputmode="numeric" placeholder="01xxxxxxxxx">
+                <span class="order-field-hint">${isAr ? 'اختياري — للتواصل معاكِ بخصوص الطلب' : 'Optional — to contact you about your order'}</span>
+            </div>
+            <div class="order-field">
+                <label class="order-label" for="mcEmail">${isAr ? 'البريد الإلكتروني' : 'Email'}</label>
+                <input class="order-input" id="mcEmail" type="email" placeholder="example@email.com">
+                <span class="order-field-hint">${isAr ? 'اختياري — لاستلام تحديثات الطلب' : 'Optional — to receive order updates'}</span>
+            </div>
+            <button class="order-submit-btn" id="mcSubmit">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/></svg>
+                ${isAr ? 'فتح ماسنجر' : 'Open Messenger'}
+            </button>
+            <button id="mcSkip" style="width:100%;margin-top:0.5rem;background:transparent;border:none;color:var(--text-dim);font-size:0.78rem;cursor:pointer;padding:0.5rem;font-family:inherit;">
+                ${isAr ? 'تخطي وفتح ماسنجر مباشرة' : 'Skip and open Messenger directly'}
+            </button>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    const overlay = document.getElementById('messengerContactModal');
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
+    document.body.style.overflow = 'hidden';
+
+    const closeModal = () => {
+        overlay.classList.remove('is-open');
+        setTimeout(() => overlay.remove(), 350);
+        document.body.style.overflow = '';
+    };
+
+    const submit = (skip = false) => {
+        const phone = skip ? '' : (document.getElementById('mcPhone')?.value.trim() || '');
+        const email = skip ? '' : (document.getElementById('mcEmail')?.value.trim() || '');
+        closeModal();
+        const msg = buildMsg({ phone, email });
+        openMessenger(msg);
+    };
+
+    document.getElementById('mcClose').addEventListener('click', closeModal);
+    document.getElementById('mcSubmit').addEventListener('click', () => submit(false));
+    document.getElementById('mcSkip').addEventListener('click', () => submit(true));
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    document.getElementById('mcPhone').addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
 }
 function cartAdd(product, selectedRow, qty = 1, extras = {}) {
     const key = `${product.id}_${selectedRow.label}_${Date.now()}`;
@@ -127,19 +203,13 @@ function openQuickAddModal(product) {
                        placeholder="${isAr ? 'أي تفاصيل إضافية...' : 'Any extra details...'}">
             </div>
 
-            <div class="qa-action-row">
-                <button class="btn btn-secondary qa-cart-btn" id="qaAddCartBtn">
+            <div class="qa-action-row" style="grid-template-columns:1fr">
+                <button class="btn btn-primary qa-cart-btn" id="qaAddCartBtn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                     </svg>
                     ${isAr ? 'أضيفي للسلة' : 'Add to Cart'}
-                </button>
-                <button class="btn btn-primary qa-site-order-btn" id="qaSiteOrderBtn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
-                        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                    </svg>
-                    ${isAr ? 'اطلبي عن طريق الموقع' : 'Order via Website'}
                 </button>
             </div>
         </div>
@@ -188,27 +258,7 @@ function openQuickAddModal(product) {
         closeQA();
     });
 
-    // Order via Website
-    document.getElementById('qaSiteOrderBtn').addEventListener('click', () => {
-        if (!_quickSelectedQty) {
-            overlay.querySelectorAll('.qa-qty-btn').forEach(b => {
-                b.style.borderColor = '#c0392b';
-                setTimeout(() => b.style.borderColor = '', 1500);
-            });
-            return;
-        }
-        const size  = document.getElementById('qaSizeInput')?.value.trim() || '';
-        const color = document.getElementById('qaColorInput')?.value.trim() || '';
-        const notes = document.getElementById('qaNotesInput')?.value.trim() || '';
-
-        closeQA();
-        // Open customer info modal with all product details pre-filled
-        openSiteOrderModal({
-            product,
-            selectedRow: _quickSelectedQty,
-            size, color, notes
-        });
-    });
+    // Order via Website — removed
 
     // Drag to dismiss
     const modal = overlay.querySelector('.modal');
@@ -837,7 +887,6 @@ function checkoutViaMessenger() {
     const lines = cart.map(i => {
         const name = lang === 'ar' ? i.nameAr : i.nameEn;
 
-        // Get current-language label+value from product data
         let label = i.priceLabel;
         let value = i.priceValue;
         if (typeof DALAL_PRODUCTS_MAP !== 'undefined') {
@@ -860,11 +909,15 @@ function checkoutViaMessenger() {
     }).join('\n\n');
 
     const total = cartTotal().toLocaleString();
-    const msg = lang === 'ar'
-        ? `DALAL — طلب جديد\n${'─'.repeat(28)}\n\n${lines}\n\n${'─'.repeat(28)}\nالاجمالي: ${total} جنيه`
-        : `DALAL — New Order\n${'─'.repeat(28)}\n\n${lines}\n\n${'─'.repeat(28)}\nTotal: ${total} EGP`;
 
-    openMessenger(msg);
+    openMessengerWithContact(({ phone, email }) => {
+        let msg = lang === 'ar'
+            ? `DALAL — طلب جديد\n${'─'.repeat(28)}\n\n${lines}\n\n${'─'.repeat(28)}\nالاجمالي: ${total} جنيه`
+            : `DALAL — New Order\n${'─'.repeat(28)}\n\n${lines}\n\n${'─'.repeat(28)}\nTotal: ${total} EGP`;
+        if (phone) msg += lang === 'ar' ? `\n\nرقم الهاتف: ${phone}` : `\n\nPhone: ${phone}`;
+        if (email) msg += lang === 'ar' ? `\nالإيميل: ${email}`     : `\nEmail: ${email}`;
+        return msg;
+    });
 }
 
 /* ─── Inject cart HTML into page ─── */

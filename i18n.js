@@ -45,7 +45,9 @@ const DALAL_I18N = {
         trackPageSub:    'أدخلي رقم الطلب (مثال: DL-AB1234)',
         trackHelpLabel:  'كيف أجد رقم طلبي؟',
         trackHelpTitle:  'كيف أجد رقم طلبي؟',
-        trackHelpBody:   '<p>رقم الطلب هو كود فريد يبدأ بـ <strong>DL-</strong> يتم إنشاؤه تلقائياً عند تأكيد طلبك.</p><ul><li>بعد الطلب مباشرة، يظهر الرقم في <strong>رسالة التأكيد</strong></li><li>روحي لصفحة <strong>طلباتي</strong> واضغطي <strong>نسخ رقم الطلب</strong></li><li>الرقم يبدو هكذا: <strong style=\'color:var(--gold)\'>DL-AB1234</strong></li></ul>',
+        trackHelpBody:   '<p>رقم الطلب هو كود فريد يبدأ بـ <strong>DL-</strong> يتم إنشاؤه تلقائياً عند تأكيد طلبك.</p><ul><li>بعد الطلب مباشرة، يظهر الرقم في <strong>رسالة التأكيد</strong></li><li>روحي لصفحة <strong>طلباتي</strong> واضغطي <strong>نسخ رقم الطلب</strong></li><li>لو حطيتِ إيميلك عند الطلب، <strong>رقم الطلب هيوصلك على إيميلك</strong> تلقائياً</li><li>الرقم يبدو هكذا: <strong style=\'color:var(--gold)\'>DL-AB1234</strong></li></ul>',
+        trackFromDevice: 'هل قمت بالطلب على جهاز آخر وتريد متابعة طلبك؟',
+        trackFromDeviceLink: 'من هنا ←',
         pageTitles: {
             home:       'دلال — ملابس داخلية فاخرة',
             products:   'دلال — التشكيلة الكاملة',
@@ -113,7 +115,9 @@ const DALAL_I18N = {
         trackPageSub:    'Enter your order number (e.g. DL-AB1234)',
         trackHelpLabel:  'How do I find my order number?',
         trackHelpTitle:  'How do I find my order number?',
-        trackHelpBody:   '<p>Your order number is a unique code starting with <strong>DL-</strong> generated automatically when your order is confirmed.</p><ul><li>Right after ordering, the number appears in the <strong>confirmation message</strong></li><li>Go to <strong>My Orders</strong> and tap <strong>Copy Order Number</strong></li><li>It looks like this: <strong style=\'color:var(--gold)\'>DL-AB1234</strong></li></ul>',
+        trackHelpBody:   '<p>Your order number is a unique code starting with <strong>DL-</strong> generated automatically when your order is confirmed.</p><ul><li>Right after ordering, the number appears in the <strong>confirmation message</strong></li><li>Go to <strong>My Orders</strong> and tap <strong>Copy Order Number</strong></li><li>If you added your email when ordering, <strong>your order number will be sent to your email</strong> automatically</li><li>It looks like this: <strong style=\'color:var(--gold)\'>DL-AB1234</strong></li></ul>',
+        trackFromDevice: 'Ordered from another device and want to track your order?',
+        trackFromDeviceLink: 'Track here →',
         pageTitles: {
             home:       'DALAL — Luxury Lingerie',
             products:   'DALAL — Full Collection',

@@ -106,6 +106,8 @@ function applyLanguage(lang) {
     setS('ordersPageSub',   t.ordersPageSub);
     setS('trackPageTitle',  t.trackPageTitle);
     setS('trackPageSub',    t.trackPageSub);
+    setS('trackFromDeviceLabel', t.trackFromDevice);
+    setS('trackFromDeviceLink',  t.trackFromDeviceLink);
 
     /* product cards */
     if (typeof rerenderProducts === 'function') rerenderProducts(lang);

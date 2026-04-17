@@ -784,7 +784,7 @@ body.lang-ar .modal-option { font-family: var(--font-ar); }
 /* ─── Drawer ─── */
 .cart-drawer {
     position: fixed; top: 0; z-index: 1200;
-    width: min(380px, 92vw); height: 100dvh; height: 100vh;
+    width: min(380px, 92vw); height: 100vh; height: 100dvh;
     background: var(--bg-card);
     border-inline-start: 1px solid var(--border-h);
     display: flex; flex-direction: column;

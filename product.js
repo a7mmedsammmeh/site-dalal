@@ -117,15 +117,14 @@ function submitOrder() {
     const color = colorInput?.value.trim();
     const notes = notesInput?.value.trim();
 
-    const msg = buildMessengerMsg({
+    openMessengerWithContact(({ phone, email }) => buildMessengerMsg({
         lang,
         productName: lang === 'ar' ? getProductName(currentProduct, 'ar') : getProductName(currentProduct, 'en'),
         code:        currentProduct.code || null,
         priceLabel:  selectedQtyOption.label,
         priceValue:  selectedQtyOption.value,
-        size, color, notes
-    });
-    openMessenger(msg);
+        size, color, notes, phone, email
+    }));
 }
 
 /* ─── Apply language to product page ─── */

@@ -468,8 +468,8 @@
                </div>` : ''}
                <div class="track-progress">
                 ${STEPS.map((label, i) => {
-                    const isDone = status === 'delivered' ? true : i < stepIdx;
-                    const cls  = isDone ? 'done' : i === stepIdx ? 'active' : '';
+                    const isDone = status === 'delivered' ? true : i <= stepIdx;
+                    const cls  = isDone ? 'done' : i === stepIdx + 1 ? 'active' : '';
                     const icon = isDone ? '✓' : (i + 1);
                     return `<div class="progress-step ${cls}">
                         <div class="progress-dot">${icon}</div>
