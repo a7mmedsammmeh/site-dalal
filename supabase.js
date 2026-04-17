@@ -110,3 +110,9 @@ async function toggleReviewVisibility(id, visible) {
     const { error } = await db.from('reviews').update({ is_visible: visible }).eq('id', id);
     if (error) throw error;
 }
+
+async function toggleReviewPin(id, pinned) {
+    const db = await getSupabase();
+    const { error } = await db.from('reviews').update({ is_pinned: pinned }).eq('id', id);
+    if (error) throw error;
+}

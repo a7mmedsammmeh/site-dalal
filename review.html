@@ -6,66 +6,125 @@
     <title>دلال — شاركي تجربتك</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/dalal-logo.png">
-    <link rel="stylesheet" href="style.css">
     <style>
-        .review-page {
+        :root {
+            --bg:       #0D0D0D;
+            --bg-card:  #1A1A1A;
+            --bg-light: #141414;
+            --gold:     #E0C097;
+            --gold-dim: #C4A67A;
+            --text:     #F5F0EB;
+            --muted:    #A89B8C;
+            --dim:      #6B6158;
+            --border:   rgba(224,192,151,0.15);
+            --border-h: rgba(224,192,151,0.4);
+            --r:        6px;
+            --r-lg:     14px;
+        }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html { font-size:16px; -webkit-font-smoothing:antialiased; }
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 6rem 1.5rem 4rem;
-            background: var(--bg);
+            padding: 2rem 1rem;
         }
+
+        /* ── Card ── */
         .review-card {
             width: 100%;
-            max-width: 480px;
+            max-width: 460px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--r-lg);
-            padding: 2.5rem 2rem;
-            animation: fadeUp 0.4s ease forwards;
+            overflow: hidden;
+            animation: slideUp 0.5s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
         }
-        @keyframes fadeUp {
-            from { opacity:0; transform:translateY(16px); }
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(24px); }
             to   { opacity:1; transform:translateY(0); }
         }
+
+        /* ── Header gradient ── */
+        .review-header {
+            background: linear-gradient(135deg, #1A1A1A 0%, rgba(224,192,151,0.06) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 1.75rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
         .review-brand {
-            font-family: var(--font-en);
-            font-size: 1.4rem;
-            letter-spacing: 0.25em;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            letter-spacing: 0.3em;
             color: var(--gold);
-            text-align: center;
-            margin-bottom: 0.4rem;
+            margin-bottom: 1.25rem;
         }
-        .review-title {
-            text-align: center;
-            font-size: 1rem;
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-            letter-spacing: 0.04em;
-        }
-        .review-ref {
-            text-align: center;
-            font-family: 'Poppins', monospace;
-            font-size: 0.82rem;
-            color: var(--gold);
+
+        /* Product preview */
+        .product-preview {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
             background: var(--bg-light);
+            border: 1px solid var(--border);
             border-radius: var(--r);
-            padding: 0.4rem 1rem;
-            display: inline-block;
-            margin: 0 auto 1.75rem;
-            letter-spacing: 0.08em;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+            text-align: start;
         }
-        .review-ref-wrap { text-align: center; }
+        .product-preview img {
+            width: 52px; height: 52px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .product-preview-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .product-preview-sub {
+            font-size: 0.75rem;
+            color: var(--dim);
+            margin-top: 0.15rem;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Greeting */
+        .greeting {
+            font-size: 1rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        .greeting strong {
+            color: var(--gold);
+            font-size: 1.1rem;
+        }
+
+        /* ── Body ── */
+        .review-body { padding: 1.75rem; }
 
         /* Stars */
+        .stars-section { margin-bottom: 1.5rem; text-align: center; }
+        .stars-label {
+            font-size: 0.75rem;
+            color: var(--dim);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 0.85rem;
+        }
         .stars-wrap {
             display: flex;
             justify-content: center;
-            gap: 0.5rem;
-            margin-bottom: 1.75rem;
+            gap: 0.6rem;
             direction: ltr;
         }
         .star-btn {
@@ -74,24 +133,34 @@
             cursor: pointer;
             padding: 0.2rem;
             transition: transform 0.15s;
-            line-height: 1;
+            line-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .star-btn:hover { transform: scale(1.2); }
-        .star-btn svg { display: block; }
-        .star-btn .star-fill { display: none; }
-        .star-btn.active .star-fill { display: block; }
-        .star-btn.active .star-empty { display: none; }
+        .star-btn:hover { transform: scale(1.25); }
+        .star-btn svg { display: block; transition: filter 0.15s; }
+        .star-btn.active svg { filter: drop-shadow(0 0 6px rgba(224,192,151,0.5)); }
+
+        /* Rating label */
+        .rating-label {
+            font-size: 0.82rem;
+            color: var(--gold);
+            margin-top: 0.6rem;
+            min-height: 1.2em;
+            transition: opacity 0.2s;
+        }
 
         /* Fields */
-        .review-field { margin-bottom: 1.1rem; }
-        .review-label {
+        .field { margin-bottom: 1.1rem; }
+        .field-label {
             display: block;
-            font-size: 0.78rem;
-            color: var(--text-muted);
+            font-size: 0.75rem;
+            color: var(--muted);
             letter-spacing: 0.06em;
             margin-bottom: 0.4rem;
         }
-        .review-input, .review-textarea {
+        .field-input, .field-textarea {
             width: 100%;
             background: var(--bg-light);
             border: 1px solid var(--border);
@@ -101,253 +170,491 @@
             font-size: 0.9rem;
             padding: 0.75rem 1rem;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
             resize: none;
         }
-        .review-input:focus, .review-textarea:focus { border-color: var(--gold-dim); }
-        .review-input::placeholder, .review-textarea::placeholder { color: var(--text-dim); }
+        .field-input:focus, .field-textarea:focus {
+            border-color: var(--gold-dim);
+            box-shadow: 0 0 0 3px rgba(224,192,151,0.08);
+        }
+        .field-input::placeholder, .field-textarea::placeholder { color: var(--dim); }
+        .field-hint {
+            font-size: 0.7rem;
+            color: var(--dim);
+            margin-top: 0.3rem;
+        }
 
-        .review-submit {
+        /* Submit */
+        .submit-btn {
             width: 100%;
             background: var(--gold);
             color: var(--bg);
             border: 1px solid var(--gold);
             border-radius: var(--r);
             font-family: inherit;
-            font-size: 0.88rem;
-            font-weight: 600;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
             padding: 0.95rem;
             cursor: pointer;
-            margin-top: 0.5rem;
-            transition: background 0.15s, color 0.15s;
             display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            transition: background 0.15s, color 0.15s;
+            margin-top: 0.5rem;
         }
-        .review-submit:hover:not(:disabled) { background: transparent; color: var(--gold); }
-        .review-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .submit-btn:hover:not(:disabled) { background: transparent; color: var(--gold); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        .review-success {
-            text-align: center;
-            padding: 1.5rem 0;
-            display: none;
-        }
-        .review-success-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
-        }
-        .review-success-msg {
-            font-size: 1.05rem;
-            color: var(--gold);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        .review-success-sub {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-        .review-error {
+        /* Error */
+        .error-msg {
             font-size: 0.8rem;
             color: #e05c5c;
             text-align: center;
-            margin-top: 0.5rem;
+            margin-top: 0.6rem;
             display: none;
         }
-        .already-reviewed {
+
+        /* Success */
+        .success-screen {
+            display: none;
             text-align: center;
-            padding: 1rem 0;
-            color: var(--text-muted);
-            font-size: 0.9rem;
+            padding: 3rem 2rem;
+        }
+        .success-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+        .success-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+        }
+        .success-sub {
+            font-size: 0.88rem;
+            color: var(--muted);
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.82rem;
+            color: var(--gold);
+            text-decoration: none;
+            border: 1px solid rgba(224,192,151,0.3);
+            border-radius: var(--r);
+            padding: 0.55rem 1.1rem;
+            transition: background 0.15s;
+        }
+        .back-link:hover { background: rgba(224,192,151,0.08); }
+
+        /* Loading dots */
+        .dots { display:inline-flex; gap:4px; align-items:center; }
+        .dots span {
+            width:6px; height:6px; border-radius:50%;
+            background: var(--bg);
+            animation: dotPulse 1.2s ease-in-out infinite;
+        }
+        .dots span:nth-child(2) { animation-delay:0.2s; }
+        .dots span:nth-child(3) { animation-delay:0.4s; }
+        @keyframes dotPulse {
+            0%,80%,100% { transform:scale(0.7); opacity:0.4; }
+            40%          { transform:scale(1.1); opacity:1; }
         }
     </style>
 </head>
-<body class="lang-ar">
+<body>
 
-    <div class="review-page">
-        <div class="review-card">
-            <div class="review-brand">DALAL</div>
-            <p class="review-title" id="reviewTitle">شاركي تجربتك معنا</p>
+<div class="review-card">
 
-            <div class="review-ref-wrap">
-                <span class="review-ref" id="reviewRef"></span>
-            </div>
+    <!-- Header -->
+    <div class="review-header">
+        <div class="review-brand">DALAL</div>
 
-            <div id="reviewForm">
-                <!-- Stars -->
-                <div class="stars-wrap" id="starsWrap" aria-label="التقييم">
-                    <button class="star-btn" data-val="1" type="button" aria-label="1 نجمة">
-                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    </button>
-                    <button class="star-btn" data-val="2" type="button" aria-label="2 نجمة">
-                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    </button>
-                    <button class="star-btn" data-val="3" type="button" aria-label="3 نجوم">
-                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    </button>
-                    <button class="star-btn" data-val="4" type="button" aria-label="4 نجوم">
-                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    </button>
-                    <button class="star-btn" data-val="5" type="button" aria-label="5 نجوم">
-                        <svg class="star-empty" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg class="star-fill" width="36" height="36" viewBox="0 0 24 24" fill="#E0C097"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    </button>
-                </div>
-
-                <div class="review-field">
-                    <label class="review-label" id="labelName" for="reviewName">اسمك (اختياري)</label>
-                    <input type="text" id="reviewName" class="review-input" placeholder="مثال: سارة م.">
-                </div>
-
-                <div class="review-field">
-                    <label class="review-label" id="labelComment" for="reviewComment">تجربتك مع دلال</label>
-                    <textarea id="reviewComment" class="review-textarea" rows="4" placeholder="شاركينا رأيك في المنتج والتوصيل..."></textarea>
-                </div>
-
-                <button class="review-submit" id="reviewSubmit">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
-                    <span id="reviewSubmitLabel">إرسال التقييم</span>
-                </button>
-                <p class="review-error" id="reviewError"></p>
-            </div>
-
-            <div class="review-success" id="reviewSuccess">
-                <div class="review-success-icon">🌸</div>
-                <p class="review-success-msg" id="successMsg">شكراً لكِ!</p>
-                <p class="review-success-sub" id="successSub">تقييمك وصلنا وسعدنا بتجربتك معنا</p>
-                <a id="backLink" href="index.html" style="display:inline-block;margin-top:1.25rem;color:var(--gold);font-size:0.85rem;text-decoration:none;">← العودة للرئيسية</a>
+        <!-- Product preview (filled by JS) -->
+        <div class="product-preview" id="productPreview" style="display:none">
+            <img id="productImg" src="" alt="">
+            <div>
+                <div class="product-preview-name" id="productName"></div>
+                <div class="product-preview-sub" id="productRef"></div>
             </div>
         </div>
+
+        <p class="greeting" id="greeting">شاركي تجربتك معنا</p>
     </div>
 
-    <script src="i18n.js"></script>
-    <script src="supabase.js"></script>
-    <script>
-    (function() {
-        const params     = new URLSearchParams(window.location.search);
-        const ref        = params.get('ref') || '';
-        const productId  = params.get('product_id') ? parseInt(params.get('product_id')) : null;
-        const lang       = params.get('lang') || localStorage.getItem('dalal-lang') || 'ar';
-        const isAr       = lang === 'ar';
+    <!-- Form -->
+    <div class="review-body" id="reviewForm">
 
-        // Apply lang
-        document.documentElement.lang = lang;
-        document.documentElement.dir  = isAr ? 'rtl' : 'ltr';
-        document.body.className = isAr ? 'lang-ar' : 'lang-en';
+        <!-- Stars -->
+        <div class="stars-section">
+            <p class="stars-label" id="starsLabel">تقييمك</p>
+            <div class="stars-wrap" id="starsWrap">
+                <button class="star-btn" data-val="1" type="button">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </button>
+                <button class="star-btn" data-val="2" type="button">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </button>
+                <button class="star-btn" data-val="3" type="button">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </button>
+                <button class="star-btn" data-val="4" type="button">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </button>
+                <button class="star-btn" data-val="5" type="button">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </button>
+            </div>
+            <p class="rating-label" id="ratingLabel"></p>
+        </div>
 
-        // Translations
-        const T = {
-            ar: {
-                title:        'شاركي تجربتك معنا',
-                labelName:    'اسمك (اختياري)',
-                namePh:       'مثال: سارة م.',
-                labelComment: 'تجربتك مع دلال',
-                commentPh:    'شاركينا رأيك في المنتج والتوصيل...',
-                submitBtn:    'إرسال التقييم',
-                errorRating:  'يرجى اختيار تقييم بالنجوم أولاً',
-                errorFail:    'حدث خطأ، يرجى المحاولة مرة أخرى',
-                successMsg:   'شكراً لكِ!',
-                successSub:   'تقييمك وصلنا وسعدنا بتجربتك معنا',
-                backHome:     '← العودة للرئيسية',
-            },
-            en: {
-                title:        'Share Your Experience',
-                labelName:    'Your name (optional)',
-                namePh:       'e.g. Sarah M.',
-                labelComment: 'Your experience with DALAL',
-                commentPh:    'Tell us about the product and delivery...',
-                submitBtn:    'Submit Review',
-                errorRating:  'Please select a star rating first',
-                errorFail:    'Something went wrong, please try again',
-                successMsg:   'Thank you!',
-                successSub:   'Your review has been received',
-                backHome:     '← Back to Home',
-            }
-        };
-        const t = T[isAr ? 'ar' : 'en'];
+        <div class="field" id="nameField" style="display:none">
+            <label class="field-label" id="labelName" for="reviewName">اسمك</label>
+            <input id="reviewName" class="field-input" type="text" placeholder="مثال: سارة م.">
+            <p class="field-hint" id="hintName">اختياري — سيظهر مع تقييمك</p>
+        </div>
 
-        // Apply translations
-        document.getElementById('reviewTitle').textContent       = t.title;
-        document.getElementById('labelName').textContent         = t.labelName;
-        document.getElementById('reviewName').placeholder        = t.namePh;
-        document.getElementById('labelComment').textContent      = t.labelComment;
-        document.getElementById('reviewComment').placeholder     = t.commentPh;
-        document.getElementById('reviewSubmitLabel').textContent = t.submitBtn;
-        document.getElementById('successMsg').textContent        = t.successMsg;
-        document.getElementById('successSub').textContent        = t.successSub;
+        <div class="field">
+            <label class="field-label" id="labelComment" for="reviewComment">تجربتك مع المنتج</label>
+            <textarea id="reviewComment" class="field-textarea" rows="4" placeholder="شاركينا رأيك في الجودة، المقاس، الشعور..."></textarea>
+        </div>
 
-        // Back link — go to product page if product_id exists, else home
-        const backLink = document.getElementById('backLink');
-        if (backLink) {
-            const slug = params.get('slug');
-            if (productId) {
-                const href = slug ? `product.html#${slug}` : `product.html?id=${productId}`;
-                backLink.href = href;
-                backLink.textContent = isAr ? '← العودة للمنتج' : '← Back to Product';
-            } else {
-                backLink.textContent = t.backHome;
-            }
+        <button class="submit-btn" id="submitBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+            <span id="submitLabel">إرسال التقييم</span>
+        </button>
+        <p class="error-msg" id="errorMsg"></p>
+    </div>
+
+    <!-- Success -->
+    <div class="success-screen" id="successScreen">
+        <div class="success-icon">🌸</div>
+        <p class="success-title" id="successTitle">شكراً لكِ!</p>
+        <p class="success-sub" id="successSub">تقييمك وصلنا وسعدنا بتجربتك معنا 🤍</p>
+        <a href="index.html" class="back-link" id="backLink">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            العودة للرئيسية
+        </a>
+    </div>
+
+</div>
+
+<script src="supabase.js"></script>
+<script src="products-data.js"></script>
+<script>
+(function() {
+    const params    = new URLSearchParams(window.location.search);
+    const productId = params.get('pid') ? parseInt(params.get('pid')) : null;
+    const orderRef  = params.get('ref') || '';
+    const lang      = localStorage.getItem('dalal-lang') || 'ar';
+    const isAr      = lang === 'ar';
+
+    let customerName = '';
+    let orderProducts = []; // products from the order
+
+    // Apply direction
+    document.documentElement.lang = lang;
+    document.documentElement.dir  = isAr ? 'rtl' : 'ltr';
+    document.body.style.fontFamily = isAr ? "'Tajawal', sans-serif" : "'Poppins', sans-serif";
+
+    // Translations
+    const T = {
+        ar: {
+            greeting:     (name) => name ? `أهلاً <strong>${name}</strong> 🌸<br><span style="font-size:0.88rem">يسعدنا سماع رأيك في هذا المنتج</span>` : 'شاركي تجربتك معنا',
+            starsLabel:   'كيف تقيّمين هذا المنتج؟',
+            ratings:      ['', 'سيء', 'مقبول', 'جيد', 'رائع', 'ممتاز! 🌟'],
+            labelName:    'اسمك',
+            namePh:       'مثال: سارة م.',
+            nameHint:     'اختياري — سيظهر مع تقييمك',
+            labelComment: 'تجربتك مع المنتج',
+            commentPh:    'شاركينا رأيك في الجودة، المقاس، الشعور...',
+            submitBtn:    'إرسال التقييم',
+            errorRating:  'يرجى اختيار تقييم بالنجوم أولاً',
+            errorFail:    'حدث خطأ، يرجى المحاولة مرة أخرى',
+            successTitle: 'شكراً لكِ! 🌸',
+            successSub:   'تقييمك وصلنا وسعدنا بتجربتك معنا 🤍',
+            backLink:     'العودة للرئيسية',
+            orderLabel:   'رقم الطلب',
+        },
+        en: {
+            greeting:     (name) => name ? `Hello <strong>${name}</strong> 🌸<br><span style="font-size:0.88rem">We'd love to hear your thoughts on this product</span>` : 'Share your experience',
+            starsLabel:   'How would you rate this product?',
+            ratings:      ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent! 🌟'],
+            labelName:    'Your name',
+            namePh:       'e.g. Sarah M.',
+            nameHint:     'Optional — will appear with your review',
+            labelComment: 'Your experience with the product',
+            commentPh:    'Tell us about the quality, fit, feel...',
+            submitBtn:    'Submit Review',
+            errorRating:  'Please select a star rating first',
+            errorFail:    'Something went wrong, please try again',
+            successTitle: 'Thank you! 🌸',
+            successSub:   'Your review has been received 🤍',
+            backLink:     'Back to Home',
+            orderLabel:   'Order',
         }
+    };
+    const t = T[isAr ? 'ar' : 'en'];
 
-        // Show ref
-        if (ref) document.getElementById('reviewRef').textContent = ref;
-        else document.querySelector('.review-ref-wrap').style.display = 'none';
+    // Apply translations
+    document.getElementById('starsLabel').textContent    = t.starsLabel;
+    document.getElementById('labelComment').textContent  = t.labelComment;
+    document.getElementById('reviewComment').placeholder = t.commentPh;
+    document.getElementById('submitLabel').textContent   = t.submitBtn;
+    document.getElementById('successTitle').textContent  = t.successTitle;
+    document.getElementById('successSub').textContent    = t.successSub;
+    document.getElementById('backLink').textContent      = t.backLink;
 
-        // Stars
-        let selectedRating = 0;
-        const stars = document.querySelectorAll('.star-btn');
+    // Fetch order + product data from Supabase
+    if (orderRef) {
+        getSupabase().then(async db => {
+            // Get order with status check
+            const { data: order } = await db
+                .from('orders')
+                .select('name, products, status')
+                .eq('order_ref', orderRef)
+                .maybeSingle();
 
-        stars.forEach(btn => {
-            btn.addEventListener('mouseenter', () => highlightStars(+btn.dataset.val));
-            btn.addEventListener('mouseleave', () => highlightStars(selectedRating));
-            btn.addEventListener('click', () => {
-                selectedRating = +btn.dataset.val;
-                highlightStars(selectedRating);
-            });
-        });
-
-        function highlightStars(val) {
-            stars.forEach(b => b.classList.toggle('active', +b.dataset.val <= val));
-        }
-
-        // Submit
-        document.getElementById('reviewSubmit').addEventListener('click', async () => {
-            const errEl = document.getElementById('reviewError');
-            errEl.style.display = 'none';
-
-            if (!selectedRating) {
-                errEl.textContent = t.errorRating;
-                errEl.style.display = 'block';
+            // ── Block if order not delivered ──
+            if (!order || order.status !== 'delivered') {
+                document.getElementById('reviewForm').style.display = 'none';
+                document.getElementById('greeting').innerHTML = isAr
+                    ? '⏳ التقييم متاح بعد استلام طلبك'
+                    : '⏳ Reviews are available after your order is delivered';
                 return;
             }
 
-            const btn = document.getElementById('reviewSubmit');
-            btn.disabled = true;
-            document.getElementById('reviewSubmitLabel').innerHTML = '<span class="order-loading-dots"><span></span><span></span><span></span></span>';
+            // ── Block if already reviewed ──
+            const { data: existing } = await db
+                .from('reviews')
+                .select('id')
+                .eq('order_ref', orderRef)
+                .limit(1);
 
-            try {
-                const db = await getSupabase();
-                const { error } = await db.from('reviews').insert([{
-                    order_ref:     ref || null,
-                    product_id:    productId,
-                    reviewer_name: document.getElementById('reviewName').value.trim() || null,
-                    rating:        selectedRating,
-                    comment:       document.getElementById('reviewComment').value.trim() || null,
-                    is_visible:    true
-                }]);
-                if (error) throw error;
+            if (existing && existing.length > 0) {
+                document.getElementById('reviewForm').style.display = 'none';
+                document.getElementById('greeting').innerHTML = isAr
+                    ? '✅ شكراً! لقد قيّمتِ هذا الطلب من قبل 🌸'
+                    : '✅ You have already reviewed this order 🌸';
+                return;
+            }
 
-                document.getElementById('reviewForm').style.display    = 'none';
-                document.getElementById('reviewSuccess').style.display = 'block';
-            } catch {
-                btn.disabled = false;
-                document.getElementById('reviewSubmitLabel').textContent = t.submitBtn;
-                errEl.textContent = t.errorFail;
-                errEl.style.display = 'block';
+            if (order?.name) {
+                customerName = order.name;
+                document.getElementById('greeting').innerHTML = t.greeting(customerName);
+            }
+
+            // Store products for later use in submit
+            if (order?.products) {
+                try {
+                    orderProducts = Array.isArray(order.products)
+                        ? order.products
+                        : JSON.parse(order.products || '[]');
+                } catch { orderProducts = []; }
+            }
+
+            // Get product info from order products array
+            if (productId && order?.products) {
+                try {
+                    const prods = Array.isArray(order.products)
+                        ? order.products
+                        : JSON.parse(order.products || '[]');
+                    const prod = prods.find(p => +p.id === productId);
+                    if (prod) {
+                        document.getElementById('productName').textContent = prod.name || '';
+                        // Try to get image from products-data if loaded, else skip
+                        const tryImg = () => {
+                            if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && DALAL_PRODUCTS_MAP[productId]) {
+                                const p = DALAL_PRODUCTS_MAP[productId];
+                                document.getElementById('productImg').src = `${p.folder}/${p.main}`;
+                                document.getElementById('productImg').alt = prod.name || '';
+                                document.getElementById('productPreview').style.display = 'flex';
+                            } else {
+                                // Show preview without image
+                                document.getElementById('productImg').style.display = 'none';
+                                document.getElementById('productPreview').style.display = 'flex';
+                            }
+                        };
+                        if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && Object.keys(DALAL_PRODUCTS_MAP).length > 0) {
+                            tryImg();
+                        } else {
+                            document.addEventListener('dalal:products-ready', tryImg, { once: true });
+                            // Fallback after 2s
+                            setTimeout(() => {
+                                if (document.getElementById('productPreview').style.display === 'none') {
+                                    document.getElementById('productImg').style.display = 'none';
+                                    document.getElementById('productName').textContent = prod.name || '';
+                                    document.getElementById('productPreview').style.display = 'flex';
+                                }
+                            }, 2000);
+                        }
+                    }
+                } catch { /* silent */ }
             }
         });
-    })();
-    </script>
+    }
+
+    // Show name field only for direct reviews (no order ref)
+    if (!orderRef) {
+        const nameField = document.getElementById('nameField');
+        if (nameField) nameField.style.display = '';
+        document.getElementById('labelName').textContent  = isAr ? 'اسمك' : 'Your Name';
+        document.getElementById('reviewName').placeholder = isAr ? 'مثال: سارة م.' : 'e.g. Sarah M.';
+        document.getElementById('hintName').textContent   = isAr ? 'اختياري — سيظهر مع تقييمك' : 'Optional — will appear with your review';
+    }
+
+    // Show order ref
+    if (orderRef) {
+        document.getElementById('productRef').textContent = `${t.orderLabel}: ${orderRef}`;
+    }
+
+    // Show product preview from DALAL_PRODUCTS_MAP if pid provided but no order ref
+    if (productId && !orderRef) {
+        const showDirectProduct = () => {
+            if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && DALAL_PRODUCTS_MAP[productId]) {
+                const p = DALAL_PRODUCTS_MAP[productId];
+                const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
+                document.getElementById('productName').textContent = name;
+                document.getElementById('productImg').src = `${p.folder}/${p.main}`;
+                document.getElementById('productImg').alt = name;
+                document.getElementById('productPreview').style.display = 'flex';
+            }
+        };
+        if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && Object.keys(DALAL_PRODUCTS_MAP).length > 0) {
+            showDirectProduct();
+        } else {
+            document.addEventListener('dalal:products-ready', showDirectProduct, { once: true });
+        }
+    }
+
+    // Greeting default
+    document.getElementById('greeting').innerHTML = t.greeting('');
+
+    // Stars
+    let selectedRating = 0;
+    const stars = document.querySelectorAll('.star-btn');
+    const ratingLabelEl = document.getElementById('ratingLabel');
+
+    const highlight = (val) => {
+        stars.forEach(b => {
+            const svg = b.querySelector('svg');
+            const active = +b.dataset.val <= val;
+            svg.setAttribute('fill', active ? '#E0C097' : 'none');
+            svg.setAttribute('stroke', '#E0C097');
+            b.classList.toggle('active', active);
+        });
+        ratingLabelEl.textContent = val ? t.ratings[val] : '';
+    };
+
+    stars.forEach(btn => {
+        btn.addEventListener('mouseenter', () => highlight(+btn.dataset.val));
+        btn.addEventListener('mouseleave', () => highlight(selectedRating));
+        btn.addEventListener('click', () => {
+            selectedRating = +btn.dataset.val;
+            highlight(selectedRating);
+        });
+    });
+
+    // Submit
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+        const errEl = document.getElementById('errorMsg');
+        errEl.style.display = 'none';
+
+        if (!selectedRating) {
+            errEl.textContent = t.errorRating;
+            errEl.style.display = 'block';
+            // Shake stars
+            const wrap = document.getElementById('starsWrap');
+            wrap.style.animation = 'none';
+            wrap.style.transform = 'translateX(-6px)';
+            setTimeout(() => { wrap.style.transform = ''; wrap.style.transition = 'transform 0.3s'; }, 100);
+            return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        const lbl = document.getElementById('submitLabel');
+        btn.disabled = true;
+        lbl.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>';
+
+        try {
+            const db = await getSupabase();
+            const comment = document.getElementById('reviewComment').value.trim() || null;
+
+            // Use name from field if no customerName from order
+            const reviewerName = customerName
+                || (document.getElementById('reviewName')?.value.trim() || null);
+
+            // Build reviews array — one per unique product in the order (same rating/comment goes to all)
+            let reviewsToInsert = [];
+
+            if (orderProducts.length > 0) {
+                // Deduplicate by product_id — same product with different offers counts once
+                const seenIds = new Set();
+                const uniqueProducts = orderProducts.filter(p => {
+                    const key = p.id ?? p.name;
+                    if (seenIds.has(key)) return false;
+                    seenIds.add(key);
+                    return true;
+                });
+                reviewsToInsert = uniqueProducts.map(p => ({
+                    order_ref:     orderRef || null,
+                    product_id:    p.id || null,
+                    reviewer_name: reviewerName,
+                    rating:        selectedRating,
+                    comment,
+                    is_visible:    false
+                }));
+            } else {
+                // Fallback: use pid from URL if available, otherwise general review
+                reviewsToInsert = [{
+                    order_ref:     orderRef || null,
+                    product_id:    productId || null,
+                    reviewer_name: reviewerName,
+                    rating:        selectedRating,
+                    comment,
+                    is_visible:    false
+                }];
+            }
+
+            const { error } = await db.from('reviews').insert(reviewsToInsert);
+            if (error) throw error;
+
+            // Back link — return to product page if came from direct review, else home
+            const backEl = document.getElementById('backLink');
+            if (productId && !orderRef) {
+                // Find product slug for clean URL
+                const tryProductUrl = () => {
+                    if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && DALAL_PRODUCTS_MAP[productId]) {
+                        const p = DALAL_PRODUCTS_MAP[productId];
+                        backEl.href = p.slug ? `product.html#${p.slug}` : `product.html?id=${productId}`;
+                    } else {
+                        backEl.href = `product.html?id=${productId}`;
+                    }
+                };
+                tryProductUrl();
+                backEl.textContent = isAr ? 'العودة للمنتج' : 'Back to Product';
+            } else {
+                backEl.href = 'index.html';
+                backEl.textContent = t.backLink;
+            }
+
+            document.getElementById('reviewForm').style.display    = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+        } catch {
+            btn.disabled = false;
+            lbl.textContent = t.submitBtn;
+            errEl.textContent = t.errorFail;
+            errEl.style.display = 'block';
+        }
+    });
+})();
+</script>
 </body>
 </html>

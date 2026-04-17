@@ -140,7 +140,22 @@ function openMessengerWithContact(buildMsg) {
     });
 }
 function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, flyProduct = null) {
-    const key = `${product.id}_${selectedRow.label}_${Date.now()}`;
+    // Build a stable key from product id + offer label + size + color
+    // so adding the same item twice increments qty instead of duplicating
+    const key = `${product.id}_${selectedRow.label}_${(extras.size||'').toLowerCase()}_${(extras.color||'').toLowerCase()}`;
+
+    const existing = cart.find(i => i.key === key);
+    if (existing) {
+        existing.qty += qty;
+        saveCart();
+        updateCartUI();
+        showAddToCartToast(product);
+        playSuccessSound();
+        if (sourceEl) flyToCart(sourceEl, flyProduct || product);
+        else animateCartIcon();
+        return;
+    }
+
     cart.push({
         key,
         id:         product.id,

@@ -1187,6 +1187,16 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         const list = document.getElementById('reviewsList');
         list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim)">جاري التحميل...</div>';
         try {
+            // Wait for products map before rendering tabs
+            await new Promise(resolve => {
+                if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && Object.keys(DALAL_PRODUCTS_MAP).length > 0) {
+                    resolve();
+                } else {
+                    document.addEventListener('dalal:products-ready', resolve, { once: true });
+                    setTimeout(resolve, 3000);
+                }
+            });
+
             const reviews = await fetchAllReviews();
 
             if (!reviews.length) {
@@ -1194,17 +1204,105 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 return;
             }
 
+            let _rvSearch = '';
+
+            const getProdInfo = (pid) => {
+                if (!pid) return null;
+                const p = (typeof DALAL_PRODUCTS_MAP !== 'undefined') ? DALAL_PRODUCTS_MAP[+pid] : null;
+                if (!p) return null;
+                return { name: typeof p.name === 'object' ? (p.name.ar || p.name.en) : p.name, code: p.code || '' };
+            };
+
             const general  = reviews.filter(r => !r.product_id);
-            const products = reviews.filter(r =>  r.product_id);
             const byProduct = {};
-            products.forEach(r => {
+            reviews.filter(r => r.product_id).forEach(r => {
                 if (!byProduct[r.product_id]) byProduct[r.product_id] = [];
                 byProduct[r.product_id].push(r);
             });
 
+            const getTabLabel = (pid) => {
+                const info = getProdInfo(+pid);
+                if (info) return `${info.name}${info.code ? ` · ${info.code}` : ''}`;
+                return `منتج #${pid}`;
+            };
+
+            const tabs = [];
+            tabs.push({ key: 'all', label: `الكل (${reviews.length})`, reviews: reviews });
+            if (general.length > 0) tabs.push({ key: 'general', label: `عام (${general.length})`, reviews: general });
+            Object.entries(byProduct).forEach(([pid, pReviews]) => {
+                tabs.push({ key: pid, label: `${getTabLabel(+pid)} (${pReviews.length})`, reviews: pReviews });
+            });
+
+            if (!tabs.length) {
+                list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim)">لا توجد تقييمات بعد</div>';
+                return;
+            }
+
+            let activeTab = tabs[0].key;
+
+            const filterReviews = (tabReviews) => {
+                if (!_rvSearch) return tabReviews;
+                const q = _rvSearch.toLowerCase();
+                return tabReviews.filter(r => {
+                    if (r.comment && r.comment.toLowerCase().includes(q)) return true;
+                    if (r.order_ref && r.order_ref.toLowerCase().includes(q)) return true;
+                    if (r.reviewer_name && r.reviewer_name.toLowerCase().includes(q)) return true;
+                    const order = r.order_ref ? _all.find(o => o.order_ref === r.order_ref) : null;
+                    if (order) {
+                        const prods = Array.isArray(order.products) ? order.products
+                            : (typeof order.products === 'string' ? JSON.parse(order.products || '[]') : []);
+                        if (prods.some(p => p.code && p.code.toLowerCase().includes(q))) return true;
+                    }
+                    return false;
+                });
+            };
+
             const renderCard = (r) => {
                 const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
-                const date  = new Date(r.created_at).toLocaleDateString('ar-EG', {day:'2-digit',month:'short',year:'numeric'});
+                const date  = new Date(r.created_at).toLocaleDateString('ar-EG', {day:'2-digit',month:'short',year:'numeric'}) + ' · ' + new Date(r.created_at).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+
+                // Find matching order from loaded orders
+                const order = r.order_ref ? _all.find(o => o.order_ref === r.order_ref) : null;
+                let orderDetailsHTML = '';
+                if (order) {
+                    const products = Array.isArray(order.products) ? order.products
+                        : (typeof order.products === 'string' ? JSON.parse(order.products || '[]') : []);
+                    const productsStr = products.map(p =>
+                        `<span style="display:inline-flex;align-items:center;gap:0.3rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0.15rem 0.5rem;font-size:0.7rem;color:var(--text-muted);">
+                            ${p.code ? `<span style="background:var(--gold-dim);color:var(--bg);font-family:'Poppins',monospace;font-size:0.62rem;font-weight:700;padding:0.05rem 0.3rem;border-radius:2px;">${esc(p.code)}</span>` : ''}
+                            ${esc(p.name)}
+                            ${p.size ? `<span style="color:var(--text-dim)">· ${esc(p.size)}</span>` : ''}
+                            ${p.offer ? `<span style="color:var(--gold);font-size:0.65rem;">· ${esc(p.offer)}</span>` : ''}
+                        </span>`
+                    ).join('');
+                    orderDetailsHTML = `
+                    <div style="margin-top:0.55rem;padding:0.55rem 0.75rem;background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r);display:flex;flex-direction:column;gap:0.35rem;">
+                        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                            <span style="font-size:0.68rem;color:var(--text-dim);letter-spacing:0.06em;">الطلب</span>
+                            <span style="font-family:'Poppins',monospace;font-size:0.72rem;color:var(--gold);font-weight:600;">${esc(order.order_ref)}</span>
+                            <span style="font-size:0.68rem;color:var(--text-dim);">·</span>
+                            <span style="font-size:0.7rem;color:var(--text-muted);">${esc(order.name || '')}</span>
+                            ${order.phone ? `<span style="font-size:0.68rem;color:var(--text-dim);direction:ltr;">${esc(order.phone)}</span>` : ''}
+                            <span style="font-size:0.68rem;padding:0.1rem 0.45rem;border-radius:10px;font-weight:600;
+                                ${order.status === 'delivered' ? 'background:rgba(76,175,125,0.12);color:#4caf7d;' :
+                                  order.status === 'shipped'   ? 'background:rgba(91,155,213,0.12);color:#5b9bd5;' :
+                                  order.status === 'confirmed' ? 'background:rgba(76,175,125,0.08);color:#4caf7d;' :
+                                  order.status === 'cancelled' ? 'background:rgba(224,92,92,0.1);color:#e05c5c;' :
+                                                                 'background:rgba(224,192,151,0.08);color:#E0C097;'}">
+                                ${{ pending:'قيد الانتظار', confirmed:'مؤكدة', shipped:'تم الشحن', delivered:'تم التسليم', cancelled:'ملغية' }[order.status] || order.status}
+                            </span>
+                        </div>
+                        ${products.length ? `<div style="display:flex;flex-wrap:wrap;gap:0.3rem;">${productsStr}</div>` : ''}
+                        ${order.total ? `<div style="font-size:0.7rem;color:var(--gold-dim);font-weight:600;">${order.total.toLocaleString()} ج</div>` : ''}
+                    </div>`;
+                } else if (r.order_ref) {
+                    orderDetailsHTML = `
+                    <div style="margin-top:0.45rem;padding:0.35rem 0.6rem;background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r);display:inline-flex;align-items:center;gap:0.4rem;">
+                        <span style="font-size:0.68rem;color:var(--text-dim);">الطلب</span>
+                        <span style="font-family:'Poppins',monospace;font-size:0.72rem;color:var(--gold);">${esc(r.order_ref)}</span>
+                    </div>`;
+                }
+
                 return `
                 <div style="border-bottom:1px solid var(--border);padding:0.9rem 0;">
                     <div style="display:flex;gap:0.75rem;align-items:flex-start;flex-wrap:wrap;">
@@ -1212,12 +1310,16 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                             <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.35rem;flex-wrap:wrap;">
                                 <span style="color:#E0C097;font-size:0.95rem;letter-spacing:0.1em;">${stars}</span>
                                 <span style="font-size:0.82rem;font-weight:600;color:var(--text)">${esc(r.reviewer_name || 'مجهول')}</span>
-                                ${r.order_ref ? `<span style="font-family:'Poppins',monospace;font-size:0.7rem;color:var(--gold);opacity:0.7">${esc(r.order_ref)}</span>` : ''}
+                                ${r.product_id ? (() => { const info = getProdInfo(r.product_id); return info ? `<span style="font-size:0.68rem;background:var(--bg-light);border:1px solid var(--border);border-radius:3px;padding:0.1rem 0.45rem;color:var(--text-muted);">${info.code ? `<span style="font-family:'Poppins',monospace;color:var(--gold-dim);font-size:0.65rem;margin-inline-end:0.25rem;">${esc(info.code)}</span>` : ''}${esc(info.name)}</span>` : ''; })() : ''}
                                 <span style="font-size:0.7rem;color:var(--text-dim);margin-inline-start:auto">${date}</span>
                             </div>
-                            ${r.comment ? `<p style="font-size:0.83rem;color:var(--text-muted);line-height:1.6;margin:0">${esc(r.comment)}</p>` : '<p style="font-size:0.8rem;color:var(--text-dim);margin:0;font-style:italic">بدون تعليق</p>'}
+                            ${r.comment ? `<p style="font-size:0.83rem;color:var(--text-muted);line-height:1.6;margin:0 0 0.1rem 0">${esc(r.comment)}</p>` : '<p style="font-size:0.8rem;color:var(--text-dim);margin:0 0 0.1rem 0;font-style:italic">بدون تعليق</p>'}
+                            ${orderDetailsHTML}
                         </div>
                         <div style="display:flex;gap:0.35rem;flex-shrink:0;">
+                            <button class="del-btn" onclick="pinReview('${r.id}', ${!r.is_pinned})" style="font-size:0.72rem;${r.is_pinned ? 'color:#E0C097;border-color:rgba(224,192,151,0.4);' : ''}">
+                                ${r.is_pinned ? '★ إلغاء التمييز' : '☆ تمييز'}
+                            </button>
                             <button class="del-btn" onclick="toggleReview('${r.id}', ${!r.is_visible})" style="font-size:0.72rem;${r.is_visible ? '' : 'color:#4caf7d;border-color:rgba(76,175,125,0.3)'}">
                                 ${r.is_visible ? 'إخفاء' : 'إظهار'}
                             </button>
@@ -1227,63 +1329,29 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 </div>`;
             };
 
-            const getProductName = (pid) => {
-                if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && DALAL_PRODUCTS_MAP[+pid]) {
-                    const p = DALAL_PRODUCTS_MAP[+pid];
-                    const name = typeof p.name === 'object' ? (p.name.ar || p.name.en) : p.name;
-                    const slug = p.slug ? ` · <span style="font-family:'Poppins',monospace;font-size:0.68rem;letter-spacing:0.04em">${p.code || ''}</span>` : '';
-                    return name + slug;
-                }
-                return `منتج #${pid}`;
-            };
-
-            // Build tabs
-            const tabs = [
-                { key: 'general', label: `عام (${general.length})`, reviews: general },
-                ...Object.entries(byProduct).map(([pid, pReviews]) => ({
-                    key: pid,
-                    label: `${getProductName(pid)} (${pReviews.length})`,
-                    reviews: pReviews
-                }))
-            ];
-
-            let activeTab = tabs[0].key;
-
-            const renderTab = (key) => {
-                activeTab = key;
-                list.querySelectorAll('.rv-tab-btn').forEach(b =>
-                    b.style.cssText = b.dataset.key === key
-                        ? 'background:var(--gold);color:var(--bg);border-color:var(--gold);'
-                        : 'background:transparent;color:var(--text-muted);border-color:var(--border);'
-                );
-                renderTabActions(key);
+            const renderTabContent = (key) => {
                 const tab = tabs.find(t => t.key === key);
                 const content = list.querySelector('#rv-content');
-                if (!content) return;
+                if (!content || !tab) return;
+                const filtered = filterReviews(tab.reviews);
+                // pinned first, then by date
+                filtered.sort((a, b) => {
+                    if (b.is_pinned !== a.is_pinned) return (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
+                    return new Date(b.created_at) - new Date(a.created_at);
+                });
                 content.style.opacity = '0';
                 setTimeout(() => {
-                    content.innerHTML = tab.reviews.length
-                        ? tab.reviews.map(renderCard).join('')
-                        : '<p style="color:var(--text-dim);font-size:0.82rem;padding:1rem 0">لا توجد تقييمات</p>';
+                    content.innerHTML = filtered.length
+                        ? filtered.map(renderCard).join('')
+                        : `<p style="color:var(--text-dim);font-size:0.82rem;padding:1rem 0">${_rvSearch ? 'لا توجد نتائج للبحث' : 'لا توجد تقييمات'}</p>`;
                     content.style.opacity = '1';
                 }, 150);
             };
 
-            list.innerHTML = `
-                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center;padding-bottom:1rem;border-bottom:1px solid var(--border);overflow-x:hidden;">
-                    ${tabs.map(t => `
-                        <button class="rv-tab-btn" data-key="${t.key}"
-                            style="font-size:0.78rem;padding:0.45rem 1rem;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:all 0.2s;white-space:nowrap;flex-shrink:0;${t.key === activeTab ? 'background:var(--gold);color:var(--bg);border-color:var(--gold);' : 'background:var(--bg-card);color:var(--text-muted);'}">
-                            ${t.label}
-                        </button>`).join('')}
-                </div>
-                <div id="rv-tab-actions" style="margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);"></div>
-                <div id="rv-content" style="transition:opacity 0.15s;"></div>
-            `;
-
             const renderTabActions = (key) => {
                 const actEl = list.querySelector('#rv-tab-actions');
                 if (!actEl) return;
+                if (key === 'all') { actEl.innerHTML = ''; return; }
                 const isGeneral = key === 'general';
                 actEl.innerHTML = `
                     <button onclick="deleteTabReviews('${key}')"
@@ -1294,6 +1362,53 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                     </button>
                 `;
             };
+
+            const renderTab = (key) => {
+                activeTab = key;
+                list.querySelectorAll('.rv-tab-btn').forEach(b =>
+                    b.style.cssText = b.dataset.key === key
+                        ? 'background:var(--gold);color:var(--bg);border-color:var(--gold);font-size:0.78rem;padding:0.45rem 1rem;border-radius:20px;border:1px solid;cursor:pointer;font-family:inherit;transition:all 0.2s;white-space:nowrap;flex-shrink:0;'
+                        : 'background:transparent;color:var(--text-muted);border-color:var(--border);font-size:0.78rem;padding:0.45rem 1rem;border-radius:20px;border:1px solid;cursor:pointer;font-family:inherit;transition:all 0.2s;white-space:nowrap;flex-shrink:0;'
+                );
+                renderTabActions(key);
+                renderTabContent(key);
+            };
+
+            list.innerHTML = `
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center;padding-bottom:1rem;border-bottom:1px solid var(--border);">
+                    ${tabs.map(t => `
+                        <button class="rv-tab-btn" data-key="${t.key}"
+                            style="font-size:0.78rem;padding:0.45rem 1rem;border-radius:20px;border:1px solid ${t.key === activeTab ? 'var(--gold)' : 'var(--border)'};cursor:pointer;font-family:inherit;transition:all 0.2s;white-space:nowrap;flex-shrink:0;${t.key === activeTab ? 'background:var(--gold);color:var(--bg);' : 'background:var(--bg-card);color:var(--text-muted);'}">
+                            ${t.label}
+                        </button>`).join('')}
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:0.5rem 0.85rem;margin-bottom:0.85rem;" id="rvSearchWrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color:var(--text-dim);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input id="rvSearchInput" type="text" placeholder="بحث بالتعليق أو رقم الأوردر أو كود المنتج..."
+                        style="flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:inherit;font-size:0.82rem;direction:rtl;">
+                    <button id="rvSearchClear" style="display:none;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1rem;line-height:1;padding:0 0.2rem;">✕</button>
+                </div>
+                <div id="rv-tab-actions" style="margin-bottom:0.85rem;padding-bottom:0.85rem;border-bottom:1px solid var(--border);"></div>
+                <div id="rv-content" style="transition:opacity 0.15s;"></div>
+            `;
+
+            const searchInput = list.querySelector('#rvSearchInput');
+            const searchClear = list.querySelector('#rvSearchClear');
+            const searchWrap  = list.querySelector('#rvSearchWrap');
+
+            searchInput.addEventListener('input', function() {
+                _rvSearch = this.value.trim().toLowerCase();
+                searchClear.style.display = _rvSearch ? 'block' : 'none';
+                renderTabContent(activeTab);
+            });
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                _rvSearch = '';
+                searchClear.style.display = 'none';
+                renderTabContent(activeTab);
+            });
+            searchWrap.addEventListener('focusin',  () => searchWrap.style.borderColor = 'var(--gold-dim)');
+            searchWrap.addEventListener('focusout', () => searchWrap.style.borderColor = 'var(--border)');
 
             list.querySelectorAll('.rv-tab-btn').forEach(b =>
                 b.addEventListener('click', () => renderTab(b.dataset.key))
@@ -1348,6 +1463,13 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.toggleReview = async function(id, visible) {
         try {
             await toggleReviewVisibility(id, visible);
+            showReviewsPanel();
+        } catch { alert('حدث خطأ'); }
+    };
+
+    window.pinReview = async function(id, pinned) {
+        try {
+            await toggleReviewPin(id, pinned);
             showReviewsPanel();
         } catch { alert('حدث خطأ'); }
     };

@@ -30,8 +30,7 @@ async function loadProductReviews(product, lang) {
         if (titleEl) titleEl.textContent = isAr ? 'تقييمات المنتج' : 'Product Reviews';
         if (writeLbl) writeLbl.textContent = isAr ? 'اكتبي تقييمك' : 'Write a Review';
         if (writeBtn) {
-            const slug = product.slug || '';
-            writeBtn.href = `review.html?product_id=${product.id}${slug ? '&slug='+slug : ''}&lang=${lang}`;
+            writeBtn.href = `review.html?pid=${product.id}&lang=${lang}`;
         }
         if (section) section.style.display = '';
 
@@ -40,17 +39,52 @@ async function loadProductReviews(product, lang) {
             return;
         }
 
+        // ─── Rating summary (only shown when reviews exist) ───
+        const avg     = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+        const avgStr  = avg.toFixed(1);
+        const count   = reviews.length;
+        const fullStars = Math.round(avg);
+        const starsHTML = Array.from({length:5},(_,i) =>
+            `<svg width="15" height="15" viewBox="0 0 24 24" fill="${i<fullStars?'#E0C097':'none'}" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
+        ).join('');
+
+        const summaryHTML = `<div style="display:inline-flex;align-items:center;gap:0.5rem;flex-wrap:wrap;padding:0.5rem 0.85rem;background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r-lg);"><span style="font-size:1.1rem;font-weight:700;color:var(--gold);font-family:'Poppins',sans-serif;">${avgStr}</span><div style="display:flex;gap:2px;direction:ltr;">${starsHTML}</div><span style="font-size:0.75rem;color:var(--text-dim);">${count} ${isAr ? 'تقييم' : count === 1 ? 'review' : 'reviews'}</span></div>`;
+
+        const summaryEl = document.getElementById('productRatingSummary');
+        const summaryMobileEl = document.getElementById('productRatingSummaryMobile');
+        if (summaryEl)       { summaryEl.innerHTML = summaryHTML;       summaryEl.style.display = ''; }
+        if (summaryMobileEl) { summaryMobileEl.innerHTML = summaryHTML; summaryMobileEl.style.display = ''; }
+        // Sort: pinned first, then verified buyers, then rest
+        const sorted = [...reviews].sort((a, b) => {
+            if (b.is_pinned !== a.is_pinned) return (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
+            if (!!b.order_ref !== !!a.order_ref) return !!b.order_ref ? 1 : -1;
+            return 0;
+        });
+
         const renderCard = (r) => {
             const stars = Array.from({length:5},(_,i) =>
                 `<svg width="13" height="13" viewBox="0 0 24 24" fill="${i<r.rating?'#E0C097':'none'}" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
             ).join('');
             const name = r.reviewer_name || (isAr ? 'عميلة مجهولة' : 'Anonymous');
             const date = new Date(r.created_at).toLocaleDateString(isAr?'ar-EG':'en-US',{month:'short',year:'numeric'});
+            const verifiedBadge = r.order_ref
+                ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.65rem;font-weight:600;color:#4caf7d;background:rgba(76,175,125,0.1);border:1px solid rgba(76,175,125,0.25);border-radius:20px;padding:0.1rem 0.5rem;white-space:nowrap;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                    ${isAr ? 'مشتري موثق' : 'Verified Buyer'}
+                   </span>`
+                : '';
+            const pinnedBadge = r.is_pinned
+                ? `<span style="display:inline-flex;align-items:center;gap:0.2rem;font-size:0.65rem;color:#E0C097;opacity:0.7;">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+                    ${isAr ? 'مميز' : 'Featured'}
+                   </span>`
+                : '';
             return `
             <div class="product-review-card">
                 <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;flex-wrap:wrap;">
                     <div class="review-stars-pub" style="direction:ltr">${stars}</div>
                     <span style="font-size:0.82rem;font-weight:500;color:var(--text)">${name.replace(/</g,'&lt;')}</span>
+                    ${verifiedBadge}${pinnedBadge}
                     <span style="font-size:0.72rem;color:var(--text-dim);margin-inline-start:auto">${date}</span>
                 </div>
                 ${r.comment ? `<p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;margin:0">${r.comment.replace(/</g,'&lt;')}</p>` : ''}
@@ -58,11 +92,11 @@ async function loadProductReviews(product, lang) {
         };
 
         let currentPage = 0;
-        const totalPages = Math.ceil(reviews.length / PER_PAGE);
+        const totalPages = Math.ceil(sorted.length / PER_PAGE);
 
         const renderPage = (page) => {
             currentPage = page;
-            const slice = reviews.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+            const slice = sorted.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
             // Animate out then in
             grid.style.opacity = '0';
@@ -167,7 +201,7 @@ function updateProductMeta(product, lang) {
     });
 }
 const RV_KEY     = 'dalal-recently-viewed';
-const RV_MAX     = 6;
+const RV_MAX     = 3;
 
 function saveRecentlyViewed(product) {
     if (!product?.id) return;

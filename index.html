@@ -284,11 +284,22 @@
                 .from('reviews')
                 .select('*')
                 .eq('is_visible', true)
-                .is('product_id', null)
                 .order('created_at', { ascending: false })
-                .limit(20);
+                .limit(50);
 
             if (!reviews || !reviews.length) return;
+
+            // Deduplicate by order_ref — show only one review per order
+            const seen = new Set();
+            const unique = reviews.filter(r => {
+                // Use order_ref if available, otherwise fall back to name+rating+comment combo
+                const key = r.order_ref
+                    ? r.order_ref
+                    : `${r.reviewer_name||''}|${r.rating}|${r.comment||''}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            }).slice(0, 20);
 
             const section = document.getElementById('reviewsSection');
             const track   = document.getElementById('reviewsSliderTrack');
@@ -298,24 +309,41 @@
             document.getElementById('reviewsSectionTitle').textContent = isAr ? 'ماذا قالت عميلاتنا' : 'What Our Customers Say';
             document.getElementById('reviewsSectionSub').textContent   = isAr ? 'تجارب حقيقية من عميلات دلال' : 'Real experiences from DALAL customers';
 
-            track.innerHTML = reviews.map(r => {
+            // Sort: verified buyers first, then rest
+            const sorted = [
+                ...unique.filter(r =>  r.order_ref),
+                ...unique.filter(r => !r.order_ref),
+            ];
+
+            track.innerHTML = sorted.map(r => {
                 const stars = Array.from({length:5},(_,i) =>
                     `<svg width="14" height="14" viewBox="0 0 24 24" fill="${i<r.rating?'#E0C097':'none'}" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
                 ).join('');
                 const name = r.reviewer_name || (isAr ? 'عميلة مجهولة' : 'Anonymous');
                 const date = new Date(r.created_at).toLocaleDateString(isAr?'ar-EG':'en-US',{month:'short',year:'numeric'});
+                const verifiedBadge = r.order_ref
+                    ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.65rem;font-weight:600;color:#4caf7d;background:rgba(76,175,125,0.1);border:1px solid rgba(76,175,125,0.25);border-radius:20px;padding:0.1rem 0.5rem;white-space:nowrap;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                        ${isAr ? 'مشتري موثق' : 'Verified Buyer'}
+                       </span>`
+                    : '';
                 return `
-                <div class="swiper-slide">
-                    <div class="review-card-pub">
+                <div class="swiper-slide" style="height:auto">
+                    <div class="review-card-pub" style="height:100%;display:flex;flex-direction:column;">
                         <div class="review-stars-pub">${stars}</div>
-                        ${r.comment ? `<p class="review-comment-pub">${r.comment.replace(/</g,'&lt;')}</p>` : ''}
+                        <p class="review-comment-pub" style="flex:1">${r.comment ? r.comment.replace(/</g,'&lt;') : ''}</p>
                         <div class="review-meta-pub">
-                            <span class="review-author-pub">${name.replace(/</g,'&lt;')}</span>
+                            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+                                <span class="review-author-pub">${name.replace(/</g,'&lt;')}</span>
+                                ${verifiedBadge}
+                            </div>
                             <span>${date}</span>
                         </div>
                     </div>
                 </div>`;
             }).join('');
+
+            if (!unique.length) return;
 
             section.style.display = '';
 
@@ -330,8 +358,10 @@
                 grabCursor: true,
                 dir: swiperDir,
                 loop: true,
+                autoHeight: false,
+                centeredSlides: false,
                 autoplay: {
-                    delay: 3000,
+                    delay: 5000,
                     disableOnInteraction: false,
                     pauseOnMouseEnter: true,
                 },
