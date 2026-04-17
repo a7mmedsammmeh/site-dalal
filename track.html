@@ -386,6 +386,8 @@
 <script src="i18n.js"></script>
 <script src="script.js"></script>
 <script src="supabase.js"></script>
+<script src="products-data.js"></script>
+<script src="cart.js"></script>
 <script>
 (function () {
 
@@ -505,13 +507,7 @@
                     <span class="track-order-total">${order.total ? order.total.toLocaleString() + (lang === 'ar' ? ' جنيه' : ' EGP') : '—'}</span>
                 </div>
             </div>
-            ${status === 'pending' ? `
-            <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--border);background:var(--bg-light);">
-                <button class="oc-btn cancel-btn" onclick="cancelOrderFromTrack('${esc(ref)}')" style="width:100%;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    ${lang === 'ar' ? 'إلغاء الطلب' : 'Cancel Order'}
-                </button>
-            </div>` : ''}
+
         </div>
         ${backHTML}`;
     }

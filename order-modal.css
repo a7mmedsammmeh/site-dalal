@@ -167,6 +167,13 @@ body.lang-ar .order-label { letter-spacing: 0.02em; text-transform: none; }
     box-shadow: 0 0 0 3px rgba(224,192,151,0.08);
 }
 
+.order-field-hint {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim, #6B6158);
+    margin-top: 0.3rem;
+}
+
 .order-select-wrapper { position: relative; }
 .order-select-wrapper::after {
     content: '';

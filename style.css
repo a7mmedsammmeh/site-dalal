@@ -85,7 +85,7 @@ p  { font-size:clamp(0.85rem,1.5vw,0.95rem); color:var(--text-muted); font-weigh
     font-family:var(--font-body); font-size:0.82rem; font-weight:500;
     letter-spacing:0.15em; text-transform:uppercase;
     padding:0.85rem 2.2rem; border-radius:var(--r);
-    transition:background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+    transition:background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     cursor:pointer; position:relative; overflow:hidden;
 }
 body.lang-ar .btn { font-family:var(--font-ar); letter-spacing:0.05em; }
@@ -891,7 +891,7 @@ body.lang-en .cart-drawer-title { font-family: var(--font-en); }
 
 /* ─── Footer ─── */
 .cart-footer {
-    flex-direction: column; gap: 0.9rem;
+    flex-direction: column; gap: 0.6rem;
     padding: 1.2rem 1.5rem 1.5rem;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
@@ -904,13 +904,29 @@ body.lang-en .cart-drawer-title { font-family: var(--font-en); }
     font-size: 1.1rem; font-weight: 700; color: var(--gold);
     letter-spacing: 0.04em;
 }
-.cart-checkout-btn { width: 100%; padding: 1rem; font-size: 0.85rem; gap: 0.6rem; }
-.cart-clear-btn {
-    width: 100%; padding: 0.7rem; font-size: 0.78rem; gap: 0.5rem;
-    color: var(--text-dim); border-color: var(--border);
-    letter-spacing: 0.08em;
+.cart-checkout-btn {
+    width: 100%; padding: 0.85rem 1.25rem;
+    font-size: 0.85rem; gap: 0.75rem;
+    display: flex; align-items: center;
+    justify-content: flex-start;
+    text-align: start;
 }
-.cart-clear-btn:hover { color: #c0392b; border-color: #c0392b; background: transparent; box-shadow: none; }
+.cart-checkout-btn .btn-stack { align-items: flex-start; }
+.cart-clear-btn {
+    width: 100%; padding: 0.5rem 0.75rem; font-size: 0.75rem; gap: 0.5rem;
+    color: var(--text-dim); border-color: transparent;
+    letter-spacing: 0.06em; opacity: 0.6;
+    background: transparent;
+}
+.cart-clear-btn:hover { color: #c0392b; border-color: rgba(192,57,43,0.3); background: rgba(192,57,43,0.05); box-shadow: none; opacity: 1; }
+
+/* messenger ghost btn in cart — full width */
+.cart-footer .btn-secondary-row { margin-top: 0; grid-template-columns: 1fr; }
+.cart-footer .btn-secondary-row .btn-ghost {
+    width: 100%;
+    padding: 0.7rem 0.75rem;
+    justify-content: flex-start;
+}
 
 /* ─── Toast ─── */
 .cart-toast {

@@ -12,6 +12,8 @@
             namePh:     'اكتب أسمك',
             phone:      'رقم الهاتف',
             phonePh:    '01xxxxxxxxx',
+            email:      'البريد الإلكتروني',
+            emailHint:  '(اختياري — لتلقي تحديثات الطلب)',
             address:    'العنوان',
             addressPh:  'المحافظة / المدينة / الشارع',
             size:       'المقاس',
@@ -31,6 +33,8 @@
             namePh:     'Your full name',
             phone:      'Phone',
             phonePh:    '01xxxxxxxxx',
+            email:      'Email',
+            emailHint:  '(optional — to receive order updates)',
             address:    'Address',
             addressPh:  'Governorate / City / Street',
             size:       'Size',
@@ -84,6 +88,11 @@
       <div class="order-field">
         <label class="order-label" id="orderLabelPhone" for="orderInputPhone"></label>
         <input class="order-input" id="orderInputPhone" type="tel" autocomplete="tel" inputmode="numeric" pattern="[0-9]*" required>
+      </div>
+      <div class="order-field">
+        <label class="order-label" id="orderLabelEmail" for="orderInputEmail"></label>
+        <input class="order-input" id="orderInputEmail" type="email" autocomplete="email" placeholder="example@email.com">
+        <span class="order-field-hint" id="orderEmailHint">(اختياري — لتلقي تحديثات الطلب)</span>
       </div>
       <div class="order-field">
         <label class="order-label" id="orderLabelAddress" for="orderInputAddress"></label>
@@ -168,6 +177,7 @@
         document.getElementById('orderError').classList.remove('is-visible');
         document.getElementById('orderForm').reset();
         document.getElementById('orderModalCard').style.transform = '';
+        document.getElementById('orderInputEmail') && (document.getElementById('orderInputEmail').value = '');
         const btn = document.getElementById('orderSubmitBtn');
         btn.disabled = false;
         document.getElementById('orderSubmitLabel').textContent = t.submit;
@@ -178,6 +188,8 @@
         document.getElementById('orderInputName').placeholder    = t.namePh;
         document.getElementById('orderLabelPhone').textContent   = t.phone;
         document.getElementById('orderInputPhone').placeholder   = t.phonePh;
+        document.getElementById('orderLabelEmail').textContent   = t.email;
+        document.getElementById('orderEmailHint').textContent    = t.emailHint;
         document.getElementById('orderLabelAddress').textContent = t.address;
         document.getElementById('orderInputAddress').placeholder = t.addressPh;
         document.getElementById('orderLabelSize').textContent    = t.size;
@@ -245,6 +257,7 @@
 
         const name     = document.getElementById('orderInputName').value.trim();
         const phone    = document.getElementById('orderInputPhone').value.trim();
+        const email    = document.getElementById('orderInputEmail').value.trim();
         const address  = document.getElementById('orderInputAddress').value.trim();
         const sizeVal  = document.getElementById('orderSelectSize').value;
         const offerIdx = document.getElementById('orderSelectOffer').value;
@@ -262,7 +275,9 @@
         const orderData = {
             name,
             phone,
+            email: email || null,
             address,
+            lang: lang,
             products: JSON.parse(JSON.stringify([{
                 id:    _product.id,
                 code:  _product.code || '',

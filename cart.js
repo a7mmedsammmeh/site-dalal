@@ -260,7 +260,13 @@ function cartSetQty(key, qty) {
     renderCartItems();
 }
 
-function cartClear() {
+function cartClear(skipConfirm = false) {
+    if (!skipConfirm) {
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const msg  = lang === 'ar' ? 'هل أنت متأكدة من إفراغ السلة؟' : 'Are you sure you want to clear the cart?';
+        if (!confirm(msg)) return;
+    }
+
     const items = document.querySelectorAll('.cart-item');
     if (!items.length) {
         cart = [];
@@ -674,6 +680,11 @@ function checkoutViaSite() {
                     <input class="order-input" id="coPhone" type="tel" placeholder="01xxxxxxxxx" inputmode="numeric" pattern="[0-9]*" required>
                 </div>
                 <div class="order-field">
+                    <label class="order-label" for="coEmail">${isAr ? 'البريد الإلكتروني' : 'Email'}</label>
+                    <input class="order-input" id="coEmail" type="email" placeholder="example@email.com" autocomplete="email">
+                    <span class="order-field-hint">${isAr ? '(اختياري — لتلقي تحديثات الطلب)' : '(optional — to receive order updates)'}</span>
+                </div>
+                <div class="order-field">
                     <label class="order-label" for="coAddress">${isAr ? 'العنوان' : 'Address'}</label>
                     <input class="order-input" id="coAddress" type="text" placeholder="${isAr ? 'المحافظة / المدينة / الشارع' : 'Governorate / City / Street'}" required>
                 </div>
@@ -705,6 +716,32 @@ function checkoutViaSite() {
     document.getElementById('cartOrderClose').addEventListener('click', closeModal);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 
+    /* Drag to dismiss (mobile) */
+    const card = overlay.querySelector('.order-modal');
+    let _startY = 0, _currentY = 0, _dragging = false;
+    card.addEventListener('touchstart', e => {
+        if (window.innerWidth >= 640 || card.scrollTop > 0) return;
+        _dragging = true;
+        _startY = e.touches[0].clientY;
+        _currentY = 0;
+        card.style.transition = 'none';
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+        if (!_dragging) return;
+        const dy = e.touches[0].clientY - _startY;
+        if (dy < 0) return;
+        _currentY = dy;
+        card.style.transform = `translateY(${dy}px)`;
+        e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchend', () => {
+        if (!_dragging) return;
+        _dragging = false;
+        card.style.transition = '';
+        if (_currentY > 120) closeModal();
+        else card.style.transform = '';
+    });
+
     /* Numbers only */
     overlay.querySelector('#coPhone').addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '');
@@ -714,6 +751,7 @@ function checkoutViaSite() {
         e.preventDefault();
         const name    = document.getElementById('coName').value.trim();
         const phone   = document.getElementById('coPhone').value.trim();
+        const email   = document.getElementById('coEmail')?.value.trim() || '';
         const address = document.getElementById('coAddress').value.trim();
 
         if (!name || !phone || !address) {
@@ -746,7 +784,9 @@ function checkoutViaSite() {
         const orderData = {
             name,
             phone,
+            email: email || null,
             address,
+            lang: lang,
             products,
             total:     cartTotal(),
             status:    'pending',
@@ -777,7 +817,7 @@ function checkoutViaSite() {
                     ${isAr ? 'تتبع طلبك ←' : 'Track your order ←'}
                 </a>`;
             document.getElementById('coSuccess').classList.add('is-visible');
-            cartClear();
+            cartClear(true);
             closeCart();
             setTimeout(closeModal, 5000);
         } catch (err) {
@@ -872,18 +912,26 @@ function injectCartHTML() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                 <span id="cartClearLabel">${isAr ? 'إفراغ السلة' : 'Clear Cart'}</span>
             </button>
-            <button class="btn btn-primary cart-checkout-btn" onclick="checkoutViaMessenger()">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                    <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/>
-                </svg>
-                <span id="cartCheckoutLabel">${isAr ? 'اطلبي عبر ماسنجر' : 'Order via Messenger'}</span>
-            </button>
-            <button class="btn btn-secondary cart-site-order-btn" onclick="checkoutViaSite()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <button class="btn btn-primary cart-checkout-btn" onclick="checkoutViaSite()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                     <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                 </svg>
-                <span id="cartSiteOrderLabel">${isAr ? 'اطلبي عن طريق الموقع' : 'Order via Website'}</span>
+                <span class="btn-stack">
+                    <span class="btn-stack-title" id="cartSiteOrderLabel">${isAr ? 'اطلبي الآن' : 'Order Now'}</span>
+                    <span class="btn-stack-sub">${isAr ? 'سجّلي طلبك وتابعيه من طلباتي' : 'Place & track your order'}</span>
+                </span>
             </button>
+            <div class="btn-secondary-row" style="margin-top:0">
+                <button class="btn btn-ghost btn-secondary-row-item" onclick="checkoutViaMessenger()">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                        <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/>
+                    </svg>
+                    <span class="btn-stack">
+                        <span class="btn-stack-title" id="cartCheckoutLabel">${isAr ? 'الطلب عبر ماسنجر' : 'Order via Messenger'}</span>
+                        <span class="btn-stack-sub">${isAr ? 'تواصلي مباشرة معنا' : 'Chat with us directly'}</span>
+                    </span>
+                </button>
+            </div>
         </div>
     </aside>
 
@@ -922,8 +970,8 @@ function updateCartLang(lang) {
     set('cartEmptyText',   isAr ? 'السلة فارغة' : 'Your cart is empty');
     set('cartTotalLabel',    isAr ? 'الإجمالي' : 'Total');
     set('cartClearLabel',    isAr ? 'إفراغ السلة' : 'Clear Cart');
-    set('cartCheckoutLabel', isAr ? 'اطلبي عبر ماسنجر' : 'Order via Messenger');
-    set('cartSiteOrderLabel', isAr ? 'اطلبي عن طريق الموقع' : 'Order via Website');
+    set('cartCheckoutLabel', isAr ? 'الطلب عبر ماسنجر' : 'Order via Messenger');
+    set('cartSiteOrderLabel', isAr ? 'اطلبي الآن' : 'Order Now');
     renderCartItems();
 }
 

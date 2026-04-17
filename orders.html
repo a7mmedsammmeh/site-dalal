@@ -229,6 +229,8 @@
 <script src="script.js"></script>
 <script src="my-orders.js"></script>
 <script src="supabase.js"></script>
+<script src="products-data.js"></script>
+<script src="cart.js"></script>
 <script>
 (function () {
 
@@ -372,8 +374,12 @@
 
     render();
 
-    // Sync with Supabase — remove deleted orders
-    syncLocalOrders().then(render);
+    // Sync with Supabase — only re-render if data actually changed
+    const _beforeSync = JSON.stringify(getLocalOrders());
+    syncLocalOrders().then(() => {
+        const _afterSync = JSON.stringify(getLocalOrders());
+        if (_afterSync !== _beforeSync) render();
+    });
 
     // Re-render on language change
     document.querySelectorAll('.lang-toggle').forEach(btn => {

@@ -36,22 +36,33 @@ async function syncLocalOrders() {
     if (!orders.length) return;
 
     try {
-        const refs = orders.map(o => o.ref).filter(Boolean);
         const db = await getSupabase();
-        const { data } = await db
-            .from('orders')
-            .select('order_ref, status')
-            .in('order_ref', refs);
+        const synced = [];
 
-        if (!data) return;
+        // Check each order individually to distinguish between "no access" vs "deleted"
+        for (const o of orders) {
+            if (!o.ref) {
+                synced.push(o);
+                continue;
+            }
 
-        const map = {};
-        data.forEach(r => { map[r.order_ref] = r.status; });
+            const { data, error } = await db
+                .from('orders')
+                .select('order_ref, status')
+                .eq('order_ref', o.ref)
+                .maybeSingle();
 
-        // Keep only existing orders and update their status
-        const synced = orders
-            .filter(o => map[o.ref] !== undefined)
-            .map(o => ({ ...o, status: map[o.ref] }));
+            // If error or explicitly null → order was deleted, skip it
+            if (error || data === null) continue;
+
+            // If data exists → update status
+            if (data) {
+                synced.push({ ...o, status: data.status });
+            } else {
+                // No data but no error → keep as-is (RLS might be blocking)
+                synced.push(o);
+            }
+        }
 
         if (JSON.stringify(synced) !== JSON.stringify(orders)) {
             localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(synced));

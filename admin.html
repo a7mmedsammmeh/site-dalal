@@ -318,7 +318,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         <table class="admin-table">
             <thead>
                 <tr>
-                    <th>#</th><th>الاسم</th><th>الهاتف</th><th>العنوان</th>
+                    <th>#</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>العنوان</th>
                     <th>المنتجات</th><th>الإجمالي</th><th>الحالة</th><th>التاريخ</th><th></th>
                 </tr>
             </thead>
@@ -477,7 +477,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             const msg = _search
                 ? `لا توجد طلبات تطابق "<strong>${esc(_search)}</strong>"`
                 : 'لا توجد طلبات بعد';
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-dim)">${msg}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:3rem;color:var(--text-dim)">${msg}</td></tr>`;
             return;
         }
         tbody.innerHTML = orders.map((o, i) => `
@@ -488,6 +488,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 </td>
                 <td style="font-weight:500">${esc(o.name||'—')}</td>
                 <td style="direction:ltr;text-align:right">${esc(o.phone||'—')}</td>
+                <td style="font-size:0.78rem;color:var(--text-muted)">${o.email ? `<a href="mailto:${esc(o.email)}" style="color:var(--gold-dim);text-decoration:none;">${esc(o.email)}</a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
                 <td style="max-width:150px;font-size:0.8rem;color:var(--text-muted)">${esc(o.address||'—')}</td>
                 <td>${parseProducts(o.products)}</td>
                 <td class="order-total">${o.total ? o.total+' ج' : '—'}</td>
@@ -534,7 +535,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <div class="mc-head">
                     <div class="mc-head-info">
                         <span class="mc-name">${esc(o.name||'—')}</span>
-                        <span class="mc-ref">${o.order_ref ? esc(o.order_ref) : '#'+String(i+1).padStart(3,'0')}</span>
+                        <span class="mc-ref">
+                        <span style="color:var(--text-dim);font-size:0.68rem;margin-inline-end:0.5rem">#${String(i+1).padStart(3,'0')}</span>${o.order_ref ? esc(o.order_ref) : ''}
+                        </span>
                     </div>
                     <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this)">${statusOpts(o.status)}</select>
                 </div>
@@ -545,6 +548,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                         <span class="mc-lbl">الهاتف</span>
                         <span class="mc-val" style="direction:ltr">${esc(o.phone||'—')}</span>
                     </div>
+                    ${o.email ? `<div class="mc-row">
+                        <span class="mc-lbl">الإيميل</span>
+                        <a href="mailto:${esc(o.email)}" class="mc-val" style="color:var(--gold-dim);text-decoration:none;font-size:0.78rem">${esc(o.email)}</a>
+                    </div>` : ''}
                     <div class="mc-row">
                         <span class="mc-lbl">العنوان</span>
                         <span class="mc-val">${esc(o.address||'—')}</span>
