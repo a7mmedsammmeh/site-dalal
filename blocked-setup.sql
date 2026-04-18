@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS product_stock (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     product_id INTEGER NOT NULL UNIQUE,
     in_stock BOOLEAN DEFAULT true,
+    visibility_status TEXT DEFAULT 'visible' CHECK (visibility_status IN ('visible', 'out_of_stock', 'hidden')),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

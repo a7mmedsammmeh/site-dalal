@@ -1340,6 +1340,10 @@ function patchProductCards() {
         const info    = article.querySelector('.product-info');
         if (!info) return article;
 
+        // Check product stock status
+        const stockInfo = DALAL_PRODUCTS_STOCK[product.id] || { in_stock: true, visibility_status: 'visible' };
+        const isOutOfStock = stockInfo.visibility_status === 'out_of_stock';
+
         // Replace the existing btn-order with two buttons
         const existingBtn = info.querySelector('.btn-order');
         if (existingBtn) existingBtn.remove();
@@ -1350,6 +1354,15 @@ function patchProductCards() {
         const addBtn = document.createElement('button');
         addBtn.className = 'btn-cart-add';
         addBtn.setAttribute('data-product-id', product.id);
+        
+        // Disable button for out of stock products
+        if (isOutOfStock) {
+            addBtn.disabled = true;
+            addBtn.style.opacity = '0.4';
+            addBtn.style.cursor = 'not-allowed';
+            addBtn.title = lang === 'ar' ? 'المنتج غير متوفر حالياً' : 'Product currently out of stock';
+        }
+        
         addBtn.innerHTML = `
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                 <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
@@ -1357,11 +1370,15 @@ function patchProductCards() {
             </svg>
             <span>${lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart'}</span>
         `;
-        addBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openQuickAddModal(product);
-        });
+        
+        // Only add click listener if product is available
+        if (!isOutOfStock) {
+            addBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openQuickAddModal(product);
+            });
+        }
 
         const productUrl = product.slug ? `product.html#${product.slug}` : `product.html?id=${product.id}`;
         const orderBtn = document.createElement('a');

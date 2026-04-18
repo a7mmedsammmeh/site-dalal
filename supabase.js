@@ -289,7 +289,7 @@ async function fetchProductStock() {
     return data || [];
 }
 
-async function updateProductStock(productId, inStock) {
+async function updateProductStock(productId, inStock, visibilityStatus = null) {
     const db = await getSupabase();
     // Try to update first
     const { data: existing } = await db
@@ -298,18 +298,35 @@ async function updateProductStock(productId, inStock) {
         .eq('product_id', productId)
         .limit(1);
     
+    const updateData = { 
+        in_stock: inStock, 
+        updated_at: new Date().toISOString() 
+    };
+    
+    // If visibilityStatus is provided, update it
+    if (visibilityStatus !== null) {
+        updateData.visibility_status = visibilityStatus;
+    }
+    
     if (existing && existing.length > 0) {
         // Update existing
         const { error } = await db
             .from('product_stock')
-            .update({ in_stock: inStock, updated_at: new Date().toISOString() })
+            .update(updateData)
             .eq('product_id', productId);
         if (error) throw error;
     } else {
         // Insert new
+        const insertData = { 
+            product_id: productId, 
+            in_stock: inStock 
+        };
+        if (visibilityStatus !== null) {
+            insertData.visibility_status = visibilityStatus;
+        }
         const { error } = await db
             .from('product_stock')
-            .insert([{ product_id: productId, in_stock: inStock }]);
+            .insert([insertData]);
         if (error) throw error;
     }
 }
@@ -318,12 +335,15 @@ async function getProductStock(productId) {
     const db = await getSupabase();
     const { data, error } = await db
         .from('product_stock')
-        .select('in_stock')
+        .select('in_stock, visibility_status')
         .eq('product_id', productId)
         .limit(1);
-    if (error) return true; // Default to in stock on error
-    if (!data || !data.length) return true; // Default to in stock if not found
-    return data[0].in_stock;
+    if (error) return { in_stock: true, visibility_status: 'visible' }; // Default to in stock on error
+    if (!data || !data.length) return { in_stock: true, visibility_status: 'visible' }; // Default to in stock if not found
+    return {
+        in_stock: data[0].in_stock,
+        visibility_status: data[0].visibility_status || 'visible'
+    };
 }
 
 /* ─── Activity Logs ─── */
@@ -488,8 +508,47 @@ async function updateProductOrder(id, displayOrder) {
 
 async function deleteProduct(id) {
     const db = await getSupabase();
-    const { error } = await db.from('products').delete().eq('id', id);
-    if (error) throw error;
+    
+    try {
+        // Get product slug first (needed for storage deletion)
+        const { data: product, error: fetchError } = await db
+            .from('products')
+            .select('slug')
+            .eq('id', id)
+            .single();
+
+        if (fetchError) console.warn('Could not fetch product slug:', fetchError);
+        const slug = product?.slug;
+
+        // 1. Delete product images records
+        const { error: imagesError } = await db.from('product_images').delete().eq('product_id', id);
+        if (imagesError) console.warn('Error deleting product images:', imagesError);
+        
+        // 2. Delete product pricing
+        const { error: pricingError } = await db.from('product_pricing').delete().eq('product_id', id);
+        if (pricingError) console.warn('Error deleting product pricing:', pricingError);
+        
+        // 3. Delete product stock
+        const { error: stockError } = await db.from('product_stock').delete().eq('product_id', id);
+        if (stockError) console.warn('Error deleting product stock:', stockError);
+        
+        // 4. Delete product reviews (if exists)
+        const { error: reviewsError } = await db.from('product_reviews').delete().eq('product_id', id);
+        if (reviewsError) console.warn('Error deleting product reviews:', reviewsError);
+        
+        // 5. Delete storage files (bucket folder)
+        if (slug) await deleteProductStorageFolder(slug);
+        
+        // 6. Finally delete the main product
+        const { error: productError } = await db.from('products').delete().eq('id', id);
+        if (productError) throw productError;
+        
+        console.log(`✅ Product ${id} and all related data deleted successfully`);
+        
+    } catch (error) {
+        console.error('Error in deleteProduct:', error);
+        throw error;
+    }
 }
 
 async function insertProductImage(productId, imageUrl, order) {
@@ -546,4 +605,39 @@ async function uploadProductImage(file, fileName) {
     // Get public URL
     const { data: urlData } = db.storage.from('products').getPublicUrl(fileName);
     return urlData.publicUrl;
+}
+
+async function deleteProductStorageFolder(slug) {
+    if (!slug) return;
+    const db = await getSupabase();
+
+    try {
+        // List all files in the product's folder
+        const { data: files, error: listError } = await db.storage
+            .from('products')
+            .list(slug);
+
+        if (listError) {
+            console.warn('Could not list storage files:', listError);
+            return;
+        }
+
+        if (!files || files.length === 0) return;
+
+        // Build full paths for all files
+        const filePaths = files.map(f => `${slug}/${f.name}`);
+
+        // Delete all files
+        const { error: deleteError } = await db.storage
+            .from('products')
+            .remove(filePaths);
+
+        if (deleteError) {
+            console.warn('Could not delete storage files:', deleteError);
+        } else {
+            console.log(`✅ Deleted ${filePaths.length} files from storage folder: ${slug}`);
+        }
+    } catch (e) {
+        console.warn('deleteProductStorageFolder error:', e);
+    }
 }

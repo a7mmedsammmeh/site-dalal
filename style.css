@@ -1,4 +1,4 @@
-﻿/* ═══ DALAL — Design System ═══ */
+/* ═══ DALAL — Design System ═══ */
 
 :root {
     --bg:            #0D0D0D;
@@ -200,6 +200,75 @@ body.lang-ar .hero-tagline { font-family:var(--font-ar); font-style:normal; lett
     transition: opacity 0.4s ease;
 }
 .product-image-wrapper.loaded::after { opacity: 0; }
+
+/* Out of Stock Banner */
+.product-out-of-stock-banner {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #e05c5c;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    z-index: 2;
+    letter-spacing: 0.05em;
+    box-shadow: 0 2px 8px rgba(224,92,92,0.4);
+}
+
+/* Out of Stock Message Banner */
+.out-of-stock-message-banner {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.8rem !important;
+    background: rgba(224,92,92,0.1) !important;
+    border: 1px solid rgba(224,92,92,0.3) !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 0.75rem !important;
+    font-size: 0.85rem !important;
+    color: #e05c5c !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+}
+
+/* Out of Stock Message in Product Page - Mobile Responsive */
+@media (max-width: 768px) {
+    .product-out-of-stock-banner {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.8rem;
+        top: 12px;
+        right: 12px;
+    }
+    
+    .out-of-stock-message-banner {
+        margin: 1.5rem 0 1.2rem 0 !important;
+        padding: 1.2rem 1rem !important;
+        border-radius: 8px !important;
+        font-size: 1rem !important;
+        font-weight: 700 !important;
+        background: rgba(224,92,92,0.15) !important;
+        border: 2px solid rgba(224,92,92,0.4) !important;
+        box-shadow: 0 4px 12px rgba(224,92,92,0.2) !important;
+        flex-direction: column !important;
+        gap: 0.6rem !important;
+        order: 5 !important; /* After sizes (order 4) */
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .out-of-stock-message-banner svg {
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    .out-of-stock-message-banner span {
+        font-size: 1rem !important;
+        line-height: 1.4 !important;
+    }
+}
 .product-image { width:100%; height:100%; object-fit:cover; transition:transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94); will-change:transform; }
 .product-card:hover .product-image { transform:scale(1.08); }
 
@@ -242,6 +311,14 @@ body.light-mode .product-image-overlay { background:rgba(0,0,0,0.4); }
 
 .footer-top { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:2fr 1fr 1fr; gap:3rem; align-items:start; }
 .footer-logo { max-width:150px; margin-bottom:0.8rem; opacity:0.85; }
+
+/* Mobile responsive for footer logo */
+@media (max-width: 768px) {
+    .footer-logo { 
+        max-width: 130px !important; 
+        margin-bottom: 0.8rem !important;
+    }
+}
 .footer-tagline { font-family:var(--font-en); font-style:italic; font-size:0.85rem; color:var(--text-dim); letter-spacing:0.1em; }
 body.lang-ar .footer-tagline { font-family:var(--font-ar); font-style:normal; }
 .footer-heading { font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--gold); margin-bottom:1.1rem; }
@@ -312,6 +389,92 @@ body.lang-ar .btn-sticky { font-family:var(--font-ar); letter-spacing:0.04em; }
 
 .product-description { font-size:0.88rem; color:var(--text-muted); line-height:1.8; }
 
+/* Product Sizes Box */
+.product-sizes-box { margin:1.5rem 0; }
+.product-sizes-title { font-size:0.85rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.8rem; }
+body.lang-ar .product-sizes-title { font-family:var(--font-ar); letter-spacing:0.05em; }
+.product-sizes-list { display:flex; flex-wrap:wrap; gap:0.5rem; }
+.product-size-badge { display:inline-flex; align-items:center; justify-content:center; padding:0.4rem 0.85rem; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r); font-size:0.8rem; font-weight:500; color:var(--text); transition:all 0.2s; cursor:default; pointer-events:none; }
+.product-size-badge:hover { border-color:var(--border); background:var(--bg-card); }
+
+/* Mobile responsive for product sizes */
+@media (max-width: 768px) {
+    .product-sizes-box { 
+        margin: 1.2rem 0; 
+        padding: 1.2rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        text-align: center;
+        order: 4 !important; /* Place after pricing box (order 3) */
+    }
+    .product-sizes-title { 
+        font-size: 0.9rem; 
+        margin-bottom: 1rem; 
+        text-align: center;
+        color: var(--text);
+        font-weight: 600;
+    }
+    .product-sizes-list { 
+        gap: 0.6rem; 
+        justify-content: center;
+        align-items: center;
+    }
+    .product-size-badge { 
+        padding: 0.5rem 1rem; 
+        font-size: 0.8rem;
+        min-width: 3rem;
+        text-align: center;
+        font-weight: 600;
+        border: 2px solid var(--border);
+        cursor: default !important; /* Remove pointer cursor */
+        pointer-events: none !important; /* Disable interactions */
+    }
+    .product-size-badge:hover { 
+        border-color: var(--border) !important; /* Disable hover effect */
+        background: var(--bg-card) !important; /* Keep original background */
+        transform: none !important; /* Disable hover animation */
+    }
+    
+    /* Ensure proper order on mobile */
+    .product-info-panel {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .product-detail-name {
+        order: 1;
+    }
+    
+    .product-description {
+        order: 2;
+    }
+    
+    .pricing-box {
+        order: 3;
+    }
+    
+    .product-sizes-box {
+        order: 4; /* After pricing box (order 3) */
+    }
+    
+    .out-of-stock-message-banner {
+        order: 5; /* After sizes */
+    }
+    
+    .btn-order-main {
+        order: 6; /* After out of stock message */
+    }
+    
+    .btn-secondary-row {
+        order: 7; /* After main button */
+    }
+    
+    .shipping-box {
+        order: 8; /* Last */
+    }
+}
+
 .pricing-box { border:1px solid var(--border); border-radius:var(--r-lg); padding:1.6rem; background:var(--bg-card); }
 .pricing-title { font-size:0.85rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.8rem; }
 body.lang-ar .pricing-title { font-family:var(--font-ar); letter-spacing:0.05em; }
@@ -361,7 +524,18 @@ body.lang-ar .pricing-title { font-family:var(--font-ar); letter-spacing:0.05em;
     .footer-bottom { justify-content:center; gap:1rem; }
 }
 
-@media (max-width:768px) {
+/* ─── Mobile ─── */
+@media (max-width: 768px) {
+    html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
+    
+    * {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
     .nav-toggle { display:flex; }
 
     /* Navbar: controls take full width, icons on one side, hamburger on other */
@@ -429,10 +603,28 @@ body.lang-ar .pricing-title { font-family:var(--font-ar); letter-spacing:0.05em;
     .floating-buttons { bottom:5rem; right:1rem; }
     .mobile-sticky-btn { display:block; position:fixed; bottom:0; left:0; width:100%; z-index:950; }
 
-    .product-detail-page { padding:5.5rem 1.5rem 3rem; }
-    .product-detail-grid { display:flex; flex-direction:column; gap:1.2rem; }
+    .product-detail-page { 
+        padding:5.5rem 1.5rem 3rem; 
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+    .product-detail-grid { 
+        display:flex; 
+        flex-direction:column; 
+        gap:1.2rem; 
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
     .product-gallery { order:3; }
-    .product-info-panel { order:3; display:contents; }
+    .product-info-panel { 
+        order:3; 
+        display:contents; 
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
     .product-detail-name { order:2; width:100%; }
     .product-description { order:3; width:100%; }
     .product-gallery { order:4; }

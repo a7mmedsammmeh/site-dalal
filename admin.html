@@ -521,7 +521,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             سجل النشاطات
         </button>
-        <button class="admin-refresh-btn hide-mobile" onclick="showProductsPanel()" style="color:#f39c12;border-color:rgba(243,156,18,0.3);">
+        <button class="admin-refresh-btn hide-mobile" onclick="window.location.href='products-admin.html'" style="color:#f39c12;border-color:rgba(243,156,18,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             المنتجات
         </button>
@@ -561,7 +561,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         سجل النشاطات
     </button>
-    <button class="admin-menu-item" onclick="showProductsPanel();toggleAdminMenu()" style="color:#f39c12;">
+    <button class="admin-menu-item" onclick="window.location.href='products-admin.html';toggleAdminMenu()" style="color:#f39c12;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         المنتجات
     </button>
@@ -2913,6 +2913,17 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <img src="${imgSrc}" alt="${p.name.ar}" class="pm-card-img" onerror="this.src='images/dalal-logo.png'">
                 <div class="pm-card-name">${p.name.ar}</div>
                 <div class="pm-card-code">#${p.code}</div>
+                
+                <!-- Stock Status Controls -->
+                <div style="margin:0.75rem 0;padding:0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);">
+                    <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:0.5rem;letter-spacing:0.05em;">حالة المخزون</div>
+                    <select id="stockStatus_${p.id}" onchange="updateProductStockStatus(${p.id}, this.value)" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:0.75rem;font-family:inherit;cursor:pointer;">
+                        <option value="visible">✓ متوفر (يظهر عادي)</option>
+                        <option value="out_of_stock">⚠ غير متوفر (يظهر بدون شراء)</option>
+                        <option value="hidden">✕ مخفي (لا يظهر نهائياً)</option>
+                    </select>
+                </div>
+                
                 <div class="pm-card-actions">
                     <button class="pm-btn pm-btn-edit" onclick="showEditProductModal(${p.id})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="display:inline;vertical-align:middle;margin-left:0.3rem;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -2930,6 +2941,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <div style="font-size:0.9rem;color:var(--text);font-weight:600;">إضافة منتج جديد</div>
             </div>
         `;
+        
+        // Load current stock status for each product
+        loadProductStockStatuses();
     };
 
     window.confirmDeleteProduct = async function(id, name) {
@@ -2946,6 +2960,43 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         } catch(e) {
             console.error('delete product error:', e);
             showAdminToast('حدث خطأ أثناء الحذف');
+        }
+    };
+
+    // Load stock statuses for all products
+    window.loadProductStockStatuses = async function() {
+        try {
+            const stockData = await fetchProductStock();
+            stockData.forEach(s => {
+                const select = document.getElementById(`stockStatus_${s.product_id}`);
+                if (select) {
+                    select.value = s.visibility_status || 'visible';
+                }
+            });
+        } catch(e) {
+            console.warn('Could not load stock statuses:', e);
+        }
+    };
+
+    // Update product stock status
+    window.updateProductStockStatus = async function(productId, visibilityStatus) {
+        try {
+            const inStock = visibilityStatus === 'visible';
+            await updateProductStock(productId, inStock, visibilityStatus);
+            
+            const statusText = visibilityStatus === 'visible' ? 'متوفر' : 
+                             visibilityStatus === 'out_of_stock' ? 'غير متوفر' : 'مخفي';
+            showAdminToast(`✅ تم تحديث حالة المنتج إلى: ${statusText}`);
+            
+            // Log activity
+            if (typeof logActivity === 'function') {
+                const product = _pmProducts.find(p => p.id === productId);
+                const productName = product ? product.name.ar : `منتج #${productId}`;
+                logActivity('update', `تحديث حالة المخزون: ${productName} → ${statusText}`, 'product', productId);
+            }
+        } catch(e) {
+            console.error('update stock status error:', e);
+            showAdminToast('حدث خطأ أثناء التحديث');
         }
     };
 
@@ -2991,8 +3042,15 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     }
 
     window.closeProductModal = function() {
-        document.getElementById('productFormModal').style.display = 'none';
-        document.body.style.overflow = '';
+        try {
+            const modal = document.getElementById('productFormModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            document.body.style.overflow = '';
+        } catch(e) {
+            console.error('closeProductModal error:', e);
+        }
     };
 
     window.previewMainImage = function(input) {
@@ -3090,6 +3148,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 if (typeof logActivity === 'function') logActivity('create', `إضافة منتج جديد: ${nameAr}`, 'product', newId);
             }
 
+            // Close modal and reload products
             closeProductModal();
             await loadProductsManagement();
 

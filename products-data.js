@@ -64,7 +64,10 @@ async function loadProductsData() {
                 const stockData = await fetchProductStock();
                 DALAL_PRODUCTS_STOCK = {};
                 stockData.forEach(s => {
-                    DALAL_PRODUCTS_STOCK[s.product_id] = s.in_stock;
+                    DALAL_PRODUCTS_STOCK[s.product_id] = {
+                        in_stock: s.in_stock,
+                        visibility_status: s.visibility_status || 'visible'
+                    };
                 });
             } catch (e) {
                 console.warn('Could not load product stock:', e);
@@ -135,11 +138,11 @@ function buildMessengerOrderURL(product) {
 
 /* ─── Product Card ─── */
 function createProductCard(product) {
-    // Check if product is in stock (default to true if not set)
-    const inStock = DALAL_PRODUCTS_STOCK[product.id] !== false;
+    // Check product visibility status
+    const stockInfo = DALAL_PRODUCTS_STOCK[product.id] || { in_stock: true, visibility_status: 'visible' };
     
-    // Don't render out-of-stock products
-    if (!inStock) {
+    // Don't render hidden products
+    if (stockInfo.visibility_status === 'hidden') {
         const article = document.createElement('article');
         article.style.display = 'none';
         return article;
@@ -147,6 +150,7 @@ function createProductCard(product) {
 
     const lang  = getCurrentLang();
     const name  = getProductName(product, lang);
+    const isOutOfStock = stockInfo.visibility_status === 'out_of_stock';
     
     // Use main_image_url if available (from Supabase), otherwise fallback to folder/main
     const cover = product.main_image_url || `${product.folder}/${product.main}`;
@@ -161,9 +165,17 @@ function createProductCard(product) {
     article.className = 'product-card scroll-reveal';
     article.setAttribute('data-product-id', product.id);
 
+    // Out of stock banner
+    const outOfStockBanner = isOutOfStock ? `
+        <div class="product-out-of-stock-banner">
+            ${lang === 'ar' ? 'غير متوفر' : 'Out of Stock'}
+        </div>
+    ` : '';
+
     article.innerHTML = `
         <a href="${productUrl}" class="product-card-link">
             <div class="product-image-wrapper">
+                ${outOfStockBanner}
                 <img src="${cover}" alt="${name} — DALAL" class="product-image" loading="lazy"
                      style="opacity:0;transition:opacity 0.4s ease, transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94);"
                      onerror="this.style.opacity='0.3';this.closest('.product-image-wrapper').classList.add('loaded')"

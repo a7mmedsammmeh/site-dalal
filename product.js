@@ -480,6 +480,7 @@ function applyProductPageLang(lang) {
     if (optEl) optEl.textContent = lang === 'ar' ? '(اختياري)' : '(optional)';
 
     renderPricing(currentProduct, lang);
+    renderProductSizes(currentProduct, lang);
     buildQtyOptions(currentProduct, lang);
     buildSizeOptions(currentProduct);
     document.title = `${lang === 'ar' ? 'دلال' : 'DALAL'} — ${name}`;
@@ -496,6 +497,28 @@ function renderPricing(product, lang) {
             <span class="pricing-value">${row.value}</span>
         </li>
     `).join('');
+}
+
+/* ─── Render available sizes ─── */
+function renderProductSizes(product, lang) {
+    const box = document.getElementById('productSizesBox');
+    const list = document.getElementById('productSizesList');
+    const title = document.getElementById('productSizesTitle');
+    
+    if (!box || !list || !product.sizes || !product.sizes.length) {
+        if (box) box.style.display = 'none';
+        return;
+    }
+    
+    // Update title based on language
+    if (title) title.textContent = lang === 'ar' ? 'المقاسات المتاحة' : 'Available Sizes';
+    
+    // Render sizes
+    list.innerHTML = product.sizes.map(size => 
+        `<span class="product-size-badge">${size}</span>`
+    ).join('');
+    
+    box.style.display = 'block';
 }
 
 /* ─── Show skeleton for product detail page ─── */
@@ -528,14 +551,12 @@ function showProductSkeleton() {
     }
 }
 
-/* ─── Show Out of Stock Product ─── */
-function showOutOfStockProduct(product, lang) {
+/* ─── Show Out of Stock Product (hidden — full page replacement) ─── */
+function showHiddenProduct(product, lang) {
     const isAr = lang === 'ar';
     const name = getProductName(product, lang);
-    // Use main_image_url if available, otherwise fallback to folder/main
     const cover = product.main_image_url || `${product.folder}/${product.main}`;
     
-    // Hide skeleton
     const skeleton = document.getElementById('productSkeleton');
     if (skeleton) skeleton.style.display = 'none';
     
@@ -556,7 +577,7 @@ function showOutOfStockProduct(product, lang) {
             <div style="background:var(--bg-card);border:1px solid rgba(224,92,92,0.3);border-radius:12px;padding:1.5rem;margin:2rem auto;max-width:500px;">
                 <div style="font-size:3rem;margin-bottom:1rem;opacity:0.6;">📦</div>
                 <p style="font-size:1.1rem;color:var(--text);margin-bottom:0.5rem;font-weight:600;">
-                    ${isAr ? 'هذا المنتج غير متوفر حالياً' : 'This product is currently out of stock'}
+                    ${isAr ? 'هذا المنتج غير متوفر حالياً' : 'This product is currently unavailable'}
                 </p>
                 <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
                     ${isAr ? 'نعتذر عن عدم توفر هذا المنتج في الوقت الحالي. يمكنك تصفح منتجات أخرى من تشكيلتنا.' : 'Sorry, this product is not available at the moment. You can browse other products from our collection.'}
@@ -580,12 +601,113 @@ function showOutOfStockProduct(product, lang) {
         </div>
     `;
     
-    // Update page title
     document.title = `${name} — ${isAr ? 'غير متوفر' : 'Out of Stock'} — دلال`;
-    
-    // Update meta for SEO
     const descEl = document.querySelector('meta[name="description"]');
     if (descEl) descEl.setAttribute('content', `${name} — ${isAr ? 'غير متوفر حالياً' : 'Currently out of stock'}`);
+}
+
+/* ─── Clean up previous out-of-stock messages ─── */
+function cleanupOutOfStockMessages() {
+    // Remove any existing out-of-stock banners
+    const existingBanners = document.querySelectorAll('.out-of-stock-message-banner');
+    existingBanners.forEach(banner => banner.remove());
+}
+
+/* ─── Reset buy buttons to normal state ─── */
+function resetBuyButtons(lang) {
+    const isAr = lang === 'ar';
+    
+    // Reset primary order button
+    const registerOrderBtn = document.getElementById('registerOrderBtn');
+    if (registerOrderBtn) {
+        registerOrderBtn.disabled = false;
+        registerOrderBtn.style.opacity = '1';
+        registerOrderBtn.style.cursor = 'pointer';
+        registerOrderBtn.onclick = () => currentProduct && openOrderModal(currentProduct);
+        const titleSpan = registerOrderBtn.querySelector('.btn-stack-title');
+        const subSpan   = registerOrderBtn.querySelector('.btn-stack-sub');
+        if (titleSpan) titleSpan.textContent = isAr ? 'اطلبي الآن' : 'Order Now';
+        if (subSpan)   subSpan.textContent   = isAr ? 'سجّلي طلبك وتابعيه من صفحة طلباتي' : 'Register your order and track it';
+    }
+
+    // Reset cart button
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    if (addToCartBtn) {
+        addToCartBtn.disabled = false;
+        addToCartBtn.style.opacity = '1';
+        addToCartBtn.style.cursor = 'pointer';
+        addToCartBtn.onclick = () => currentProduct && openQuickAddModal(currentProduct);
+    }
+
+    // Reset messenger button
+    const orderBtn = document.getElementById('orderBtn');
+    if (orderBtn) {
+        orderBtn.disabled = false;
+        orderBtn.style.opacity = '1';
+        orderBtn.style.cursor = 'pointer';
+        orderBtn.onclick = null; // Will be set later in initProductPage
+    }
+}
+
+/* ─── Disable buy buttons for out_of_stock products ─── */
+function disableBuyButtons(lang) {
+    const isAr = lang === 'ar';
+    const msg = isAr ? 'غير متوفر حالياً في المخزون' : 'Currently out of stock';
+
+    // Clean up any existing messages first
+    cleanupOutOfStockMessages();
+
+    // Replace primary order button
+    const registerOrderBtn = document.getElementById('registerOrderBtn');
+    if (registerOrderBtn) {
+        registerOrderBtn.disabled = true;
+        registerOrderBtn.style.opacity = '0.4';
+        registerOrderBtn.style.cursor = 'not-allowed';
+        registerOrderBtn.onclick = null;
+        const titleSpan = registerOrderBtn.querySelector('.btn-stack-title');
+        const subSpan   = registerOrderBtn.querySelector('.btn-stack-sub');
+        if (titleSpan) titleSpan.textContent = isAr ? 'غير متوفر' : 'Out of Stock';
+        if (subSpan)   subSpan.textContent   = msg;
+    }
+
+    // Replace cart button
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    if (addToCartBtn) {
+        addToCartBtn.disabled = true;
+        addToCartBtn.style.opacity = '0.4';
+        addToCartBtn.style.cursor = 'not-allowed';
+        addToCartBtn.onclick = null;
+    }
+
+    // Replace messenger button
+    const orderBtn = document.getElementById('orderBtn');
+    if (orderBtn) {
+        orderBtn.disabled = true;
+        orderBtn.style.opacity = '0.4';
+        orderBtn.style.cursor = 'not-allowed';
+        orderBtn.onclick = null;
+    }
+
+    // Add out-of-stock banner above primary button (better positioning)
+    const primaryBtn = document.getElementById('registerOrderBtn');
+    if (primaryBtn) {
+        const banner = document.createElement('div');
+        banner.className = 'out-of-stock-message-banner';
+        banner.style.cssText = `
+            display:flex; align-items:center; justify-content:center; gap:0.8rem;
+            background:rgba(224,92,92,0.1); border:1px solid rgba(224,92,92,0.3);
+            border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.75rem;
+            font-size:0.85rem; color:#e05c5c; font-weight:600;
+            text-align:center; flex-direction:row; width:100%;
+        `;
+        banner.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="flex-shrink:0;">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>${msg}</span>
+        `;
+        primaryBtn.parentNode.insertBefore(banner, primaryBtn);
+    }
 }
 
 /* ─── Boot ─── */
@@ -605,14 +727,21 @@ async function initProductPage() {
 
     currentProduct = product;
 
-    // Check if product is in stock
-    const inStock = DALAL_PRODUCTS_STOCK[product.id] !== false; // Default to true if not set
+    // Clean up any previous out-of-stock messages and reset buttons
+    cleanupOutOfStockMessages();
+    resetBuyButtons(lang);
+
+    // Check product stock status
+    const stockInfo = DALAL_PRODUCTS_STOCK[product.id] || { in_stock: true, visibility_status: 'visible' };
     
-    // If out of stock, show message and disable all actions
-    if (!inStock) {
-        showOutOfStockProduct(product, lang);
+    // If hidden, show full-page unavailable message
+    if (stockInfo.visibility_status === 'hidden') {
+        showHiddenProduct(product, lang);
         return;
     }
+    
+    // If out_of_stock: load page normally, then disable buy buttons
+    const isOutOfStock = stockInfo.visibility_status === 'out_of_stock';
 
     /* Save & render recently viewed */
     saveRecentlyViewed(product);
@@ -713,7 +842,7 @@ async function initProductPage() {
     const orderBtn = document.getElementById('orderBtn');
     if (orderBtn) {
         orderBtn.style.opacity = '1';
-        orderBtn.addEventListener('click', openModal);
+        if (!isOutOfStock) orderBtn.addEventListener('click', openModal);
     }
 
     /* Modal close */
@@ -731,6 +860,11 @@ async function initProductPage() {
 
     /* Apply language — fills productName, pricingTitle, pricingList */
     applyProductPageLang(lang);
+
+    /* If out of stock: disable buy buttons after rendering */
+    if (isOutOfStock) {
+        disableBuyButtons(lang);
+    }
 
 }
 
