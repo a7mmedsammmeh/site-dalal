@@ -392,8 +392,10 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionStorage.setItem(sessionKey, '1');
 
         if (typeof insertVisitor === 'function') {
+            const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
             await insertVisitor({
                 ip, country, city,
+                fingerprint: fp,
                 device_type, os, browser,
                 screen_res: `${screen_w}x${screen_h}`,
                 lang,

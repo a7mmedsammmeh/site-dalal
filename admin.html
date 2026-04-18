@@ -1557,6 +1557,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                                 <span style="font-size:0.7rem;color:var(--text-dim);margin-inline-start:auto">${date}</span>
                             </div>
                             ${r.comment ? `<p style="font-size:0.83rem;color:var(--text-muted);line-height:1.6;margin:0 0 0.1rem 0">${esc(r.comment)}</p>` : '<p style="font-size:0.8rem;color:var(--text-dim);margin:0 0 0.1rem 0;font-style:italic">بدون تعليق</p>'}
+                            ${r.client_ip ? `<p style="font-size:0.7rem;color:var(--text-dim);margin:0.3rem 0 0;font-family:'Poppins',monospace;direction:ltr;text-align:right;">IP: ${esc(r.client_ip)}</p>` : ''}
                             ${orderDetailsHTML}
                         </div>
                         <div style="display:flex;gap:0.35rem;flex-shrink:0;">
@@ -2047,8 +2048,23 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         try {
             await blockIP(ip, reason || null);
             _vpBlockedIPs.add(ip);
+            
+            // Auto-block all fingerprints associated with this IP
+            const associatedFingerprints = _vpAll
+                .filter(v => v.ip === ip && v.fingerprint)
+                .map(v => v.fingerprint);
+            
+            const uniqueFPs = [...new Set(associatedFingerprints)];
+            if (uniqueFPs.length > 0) {
+                await Promise.all(uniqueFPs.map(fp => 
+                    blockFingerprint(fp, `مرتبط بـ IP محظور: ${ip}`).catch(() => {})
+                ));
+                showAdminToast(`🚫 تم حظر IP + ${uniqueFPs.length} بصمة جهاز`);
+            } else {
+                showAdminToast(`🚫 تم حظر IP: ${ip}`);
+            }
+            
             renderVisitors();
-            showAdminToast(`🚫 تم حظر IP: ${ip}`);
         } catch (e) {
             console.error('Block IP error:', e);
             showAdminToast('حدث خطأ أثناء حظر IP');

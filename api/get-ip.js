@@ -1,22 +1,28 @@
 const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
 
-async function checkTable(table, field, value) {
-    if (!value) return { blocked: false };
+const HEADERS = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json'
+};
+
+async function supabaseGet(table, filter) {
     const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/${table}?${field}=eq.${encodeURIComponent(value)}&select=${field},reason&limit=1`,
-        {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            },
-            signal: AbortSignal.timeout(3000)
-        }
+        `${SUPABASE_URL}/rest/v1/${table}?${filter}&limit=1`,
+        { headers: HEADERS, signal: AbortSignal.timeout(3000) }
     );
-    if (!res.ok) return { blocked: false };
-    const data = await res.json();
-    if (data && data.length > 0) return { blocked: true, reason: data[0].reason || null };
-    return { blocked: false };
+    if (!res.ok) return [];
+    return await res.json();
+}
+
+async function supabaseInsert(table, body) {
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(3000)
+    });
 }
 
 export default async function handler(req, res) {
@@ -35,21 +41,41 @@ export default async function handler(req, res) {
         return res.status(200).json({ blocked: false, ip: null, country: null, city: null });
     }
 
-    // Check IP, fingerprint in parallel (server-side — cannot be bypassed)
     try {
-        const checks = await Promise.all([
-            checkTable('blocked_ips', 'ip', ip),
-            fingerprint ? checkTable('blocked_fingerprints', 'fingerprint', fingerprint) : Promise.resolve({ blocked: false })
+        // Check IP and fingerprint in parallel
+        const [ipCheck, fpCheck] = await Promise.all([
+            supabaseGet('blocked_ips', `ip=eq.${encodeURIComponent(ip)}&select=ip,reason`),
+            fingerprint
+                ? supabaseGet('blocked_fingerprints', `fingerprint=eq.${encodeURIComponent(fingerprint)}&select=fingerprint,reason`)
+                : Promise.resolve([])
         ]);
 
-        const blocked = checks.find(c => c.blocked);
-        if (blocked) {
+        // If IP is blocked → also auto-block the fingerprint if not already blocked
+        if (ipCheck.length > 0) {
+            if (fingerprint && fpCheck.length === 0) {
+                // Auto-block fingerprint linked to this blocked IP
+                supabaseInsert('blocked_fingerprints', {
+                    fingerprint,
+                    reason: `مرتبط بـ IP محظور: ${ip}`,
+                    blocked_at: new Date().toISOString()
+                }).catch(() => {});
+            }
             return res.status(200).json({
                 blocked: true,
-                reason: blocked.reason || null,
+                reason: ipCheck[0].reason || null,
                 ip, country: null, city: null
             });
         }
+
+        // If fingerprint is blocked (even with new IP)
+        if (fpCheck.length > 0) {
+            return res.status(200).json({
+                blocked: true,
+                reason: fpCheck[0].reason || null,
+                ip, country: null, city: null
+            });
+        }
+
     } catch (e) {
         console.error('Block check error:', e);
     }

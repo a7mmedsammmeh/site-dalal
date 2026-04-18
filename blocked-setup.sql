@@ -40,3 +40,9 @@ ON blocked_fingerprints FOR INSERT TO public WITH CHECK (true);
 
 CREATE POLICY "Allow public delete on blocked_fingerprints"
 ON blocked_fingerprints FOR DELETE TO public USING (true);
+
+-- 3. Add client_ip column to reviews table
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS client_ip TEXT;
+
+-- 4. Add fingerprint column to visitors table
+ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fingerprint TEXT;

@@ -591,6 +591,16 @@
             const reviewerName = customerName
                 || (document.getElementById('reviewName')?.value.trim() || null);
 
+            // Fetch client IP silently
+            let clientIP = null;
+            try {
+                const geoRes = await fetch('/api/get-ip', { signal: AbortSignal.timeout(5000) });
+                if (geoRes.ok) {
+                    const g = await geoRes.json();
+                    if (!g.blocked) clientIP = g.ip || null;
+                }
+            } catch { /* silent */ }
+
             // Build reviews array — one per unique product in the order (same rating/comment goes to all)
             let reviewsToInsert = [];
 
@@ -609,6 +619,7 @@
                     reviewer_name: reviewerName,
                     rating:        selectedRating,
                     comment,
+                    client_ip:     clientIP,
                     is_visible:    false
                 }));
             } else {
@@ -619,6 +630,7 @@
                     reviewer_name: reviewerName,
                     rating:        selectedRating,
                     comment,
+                    client_ip:     clientIP,
                     is_visible:    false
                 }];
             }
