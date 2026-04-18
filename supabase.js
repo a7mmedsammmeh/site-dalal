@@ -176,6 +176,17 @@ async function unblockIP(id) {
     if (error) throw error;
 }
 
+async function unblockIPFull(ip) {
+    // Unblock IP + all associated fingerprints
+    const db = await getSupabase();
+
+    // 1. Delete from blocked_ips by IP value
+    await db.from('blocked_ips').delete().eq('ip', ip);
+
+    // 2. Delete fingerprints that reference this IP
+    await db.from('blocked_fingerprints').delete().eq('blocked_ip_ref', ip);
+}
+
 async function isIPBlocked(ip) {
     if (!ip) return false;
     const db = await getSupabase();

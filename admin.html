@@ -2151,43 +2151,17 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         if (!ip) return;
         if (!confirm(`فك حظر IP: ${ip}؟`)) return;
         try {
-            // Unblock the IP
-            const blocked = await fetchBlockedIPs();
-            const record = blocked.find(b => b.ip === ip);
-            if (record) await unblockIP(record.id);
-            
-            // Also unblock all fingerprints associated with this IP
-            const db = await getSupabase();
-            const { data: fpData } = await db
-                .from('blocked_fingerprints')
-                .select('id')
-                .eq('blocked_ip_ref', ip);
-            
-            let fpCount = 0;
-            if (fpData && fpData.length > 0) {
-                await Promise.all(fpData.map(fp => unblockFingerprint(fp.id).catch(() => {})));
-                fpCount = fpData.length;
-            }
-            
-            // Reload blocked IPs from database to update UI
+            await unblockIPFull(ip);
+
+            // Reload blocked IPs to update UI
             const blockedUpdated = await fetchBlockedIPs().catch(() => []);
             _vpBlockedIPs = new Set((blockedUpdated || []).map(b => b.ip));
-            
-            // Update UI immediately after reloading blocked IPs
             renderVisitors();
-            
-            // Show toast after UI update
-            if (fpCount > 0) {
-                showAdminToast(`✅ تم فك حظر ${ip} + ${fpCount} بصمة جهاز`);
-            } else {
-                showAdminToast(`✅ تم فك حظر ${ip}`);
-            }
-            
-            // Log activity
+
+            showAdminToast(`✅ تم فك حظر ${ip} وجميع بصمات الجهاز المرتبطة`);
+
             if (typeof logActivity === 'function') {
-                logActivity('unblock', `فك حظر IP: ${ip}`, 'ip', ip, { 
-                    fingerprints_count: fpCount 
-                });
+                logActivity('unblock', `فك حظر IP: ${ip}`, 'ip', ip);
             }
         } catch (e) {
             console.error('Unblock IP error:', e);
@@ -2380,11 +2354,11 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.unblockIPById = async function(id, ip) {
         if (!confirm(`فك حظر IP: ${ip}؟`)) return;
         try {
-            await unblockIP(id);
+            await unblockIPFull(ip);
             _bipAll = _bipAll.filter(b => b.id !== id);
             document.getElementById('bipCount').textContent = _bipAll.length;
             renderBlockedIPs();
-            showAdminToast(`✅ تم فك حظر ${ip}`);
+            showAdminToast(`✅ تم فك حظر ${ip} وجميع بصمات الجهاز المرتبطة`);
         } catch(e) {
             console.error(e);
             showAdminToast('حدث خطأ أثناء فك الحظر');
