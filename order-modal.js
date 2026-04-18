@@ -57,6 +57,7 @@
     let _injected = false;
     let _product  = null;
     let _dragStartY = 0, _dragCurrentY = 0, _isDragging = false;
+    let _formOpenedAt = 0;
 
     /* ── Inject HTML once ── */
     function inject() {
@@ -122,6 +123,7 @@
       <button type="submit" class="order-submit-btn" id="orderSubmitBtn">
         <span id="orderSubmitLabel"></span>
       </button>
+      ${typeof SpamGuard !== 'undefined' ? SpamGuard.honeypotHTML() : ''}
     </form>
     <div class="order-success" id="orderSuccess">
       <div class="order-success-icon">✓</div>
@@ -249,6 +251,7 @@
         } else {
             doOpen();
         }
+        _formOpenedAt = Date.now();
     }
 
     /* ── Close ── */
@@ -292,6 +295,31 @@
 
         const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : ('DL-' + Math.random().toString(36).slice(2,7).toUpperCase());
 
+        const btn   = document.getElementById('orderSubmitBtn');
+        const label = document.getElementById('orderSubmitLabel');
+        btn.disabled = true;
+
+        /* ── Spam Guard ── */
+        if (typeof SpamGuard !== 'undefined') {
+            const guard = SpamGuard.check(_formOpenedAt);
+            if (guard.blocked) {
+                btn.disabled = false;
+                const errEl = document.getElementById('orderError');
+                errEl.innerHTML = SpamGuard.errorMsg(guard.reason, lang);
+                errEl.classList.add('is-visible');
+                return;
+            }
+        }
+
+        /* ── Fetch IP ── */
+        let clientIP = null, clientCountry = null, clientCity = null;
+        if (typeof SpamGuard !== 'undefined') {
+            const geo = await SpamGuard.getClientIP();
+            clientIP      = geo.ip;
+            clientCountry = geo.country;
+            clientCity    = geo.city;
+        }
+
         const orderData = {
             name,
             phone,
@@ -312,18 +340,18 @@
             }])),
             total:     numericPrice,
             status:    'pending',
-            order_ref: orderRef
+            order_ref: orderRef,
+            client_ip: clientIP,
+            client_country: clientCountry,
+            client_city: clientCity
         };
-
-        const btn   = document.getElementById('orderSubmitBtn');
-        const label = document.getElementById('orderSubmitLabel');
-        btn.disabled = true;
         label.innerHTML = `<span class="order-loading-dots"><span></span><span></span><span></span></span>`;
-        hideError();
 
         try {
             const result = await insertOrder(orderData);
             const savedId = result?.[0]?.id || null;
+
+            if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({

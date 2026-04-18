@@ -60,9 +60,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 .admin-main { max-width:1280px; margin:0 auto; padding:1.5rem 1.5rem 4rem; }
 
 /* Stats */
-.admin-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem; }
-@media(max-width:768px){ .admin-stats{grid-template-columns:repeat(2,1fr);gap:0.75rem;} }
-@media(max-width:400px){ .admin-stats{grid-template-columns:repeat(2,1fr);gap:0.5rem;} }
+.admin-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.5rem; }
+@media(max-width:900px){ .admin-stats{grid-template-columns:repeat(3,1fr);gap:0.75rem;} }
+@media(max-width:500px){ .admin-stats{grid-template-columns:repeat(2,1fr);gap:0.5rem;} }
 
 /* Responsive — mobile */
 @media(max-width:600px){
@@ -226,9 +226,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 }
 .del-btn:hover { color:var(--red); border-color:rgba(224,92,92,0.3); background:rgba(224,92,92,0.06); }
 
-/* Mobile cards */
-@media(max-width:900px){ .admin-table-wrap{background:transparent;border:none;} .admin-table{display:none;} .admin-cards{display:flex;flex-direction:column;gap:0.85rem;} }
-@media(min-width:901px){ .admin-cards{display:none;} }
+/* Table — hidden on all screens, cards used instead */
+.admin-table-wrap { display:none; }
+.admin-cards { display:flex; flex-direction:column; gap:0.85rem; }
 
 /* New mobile card */
 .mc {
@@ -329,6 +329,145 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 /* Toast */
 .admin-toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:var(--bg-card); border:1px solid var(--border-h); border-radius:var(--r-lg); padding:0.75rem 1.5rem; font-size:0.85rem; color:var(--gold); z-index:9999; opacity:0; transition:opacity 0.3s ease; pointer-events:none; white-space:nowrap; }
 .admin-toast.show { opacity:1; }
+
+/* ── Order Detail Drawer / Popup ── */
+.od-overlay {
+    position: fixed; inset: 0; z-index: 6000;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.od-overlay.open { opacity: 1; visibility: visible; }
+
+/* Mobile: drawer from bottom */
+.od-drawer {
+    background: var(--bg-card);
+    border: 1px solid var(--border-h);
+    border-radius: 12px 12px 0 0;
+    max-height: 88dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    padding: 0 0 2rem;
+    width: 100%;
+}
+.od-drawer.open { transform: translateY(0); }
+
+/* Desktop: centered popup */
+@media (min-width: 900px) {
+    .od-overlay {
+        align-items: center;
+        padding: 1.5rem;
+    }
+    .od-drawer {
+        border-radius: 12px;
+        max-height: 85vh;
+        max-width: 560px;
+        width: 100%;
+        transform: scale(0.95) translateY(12px);
+        transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease;
+        opacity: 0;
+    }
+    .od-drawer.open {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    .od-handle { display: none; }
+}
+
+.od-handle {
+    width: 36px; height: 4px;
+    background: var(--border-h);
+    border-radius: 2px;
+    margin: 0.75rem auto 0;
+}
+.od-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    gap: 0.75rem;
+}
+.od-title { font-size: 0.95rem; font-weight: 700; color: var(--gold); font-family: 'Poppins', monospace; letter-spacing: 0.06em; }
+.od-close {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); color: var(--text-muted);
+    background: transparent; cursor: pointer; flex-shrink: 0;
+    transition: border-color 0.2s, color 0.2s;
+}
+.od-close:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+.od-body { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
+
+.od-section { display: flex; flex-direction: column; gap: 0.4rem; }
+.od-section-title {
+    font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 0.2rem;
+}
+.od-row { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.85rem; }
+.od-lbl { color: var(--text-dim); min-width: 65px; flex-shrink: 0; font-size: 0.75rem; padding-top: 0.1rem; }
+.od-val { color: var(--text); word-break: break-word; flex: 1; }
+
+.od-product {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 0.6rem 0.85rem;
+}
+.od-product-name { font-size: 0.88rem; font-weight: 600; color: var(--text); margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.od-product-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
+.od-product-meta span { font-size: 0.75rem; color: var(--text-dim); }
+.od-product-meta .od-price { color: var(--gold); font-weight: 600; }
+
+.od-footer {
+    display: flex; gap: 0.5rem; padding: 0.75rem 1.25rem 0;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.od-action-btn {
+    flex: 1; min-width: 100px;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.65rem 1rem; border-radius: var(--r);
+    font-size: 0.8rem; font-family: inherit; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-light);
+    color: var(--text-muted); transition: all 0.2s;
+}
+.od-action-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.od-action-btn.danger:hover { border-color: rgba(224,92,92,0.5); color: var(--red); background: rgba(224,92,92,0.06); }
+
+/* New compact order card */
+.oc {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 0.9rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    display: flex; flex-direction: column; gap: 0.5rem;
+}
+.oc:hover { border-color: var(--border-h); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.oc:active { transform: scale(0.99); }
+
+.oc-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.oc-ref { font-family: 'Poppins', monospace; font-size: 0.78rem; color: var(--gold); letter-spacing: 0.06em; font-weight: 600; }
+.oc-num { font-size: 0.68rem; color: var(--text-dim); }
+.oc-status { font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 20px; border: 1px solid; white-space: nowrap; }
+.oc-status.s-pending   { color: #E0C097; border-color: rgba(224,192,151,0.4); background: rgba(224,192,151,0.08); }
+.oc-status.s-confirmed { color: #4caf7d; border-color: rgba(76,175,125,0.4);  background: rgba(76,175,125,0.08); }
+.oc-status.s-shipped   { color: #5b9bd5; border-color: rgba(91,155,213,0.4);  background: rgba(91,155,213,0.08); }
+.oc-status.s-delivered { color: #4caf7d; border-color: rgba(76,175,125,0.5);  background: rgba(76,175,125,0.1); }
+.oc-status.s-cancelled { color: #e05c5c; border-color: rgba(224,92,92,0.4);   background: rgba(224,92,92,0.08); }
+
+.oc-mid { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.oc-name { font-size: 0.92rem; font-weight: 600; color: var(--text); }
+.oc-total { font-size: 0.88rem; font-weight: 700; color: var(--gold); white-space: nowrap; }
+
+.oc-bot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.oc-date { font-size: 0.72rem; color: var(--text-dim); }
+.oc-ip { font-size: 0.7rem; color: var(--text-dim); font-family: 'Poppins', monospace; direction: ltr; text-align: left; }
 </style>
 </head>
 <body>
@@ -409,8 +548,8 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         <div class="stat-card stat-pending"><div class="stat-label">قيد الانتظار</div><div class="stat-value" id="statPending">—</div></div>
         <div class="stat-card stat-confirmed"><div class="stat-label">مؤكدة</div><div class="stat-value" id="statConfirmed">—</div></div>
         <div class="stat-card stat-shipped"><div class="stat-label">تم الشحن</div><div class="stat-value" id="statShipped">—</div></div>
+        <div class="stat-card stat-confirmed"><div class="stat-label">تم التسليم</div><div class="stat-value" id="statDelivered">—</div></div>
     </div>
-
     <!-- Search -->
     <div class="admin-search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="color:var(--text-dim);flex-shrink:0">
@@ -472,7 +611,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <thead>
                 <tr>
                     <th>#</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>العنوان</th>
-                    <th>المنتجات</th><th>الإجمالي</th><th>الحالة</th><th>التاريخ</th><th></th>
+                    <th>IP</th><th>المنتجات</th><th>الإجمالي</th><th>الحالة</th><th>التاريخ</th><th></th>
                 </tr>
             </thead>
             <tbody id="ordersTableBody"></tbody>
@@ -729,6 +868,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         document.getElementById('statPending').textContent   = _all.filter(o => o.status === 'pending').length;
         document.getElementById('statConfirmed').textContent = _all.filter(o => o.status === 'confirmed').length;
         document.getElementById('statShipped').textContent   = _all.filter(o => o.status === 'shipped').length;
+        document.getElementById('statDelivered').textContent = _all.filter(o => o.status === 'delivered').length;
     }
 
     function render() {
@@ -756,6 +896,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <td style="direction:ltr;text-align:right">${esc(o.phone||'—')}</td>
                 <td style="font-size:0.78rem;color:var(--text-muted)">${o.email ? `<a href="mailto:${esc(o.email)}" style="color:var(--gold-dim);text-decoration:none;">${esc(o.email)}</a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
                 <td style="max-width:150px;font-size:0.8rem;color:var(--text-muted)">${esc(o.address||'—')}</td>
+                <td style="font-size:0.72rem;font-family:'Poppins',monospace;color:var(--text-dim);">
+                    ${o.client_ip ? `<span title="${esc(o.client_country||'')}${o.client_city ? ' / '+esc(o.client_city) : ''}">${esc(o.client_ip)}</span>${o.client_country ? `<br><span style="font-size:0.68rem;color:var(--text-dim);">${esc(o.client_country)}${o.client_city ? ' / '+esc(o.client_city) : ''}</span>` : ''}` : '<span style="color:var(--text-dim)">—</span>'}
+                </td>
                 <td>${parseProducts(o.products)}</td>
                 <td class="order-total">${o.total ? o.total+' ج' : '—'}</td>
                 <td><select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this)">${statusOpts(o.status)}</select></td>
@@ -780,75 +923,151 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             c.innerHTML = `<div class="admin-empty"><div class="admin-empty-icon">🔍</div><div class="admin-empty-title">${msg}</div></div>`;
             return;
         }
+
+        const STATUS_LABELS = {
+            pending: 'قيد الانتظار', confirmed: 'مؤكدة',
+            shipped: 'تم الشحن', delivered: 'تم التسليم', cancelled: 'ملغية'
+        };
+
         c.innerHTML = orders.map((o, i) => {
+            const statusLabel = STATUS_LABELS[o.status] || o.status || 'قيد الانتظار';
+            const statusCls   = o.status || 'pending';
+
             const products = Array.isArray(o.products) ? o.products
                 : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
-
-            const productsHTML = products.map(p => `
-                <div class="mc-product">
-                    <div class="mc-product-name">
-                        ${esc(p.name)}
-                        ${p.code ? `<span class="pd-code">${esc(p.code)}</span>` : ''}
-                    </div>
-                    <div class="mc-product-details">
-                        ${p.offer ? `<span>${esc(p.offer)}</span>` : ''}
-                        ${p.size  ? `<span>مقاس: ${esc(p.size)}</span>` : ''}
-                        ${p.color ? `<span>لون: ${esc(p.color)}</span>` : ''}
-                        ${p.price ? `<span class="mc-price">${esc(p.price)}</span>` : ''}
-                    </div>
-                </div>`).join('');
+            const prodSummary = products.map(p =>
+                `<span style="display:inline-flex;align-items:center;gap:0.25rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0.15rem 0.5rem;font-size:0.7rem;color:var(--text-muted);white-space:nowrap;">
+                    ${p.code ? `<span style="background:var(--gold-dim);color:var(--bg);font-family:'Poppins',monospace;font-size:0.62rem;font-weight:700;padding:0.05rem 0.3rem;border-radius:2px;">${esc(p.code)}</span>` : ''}
+                    ${esc(p.name||'')}
+                    ${p.size  ? `<span style="color:var(--text-dim)">· ${esc(p.size)}</span>` : ''}
+                    ${p.color ? `<span style="color:var(--text-dim)">· ${esc(p.color)}</span>` : ''}
+                    ${p.price ? `<span style="color:var(--gold);font-weight:600;">· ${esc(p.price)}</span>` : ''}
+                </span>`
+            ).join('');
 
             return `
-            <div class="mc">
-                <!-- Header row -->
-                <div class="mc-head">
-                    <div class="mc-head-info">
-                        <span class="mc-name">${esc(o.name||'—')}</span>
-                        <span class="mc-ref">
-                        <span style="color:var(--text-dim);font-size:0.68rem;margin-inline-end:0.5rem">#${String(i+1).padStart(3,'0')}</span>${o.order_ref ? esc(o.order_ref) : ''}
-                        </span>
-                    </div>
-                    <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this)">${statusOpts(o.status)}</select>
+            <div class="oc" onclick="openOrderDrawer('${o.id}')">
+                <div class="oc-top">
+                    <span class="oc-status s-${statusCls}">${statusLabel}</span>
+                    <span class="oc-total">${o.total ? o.total.toLocaleString()+' ج' : '—'}</span>
                 </div>
-
-                <!-- Info rows -->
-                <div class="mc-body">
-                    <div class="mc-row">
-                        <span class="mc-lbl">الهاتف</span>
-                        <span class="mc-val" style="direction:ltr">${esc(o.phone||'—')}</span>
-                    </div>
-                    ${o.email ? `<div class="mc-row">
-                        <span class="mc-lbl">الإيميل</span>
-                        <a href="mailto:${esc(o.email)}" class="mc-val" style="color:var(--gold-dim);text-decoration:none;font-size:0.78rem">${esc(o.email)}</a>
-                    </div>` : ''}
-                    <div class="mc-row">
-                        <span class="mc-lbl">العنوان</span>
-                        <span class="mc-val">${esc(o.address||'—')}</span>
-                    </div>
-                    <div class="mc-row mc-row-products">
-                        <span class="mc-lbl">المنتجات</span>
-                        <div class="mc-products">${productsHTML || '—'}</div>
-                    </div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin:0.35rem 0;">
+                    ${prodSummary || '<span style="font-size:0.72rem;color:var(--text-dim)">—</span>'}
                 </div>
-
-                <!-- Footer -->
-                <div class="mc-foot">
-                    <div class="mc-foot-left">
-                        <span class="mc-date">${fmtDate(o.created_at)}</span>
-                        <span class="mc-total">${o.total ? o.total.toLocaleString()+' ج' : '—'}</span>
-                    </div>
-                    <button class="del-btn" onclick="printOrder('${o.id}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                        طباعة
-                    </button>
-                    <button class="del-btn" onclick="confirmDelete('${o.id}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        حذف
-                    </button>
+                <div class="oc-bot">
+                    <span class="oc-date">${fmtDate(o.created_at)}</span>
+                    <span style="font-size:0.72rem;color:var(--text-dim);">اضغط للتفاصيل ←</span>
                 </div>
             </div>`;
         }).join('');
     }
+
+    /* ── Order Detail Drawer ── */
+    window.openOrderDrawer = function(id) {
+        const o = _all.find(x => x.id === id);
+        if (!o) return;
+
+        const STATUS_LABELS = {
+            pending: 'قيد الانتظار', confirmed: 'مؤكدة',
+            shipped: 'تم الشحن', delivered: 'تم التسليم', cancelled: 'ملغية'
+        };
+
+        const products = Array.isArray(o.products) ? o.products
+            : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
+
+        const productsHTML = products.map(p => `
+            <div class="od-product">
+                <div class="od-product-name">
+                    ${esc(p.name||'—')}
+                    ${p.code ? `<span class="pd-code">${esc(p.code)}</span>` : ''}
+                    ${p.qty && p.qty > 1 ? `<span style="font-size:0.72rem;color:var(--text-dim);">×${p.qty}</span>` : ''}
+                </div>
+                <div class="od-product-meta">
+                    ${p.offer ? `<span>${esc(p.offer)}</span>` : ''}
+                    ${p.size  ? `<span>مقاس: ${esc(p.size)}</span>` : ''}
+                    ${p.color ? `<span>لون: ${esc(p.color)}</span>` : ''}
+                    ${p.notes ? `<span>ملاحظة: ${esc(p.notes)}</span>` : ''}
+                    ${p.price ? `<span class="od-price">${esc(p.price)}</span>` : ''}
+                </div>
+            </div>`).join('');
+
+        document.getElementById('odTitle').textContent = o.order_ref || 'تفاصيل الطلب';
+
+        document.getElementById('odBody').innerHTML = `
+            <div class="od-section">
+                <div class="od-section-title">معلومات العميل</div>
+                <div class="od-row"><span class="od-lbl">الاسم</span><span class="od-val">${esc(o.name||'—')}</span></div>
+                <div class="od-row"><span class="od-lbl">الهاتف</span><span class="od-val" style="direction:ltr;text-align:right">${esc(o.phone||'—')}</span></div>
+                ${o.email ? `<div class="od-row"><span class="od-lbl">الإيميل</span><a href="mailto:${esc(o.email)}" class="od-val" style="color:var(--gold-dim);text-decoration:none;">${esc(o.email)}</a></div>` : ''}
+                <div class="od-row"><span class="od-lbl">العنوان</span><span class="od-val">${esc(o.address||'—')}</span></div>
+            </div>
+
+            ${o.client_ip ? `<div class="od-section">
+                <div class="od-section-title">معلومات الجهاز</div>
+                <div class="od-row"><span class="od-lbl">IP</span><span class="od-val" style="direction:ltr;font-family:'Poppins',monospace;font-size:0.82rem;">${esc(o.client_ip)}</span></div>
+                ${o.client_country ? `<div class="od-row"><span class="od-lbl">الدولة</span><span class="od-val">${esc(o.client_country)}${o.client_city ? ' / '+esc(o.client_city) : ''}</span></div>` : ''}
+            </div>` : ''}
+
+            <div class="od-section">
+                <div class="od-section-title">المنتجات</div>
+                ${productsHTML || '<span style="color:var(--text-dim);font-size:0.82rem;">—</span>'}
+            </div>
+
+            <div class="od-section">
+                <div class="od-section-title">الإجمالي والحالة</div>
+                <div class="od-row"><span class="od-lbl">الإجمالي</span><span class="od-val" style="color:var(--gold);font-weight:700;">${o.total ? o.total.toLocaleString()+' جنيه' : '—'}</span></div>
+                <div class="od-row"><span class="od-lbl">التاريخ</span><span class="od-val">${fmtDate(o.created_at)}</span></div>
+                <div class="od-row"><span class="od-lbl">الحالة</span>
+                    <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this);this.className='status-select s-'+this.value;" style="margin-top:-2px;">
+                        ${statusOpts(o.status)}
+                    </select>
+                </div>
+            </div>`;
+
+        document.getElementById('odFooter').innerHTML = `
+            <button class="od-action-btn" onclick="printOrder('${o.id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                طباعة
+            </button>
+            <button class="od-action-btn danger" onclick="closeOrderDrawer();confirmDelete('${o.id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                حذف
+            </button>`;
+
+        const overlay = document.getElementById('odOverlay');
+        const drawer  = document.getElementById('odDrawer');
+        overlay.classList.add('open');
+        drawer.classList.add('open');
+        document.body.style.overflow = 'hidden';
+
+        /* drag to dismiss */
+        let _sy = 0, _cy = 0, _drag = false;
+        drawer.addEventListener('touchstart', e => {
+            if (drawer.scrollTop > 0) return;
+            _sy = e.touches[0].clientY; _cy = 0; _drag = true;
+            drawer.style.transition = 'none';
+        }, { passive: true, once: false });
+        drawer.addEventListener('touchmove', e => {
+            if (!_drag) return;
+            const dy = e.touches[0].clientY - _sy;
+            if (dy < 0) return;
+            _cy = dy; drawer.style.transform = `translateY(${dy}px)`;
+        }, { passive: true });
+        drawer.addEventListener('touchend', () => {
+            if (!_drag) return; _drag = false;
+            drawer.style.transition = '';
+            if (_cy > 100) closeOrderDrawer();
+            else drawer.style.transform = '';
+        });
+    };
+
+    window.closeOrderDrawer = function() {
+        const overlay = document.getElementById('odOverlay');
+        const drawer  = document.getElementById('odDrawer');
+        if (overlay) overlay.classList.remove('open');
+        if (drawer)  { drawer.classList.remove('open'); drawer.style.transform = ''; }
+        document.body.style.overflow = '';
+    };
 
     function parseProducts(json) {
         try {
@@ -1484,6 +1703,21 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     initAdmin();
 })();
 </script>
+
+<!-- Order Detail Drawer / Popup -->
+<div class="od-overlay" id="odOverlay" onclick="closeOrderDrawer()">
+    <div class="od-drawer" id="odDrawer" onclick="event.stopPropagation()">
+        <div class="od-handle"></div>
+        <div class="od-header">
+            <span class="od-title" id="odTitle">—</span>
+            <button class="od-close" onclick="closeOrderDrawer()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="od-body" id="odBody"></div>
+        <div class="od-footer" id="odFooter"></div>
+    </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════
      VISITORS PANEL

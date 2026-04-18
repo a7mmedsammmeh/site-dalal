@@ -774,6 +774,7 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                 <button type="submit" class="order-submit-btn" id="soSubmitBtn">
                     <span id="soSubmitLabel">${isAr ? 'تأكيد الطلب' : 'Confirm Order'}</span>
                 </button>
+                ${typeof SpamGuard !== 'undefined' ? SpamGuard.honeypotHTML() : ''}
             </form>
 
             <div class="order-success" id="soSuccess">
@@ -805,6 +806,8 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
+    const _soOpenedAt = Date.now();
+
     document.getElementById('siteOrderForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const customerName = document.getElementById('soName').value.trim();
@@ -822,6 +825,28 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
         const label = document.getElementById('soSubmitLabel');
         btn.disabled = true;
         label.innerHTML = '<span class="order-loading-dots"><span></span><span></span><span></span></span>';
+
+        /* ── Spam Guard ── */
+        if (typeof SpamGuard !== 'undefined') {
+            const guard = SpamGuard.check(_soOpenedAt);
+            if (guard.blocked) {
+                btn.disabled = false;
+                label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                const errEl = document.getElementById('soError');
+                errEl.innerHTML = SpamGuard.errorMsg(guard.reason, lang);
+                errEl.classList.add('is-visible');
+                return;
+            }
+        }
+
+        /* ── Fetch IP ── */
+        let _soIP = null, _soCountry = null, _soCity = null;
+        if (typeof SpamGuard !== 'undefined') {
+            const geo = await SpamGuard.getClientIP();
+            _soIP      = geo.ip;
+            _soCountry = geo.country;
+            _soCity    = geo.city;
+        }
 
         const priceNum = parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0;
 
@@ -846,12 +871,17 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             }],
             total:     priceNum,
             status:    'pending',
-            order_ref: orderRef
+            order_ref: orderRef,
+            client_ip: _soIP,
+            client_country: _soCountry,
+            client_city: _soCity
         };
 
         try {
             const result = await insertOrder(orderData);
             const savedId = result?.[0]?.id || null;
+
+            if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
@@ -958,6 +988,7 @@ function checkoutViaSite() {
                 <button type="submit" class="order-submit-btn" id="coSubmitBtn">
                     <span id="coSubmitLabel">${isAr ? 'تأكيد الطلب' : 'Confirm Order'}</span>
                 </button>
+                ${typeof SpamGuard !== 'undefined' ? SpamGuard.honeypotHTML() : ''}
             </form>
 
             <div class="order-success" id="coSuccess">
@@ -1013,6 +1044,8 @@ function checkoutViaSite() {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
+    const _coOpenedAt = Date.now();
+
     document.getElementById('cartOrderForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name    = document.getElementById('coName').value.trim();
@@ -1040,6 +1073,28 @@ function checkoutViaSite() {
         btn.disabled = true;
         label.innerHTML = '<span class="order-loading-dots"><span></span><span></span><span></span></span>';
 
+        /* ── Spam Guard ── */
+        if (typeof SpamGuard !== 'undefined') {
+            const guard = SpamGuard.check(_coOpenedAt);
+            if (guard.blocked) {
+                btn.disabled = false;
+                label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                const errEl = document.getElementById('coError');
+                errEl.innerHTML = SpamGuard.errorMsg(guard.reason, lang);
+                errEl.classList.add('is-visible');
+                return;
+            }
+        }
+
+        /* ── Fetch IP ── */
+        let _coIP = null, _coCountry = null, _coCity = null;
+        if (typeof SpamGuard !== 'undefined') {
+            const geo = await SpamGuard.getClientIP();
+            _coIP      = geo.ip;
+            _coCountry = geo.country;
+            _coCity    = geo.city;
+        }
+
         // Build products array from cart
         const products = cart.map(i => ({
             id:    i.id,
@@ -1064,12 +1119,17 @@ function checkoutViaSite() {
             products,
             total:     cartTotal(),
             status:    'pending',
-            order_ref: orderRef
+            order_ref: orderRef,
+            client_ip: _coIP,
+            client_country: _coCountry,
+            client_city: _coCity
         };
 
         try {
             const result = await insertOrder(orderData);
             const savedId = result?.[0]?.id || null;
+
+            if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
