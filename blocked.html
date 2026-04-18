@@ -254,6 +254,14 @@
     <div class="footer-note">DALAL © 2025 — جميع الحقوق محفوظة</div>
 
     <script>
+        // If not actually blocked, redirect to home
+        fetch('/api/get-ip', { signal: AbortSignal.timeout(6000) })
+            .then(r => r.json())
+            .then(g => {
+                if (!g.blocked) window.location.replace('/');
+            })
+            .catch(() => {}); // if API fails, stay on page (safe default)
+
         // Show reason if passed in URL
         const params = new URLSearchParams(window.location.search);
         const reason = params.get('reason');
