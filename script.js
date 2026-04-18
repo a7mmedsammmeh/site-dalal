@@ -325,27 +325,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 /* ─── Visitor Tracking ─── */
-console.log('🔵 Visitor tracking script loaded');
-
 (async function trackVisitor() {
-    console.log('🟢 trackVisitor function started');
-    
     try {
         // Don't track admin page
-        if (window.location.pathname.includes('admin')) {
-            console.log('⚠️ Admin page detected, skipping tracking');
-            return;
-        }
-
-        // Session dedup — only track once per browser session per page
-        const sessionKey = 'dalal-tracked-' + window.location.pathname;
-        if (sessionStorage.getItem(sessionKey)) {
-            console.log('⚠️ Already tracked this session, skipping');
-            return;
-        }
-        sessionStorage.setItem(sessionKey, '1');
-
-        console.log('📊 Gathering visitor data...');
+        if (window.location.pathname.includes('admin')) return;
 
         // Gather device info
         const ua        = navigator.userAgent;
@@ -377,50 +360,35 @@ console.log('🔵 Visitor tracking script loaded');
         else if (/Firefox/i.test(ua)) browser = 'Firefox';
         else if (/Safari/i.test(ua))  browser = 'Safari';
 
-        console.log('📱 Device info:', { device_type, os, browser });
-
-        // IP + country via our serverless function (no CORS issues)
+        // Fetch IP — also checks if blocked (server-side, every page load)
         let ip = null, country = null, city = null;
-        
-        console.log('🌍 Fetching IP from /api/get-ip...');
         try {
-            const geo = await fetch('/api/get-ip', { 
+            const geo = await fetch('/api/get-ip', {
                 signal: AbortSignal.timeout(8000),
                 headers: { 'Accept': 'application/json' }
             });
-            
             if (geo.ok) {
                 const g = await geo.json();
-
-                // Blocked check — server-side, can't be bypassed
+                // Blocked check — server-side, runs on every load, can't be bypassed
                 if (g.blocked) {
                     const reason = g.reason ? `?reason=${encodeURIComponent(g.reason)}` : '';
                     window.location.replace('/blocked.html' + reason);
                     return;
                 }
-
-                ip      = g.ip || null;
+                ip      = g.ip      || null;
                 country = g.country || null;
-                city    = g.city || null;
-                console.log('✅ IP fetched:', { ip, country, city });
-            } else {
-                console.warn('⚠️ API response not ok:', geo.status);
+                city    = g.city    || null;
             }
-        } catch (e) {
-            console.warn('❌ IP fetch failed:', e.message);
-        }
+        } catch (e) { /* silent */ }
 
-        if (!ip) {
-            console.error('❌ Could not fetch visitor IP');
-        }
+        // Session dedup — track visit once per session per page (not per load)
+        // IP block check above already runs every load regardless
+        const sessionKey = 'dalal-tracked-' + window.location.pathname;
+        if (sessionStorage.getItem(sessionKey)) return;
+        sessionStorage.setItem(sessionKey, '1');
 
-        // Remove old client-side check (now handled server-side in /api/get-ip)
-
-        // Check if insertVisitor function exists
-        console.log('🔍 Checking insertVisitor function:', typeof insertVisitor);
-        
         if (typeof insertVisitor === 'function') {
-            const visitorData = {
+            await insertVisitor({
                 ip, country, city,
                 device_type, os, browser,
                 screen_res: `${screen_w}x${screen_h}`,
@@ -429,14 +397,7 @@ console.log('🔵 Visitor tracking script loaded');
                 page,
                 referrer,
                 visited_at: new Date().toISOString()
-            };
-            console.log('💾 Inserting visitor data:', visitorData);
-            await insertVisitor(visitorData);
-            console.log('✅ Visitor tracked successfully!');
-        } else {
-            console.error('❌ insertVisitor function not found! Check if supabase.js is loaded.');
+            });
         }
-    } catch (e) {
-        console.error('❌ Visitor tracking error:', e);
-    }
+    } catch (e) { /* silent fail — never break the site */ }
 })();
