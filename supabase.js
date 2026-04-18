@@ -393,6 +393,7 @@ async function fetchAllProducts() {
     const { data: products, error: productsError } = await db
         .from('products')
         .select('*')
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('id', { ascending: true });
     
     if (productsError) throw productsError;
@@ -431,6 +432,9 @@ async function fetchAllProducts() {
         name: { ar: p.name_ar, en: p.name_en },
         description: { ar: p.description_ar || '', en: p.description_en || '' },
         main_image_url: p.main_image_url,
+        // For backward compatibility with old code
+        folder: p.main_image_url ? p.main_image_url.substring(0, p.main_image_url.lastIndexOf('/')) : '',
+        main: p.main_image_url ? p.main_image_url.substring(p.main_image_url.lastIndexOf('/') + 1) : 'pic.png',
         gallery: (imagesByProduct[p.id] || []).map(img => img.image_url),
         featured: p.featured,
         sizes: p.sizes || [],
@@ -467,6 +471,16 @@ async function updateProduct(id, productData) {
         main_image_url: productData.main_image_url,
         featured: productData.featured,
         sizes: productData.sizes,
+        display_order: productData.display_order !== undefined ? productData.display_order : null,
+        updated_at: new Date().toISOString()
+    }).eq('id', id);
+    if (error) throw error;
+}
+
+async function updateProductOrder(id, displayOrder) {
+    const db = await getSupabase();
+    const { error } = await db.from('products').update({
+        display_order: displayOrder,
         updated_at: new Date().toISOString()
     }).eq('id', id);
     if (error) throw error;
@@ -491,6 +505,12 @@ async function insertProductImage(productId, imageUrl, order) {
 async function deleteProductImages(productId) {
     const db = await getSupabase();
     const { error } = await db.from('product_images').delete().eq('product_id', productId);
+    if (error) throw error;
+}
+
+async function deleteProductImage(imageId) {
+    const db = await getSupabase();
+    const { error } = await db.from('product_images').delete().eq('id', imageId);
     if (error) throw error;
 }
 

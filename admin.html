@@ -678,6 +678,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
 <script src="supabase.js"></script>
 <script src="products-data.js"></script>
+<script src="product-form-enhanced.js"></script>
 <script>
 (function () {
     'use strict';
@@ -2977,39 +2978,13 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         document.getElementById('pfDescEn').value     = product?.description?.en || '';
         document.getElementById('pfFeatured').checked = product?.featured || false;
 
-        // Sizes
-        const allSizes = ['L','XL','2XL','3XL','4XL'];
-        allSizes.forEach(s => {
-            const cb = document.getElementById('pfSize_' + s);
-            if (cb) cb.checked = product?.sizes?.includes(s) ?? true;
-        });
+        // Load dynamic fields (sizes, pricing, gallery)
+        loadProductDataToForm(product);
 
-        // Pricing AR
-        const pricingAr = product?.pricing?.ar || [{label:'قطعة واحدة',value:''},{label:'عرض 3 قطع',value:''},{label:'عرض 6 قطع (نص دستة)',value:''},{label:'عرض 12 قطعة (دستة كاملة)',value:''}];
-        const pricingEn = product?.pricing?.en || [{label:'1 Piece',value:''},{label:'3 Pieces',value:''},{label:'6 Pieces',value:''},{label:'12 Pieces',value:''}];
-        for (let i = 1; i <= 4; i++) {
-            document.getElementById(`pfPrArLabel${i}`).value = pricingAr[i-1]?.label || '';
-            document.getElementById(`pfPrArValue${i}`).value = pricingAr[i-1]?.value || '';
-            document.getElementById(`pfPrEnLabel${i}`).value = pricingEn[i-1]?.label || '';
-            document.getElementById(`pfPrEnValue${i}`).value = pricingEn[i-1]?.value || '';
-        }
-
-        // Images preview
+        // Main image preview
         document.getElementById('pfMainPreview').src = product?.main_image_url || '';
         document.getElementById('pfMainPreview').style.display = product?.main_image_url ? 'block' : 'none';
         document.getElementById('pfMainInput').value = '';
-
-        const galleryPreview = document.getElementById('pfGalleryPreview');
-        galleryPreview.innerHTML = '';
-        if (product?.gallery?.length) {
-            product.gallery.forEach((url, i) => {
-                const img = document.createElement('img');
-                img.src = url;
-                img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
-                galleryPreview.appendChild(img);
-            });
-        }
-        document.getElementById('pfGalleryInput').value = '';
 
         document.getElementById('pfModalTitle').textContent = isEdit ? 'تعديل المنتج' : 'إضافة منتج جديد';
         document.getElementById('pfSaveBtn').textContent    = isEdit ? 'حفظ التعديلات' : 'إضافة المنتج';
@@ -3017,6 +2992,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     window.closeProductModal = function() {
         document.getElementById('productFormModal').style.display = 'none';
+        document.body.style.overflow = '';
     };
 
     window.previewMainImage = function(input) {
@@ -3029,22 +3005,6 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             img.style.display = 'block';
         };
         reader.readAsDataURL(file);
-    };
-
-    window.previewGalleryImages = function(input) {
-        const files = Array.from(input.files);
-        const preview = document.getElementById('pfGalleryPreview');
-        preview.innerHTML = '';
-        files.slice(0, 4).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = e => {
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
-                preview.appendChild(img);
-            };
-            reader.readAsDataURL(file);
-        });
     };
 
     window.saveProduct = async function() {
@@ -3068,19 +3028,11 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 return;
             }
 
-            // Sizes
-            const sizes = ['L','XL','2XL','3XL','4XL'].filter(s => document.getElementById('pfSize_'+s)?.checked);
-
-            // Pricing
-            const pricingAr = [], pricingEn = [];
-            for (let i = 1; i <= 4; i++) {
-                const lAr = document.getElementById(`pfPrArLabel${i}`).value.trim();
-                const vAr = document.getElementById(`pfPrArValue${i}`).value.trim();
-                const lEn = document.getElementById(`pfPrEnLabel${i}`).value.trim();
-                const vEn = document.getElementById(`pfPrEnValue${i}`).value.trim();
-                if (lAr && vAr) pricingAr.push({ label: lAr, value: vAr });
-                if (lEn && vEn) pricingEn.push({ label: lEn, value: vEn });
-            }
+            // Get dynamic form data
+            const formData = getProductFormData();
+            const sizes = formData.sizes;
+            const pricingAr = formData.pricingAr;
+            const pricingEn = formData.pricingEn;
 
             // Upload main image
             let mainImageUrl = _editingProductId ? (_pmProducts.find(p=>p.id===_editingProductId)?.main_image_url || '') : '';
@@ -3092,16 +3044,18 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             }
 
             // Upload gallery images
-            let galleryUrls = _editingProductId ? (_pmProducts.find(p=>p.id===_editingProductId)?.gallery || []) : [];
-            const galleryFiles = Array.from(document.getElementById('pfGalleryInput').files);
-            if (galleryFiles.length > 0) {
-                galleryUrls = [];
-                for (let i = 0; i < Math.min(galleryFiles.length, 4); i++) {
-                    const file = galleryFiles[i];
-                    const ext = file.name.split('.').pop();
+            let galleryUrls = [];
+            for (let i = 0; i < formData.galleryImages.length; i++) {
+                const img = formData.galleryImages[i];
+                if (img.file) {
+                    // New file - upload it
+                    const ext = img.file.name.split('.').pop();
                     const fileName = `${slug}/${i+1}.${ext}`;
-                    const url = await uploadProductImage(file, fileName);
+                    const url = await uploadProductImage(img.file, fileName);
                     galleryUrls.push(url);
+                } else {
+                    // Existing URL - keep it
+                    galleryUrls.push(img.url);
                 }
             }
 
@@ -3114,12 +3068,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 await deleteProductPricing(_editingProductId);
                 await insertProductPricing(_editingProductId, 'ar', pricingAr);
                 await insertProductPricing(_editingProductId, 'en', pricingEn);
-                // Update gallery if new files uploaded
-                if (galleryFiles.length > 0) {
-                    await deleteProductImages(_editingProductId);
-                    for (let i = 0; i < galleryUrls.length; i++) {
-                        await insertProductImage(_editingProductId, galleryUrls[i], i+1);
-                    }
+                // Update gallery
+                await deleteProductImages(_editingProductId);
+                for (let i = 0; i < galleryUrls.length; i++) {
+                    await insertProductImage(_editingProductId, galleryUrls[i], i+1);
                 }
                 showAdminToast('✅ تم تحديث المنتج');
                 if (typeof logActivity === 'function') logActivity('update', `تعديل منتج: ${nameAr}`, 'product', _editingProductId);
@@ -3188,6 +3140,20 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 .pf-btn-save:disabled { opacity:0.6; cursor:not-allowed; }
 .pf-toggle-wrap { display:flex; align-items:center; gap:0.75rem; }
 .pf-toggle-check { width:18px; height:18px; accent-color:var(--gold); cursor:pointer; }
+/* Dynamic sizes & pricing */
+.pf-dynamic-item { display:flex; align-items:center; gap:0.5rem; background:var(--bg); border:1px solid var(--border); border-radius:var(--r); padding:0.5rem 0.75rem; margin-bottom:0.5rem; }
+.pf-dynamic-item input { flex:1; background:transparent; border:none; color:var(--text); font-size:0.85rem; outline:none; }
+.pf-dynamic-item button { background:none; border:none; color:var(--text-dim); cursor:pointer; padding:0.25rem; transition:color 0.2s; }
+.pf-dynamic-item button:hover { color:var(--red); }
+.pf-add-btn { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(224,192,151,0.1); border:1px solid var(--border); color:var(--gold); border-radius:var(--r); padding:0.5rem 1rem; font-size:0.8rem; cursor:pointer; transition:all 0.2s; margin-top:0.5rem; }
+.pf-add-btn:hover { background:rgba(224,192,151,0.2); border-color:var(--gold-dim); }
+/* Gallery image item with delete & reorder */
+.pf-gallery-item { position:relative; width:90px; height:90px; border-radius:var(--r); border:1px solid var(--border); overflow:hidden; cursor:move; }
+.pf-gallery-item img { width:100%; height:100%; object-fit:cover; }
+.pf-gallery-item-delete { position:absolute; top:4px; right:4px; background:rgba(224,92,92,0.9); color:#fff; border:none; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.7rem; transition:all 0.2s; }
+.pf-gallery-item-delete:hover { background:var(--red); transform:scale(1.1); }
+.pf-gallery-item-order { position:absolute; bottom:4px; left:4px; background:rgba(0,0,0,0.7); color:#fff; border-radius:4px; padding:0.15rem 0.4rem; font-size:0.7rem; font-weight:600; }
+.pf-gallery-item.dragging { opacity:0.5; }
 @media(max-width:600px) { .pf-row { grid-template-columns:1fr; } .pf-pricing-grid { grid-template-columns:1fr; } }
 </style>
 <div class="pf-modal">
@@ -3240,72 +3206,18 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     <!-- Sizes -->
     <div class="pf-section">
         <div class="pf-section-title">المقاسات المتاحة</div>
-        <div class="pf-sizes">
-            <input type="checkbox" id="pfSize_L"   class="pf-size-cb" checked><label for="pfSize_L"   class="pf-size-label">L</label>
-            <input type="checkbox" id="pfSize_XL"  class="pf-size-cb" checked><label for="pfSize_XL"  class="pf-size-label">XL</label>
-            <input type="checkbox" id="pfSize_2XL" class="pf-size-cb" checked><label for="pfSize_2XL" class="pf-size-label">2XL</label>
-            <input type="checkbox" id="pfSize_3XL" class="pf-size-cb" checked><label for="pfSize_3XL" class="pf-size-label">3XL</label>
-            <input type="checkbox" id="pfSize_4XL" class="pf-size-cb" checked><label for="pfSize_4XL" class="pf-size-label">4XL</label>
-        </div>
+        <div id="pfSizesContainer"></div>
     </div>
 
     <!-- Pricing -->
     <div class="pf-section">
         <div class="pf-section-title">الأسعار — عربي</div>
-        <div style="display:flex;flex-direction:column;gap:0.5rem;">
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;font-size:0.72rem;color:var(--text-dim);padding:0 0.25rem;">
-                <span style="width:24px;">#</span><span>الوصف</span><span>السعر</span>
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">1</span>
-                <input id="pfPrArLabel1" class="pf-input" type="text" placeholder="قطعة واحدة" dir="rtl">
-                <input id="pfPrArValue1" class="pf-input" type="text" placeholder="120 جنيه" dir="rtl">
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">2</span>
-                <input id="pfPrArLabel2" class="pf-input" type="text" placeholder="عرض 3 قطع" dir="rtl">
-                <input id="pfPrArValue2" class="pf-input" type="text" placeholder="330 جنيه" dir="rtl">
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">3</span>
-                <input id="pfPrArLabel3" class="pf-input" type="text" placeholder="عرض 6 قطع (نص دستة)" dir="rtl">
-                <input id="pfPrArValue3" class="pf-input" type="text" placeholder="600 جنيه" dir="rtl">
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">4</span>
-                <input id="pfPrArLabel4" class="pf-input" type="text" placeholder="عرض 12 قطعة (دستة كاملة)" dir="rtl">
-                <input id="pfPrArValue4" class="pf-input" type="text" placeholder="1100 جنيه" dir="rtl">
-            </div>
-        </div>
+        <div id="pfPricingArContainer"></div>
     </div>
 
     <div class="pf-section">
         <div class="pf-section-title">الأسعار — إنجليزي</div>
-        <div style="display:flex;flex-direction:column;gap:0.5rem;">
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;font-size:0.72rem;color:var(--text-dim);padding:0 0.25rem;">
-                <span style="width:24px;">#</span><span>Label</span><span>Price</span>
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">1</span>
-                <input id="pfPrEnLabel1" class="pf-input" type="text" placeholder="1 Piece" dir="ltr">
-                <input id="pfPrEnValue1" class="pf-input" type="text" placeholder="120 EGP" dir="ltr">
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">2</span>
-                <input id="pfPrEnLabel2" class="pf-input" type="text" placeholder="3 Pieces" dir="ltr">
-                <input id="pfPrEnValue2" class="pf-input" type="text" placeholder="330 EGP" dir="ltr">
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">3</span>
-                <input id="pfPrEnLabel3" class="pf-input" type="text" placeholder="6 Pieces" dir="ltr">
-                <input id="pfPrEnValue3" class="pf-input" type="text" placeholder="600 EGP" dir="ltr">
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
-                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">4</span>
-                <input id="pfPrEnLabel4" class="pf-input" type="text" placeholder="12 Pieces" dir="ltr">
-                <input id="pfPrEnValue4" class="pf-input" type="text" placeholder="1100 EGP" dir="ltr">
-            </div>
-        </div>
+        <div id="pfPricingEnContainer"></div>
     </div>
 
     <!-- Images -->
@@ -3321,12 +3233,12 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     </div>
 
     <div class="pf-section">
-        <div class="pf-section-title">صور المعرض (1 — 4)</div>
+        <div class="pf-section-title">صور المعرض (غير محدودة)</div>
         <div class="pf-upload-zone">
-            <input type="file" id="pfGalleryInput" accept="image/*" multiple onchange="previewGalleryImages(this)">
+            <input type="file" id="pfGalleryInput" accept="image/*" multiple onchange="handleGalleryFiles(this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="color:var(--text-dim);margin-bottom:0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <div style="font-size:0.82rem;color:var(--text-muted);">اختر حتى 4 صور للمعرض</div>
-            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:0.25rem;">ستُحفظ بأسماء 1, 2, 3, 4 (بنفس صيغة الصورة الأصلية)</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);">اختر صور المعرض (اسحب لإعادة الترتيب)</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:0.25rem;">ستُحفظ بأسماء 1, 2, 3, 4... (بنفس صيغة الصورة الأصلية)</div>
         </div>
         <div id="pfGalleryPreview" class="pf-gallery-preview"></div>
     </div>

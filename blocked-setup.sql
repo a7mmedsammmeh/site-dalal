@@ -121,7 +121,8 @@ CREATE TABLE IF NOT EXISTS products (
     description_en TEXT,
     main_image_url TEXT,
     featured BOOLEAN DEFAULT false,
-    sizes TEXT[], -- Array of sizes: ['L', 'XL', '2XL', '3XL', '4XL']
+    sizes TEXT[], -- Array of sizes: ['L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL'] or custom
+    display_order INTEGER DEFAULT 0, -- For sorting products
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -145,7 +146,7 @@ CREATE TABLE IF NOT EXISTS product_images (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     image_url TEXT NOT NULL,
-    image_order INTEGER NOT NULL, -- 1, 2, 3, 4
+    image_order INTEGER NOT NULL, -- For sorting images (user can reorder)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

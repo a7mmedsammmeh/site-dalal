@@ -214,7 +214,9 @@
         const name        = typeof product.name === 'object' ? (product.name[lang] || product.name.ar) : product.name;
         const pricingRows = product.pricing?.[lang] || product.pricing?.ar || [];
         const startPrice  = pricingRows.length ? pricingRows[0].value : '';
-        document.getElementById('orderProductImg').src           = `${product.folder}/${product.main}`;
+        // Use main_image_url if available, otherwise fallback to folder/main
+        const imgSrc = product.main_image_url || `${product.folder}/${product.main}`;
+        document.getElementById('orderProductImg').src           = imgSrc;
         document.getElementById('orderProductImg').alt           = name;
         document.getElementById('orderProductName').textContent  = name;
         document.getElementById('orderProductPrice').textContent = startPrice ? `${t.from} ${startPrice}` : '';

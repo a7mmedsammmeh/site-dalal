@@ -247,7 +247,7 @@ function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, fl
         code:       product.code || null,
         nameAr:     typeof product.name === 'object' ? product.name.ar : product.name,
         nameEn:     typeof product.name === 'object' ? product.name.en : product.name,
-        image:      `${product.folder}/${product.main}`,
+        image:      product.main_image_url || `${product.folder}/${product.main}`,
         priceLabel: selectedRow.label,
         priceValue: selectedRow.value,
         priceNum:   parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0,
@@ -498,9 +498,8 @@ function flyToCart(sourceEl, product) {
     const srcRect  = sourceEl.getBoundingClientRect();
     const destRect = cartBtn.getBoundingClientRect();
 
-    const imgSrc = product?.folder && product?.main
-        ? `${product.folder}/${product.main}`
-        : null;
+    const imgSrc = product?.main_image_url 
+        || (product?.folder && product?.main ? `${product.folder}/${product.main}` : null);
 
     // Start size = same as product card image area
     const startSize = 120;
@@ -750,7 +749,7 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             <!-- Product summary -->
             <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r-lg);padding:0.85rem 1rem;margin-bottom:1.25rem;">
                 <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
-                    <img src="${product.folder}/${product.main}" alt="${name}"
+                    <img src="${product.main_image_url || `${product.folder}/${product.main}`}" alt="${name}"
                          style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0;">
                     <span style="font-size:0.9rem;font-weight:500;color:var(--text)">${name}</span>
                 </div>
