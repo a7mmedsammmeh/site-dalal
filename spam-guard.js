@@ -21,13 +21,23 @@ const SpamGuard = (() => {
     async function getClientIP() {
         if (_ipCache) return _ipCache;
         if (_ipPromise) return _ipPromise;
-        _ipPromise = fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) })
+        _ipPromise = fetch('/api/get-ip', { 
+            signal: AbortSignal.timeout(8000),
+            headers: { 'Accept': 'application/json' }
+        })
             .then(r => r.ok ? r.json() : null)
             .then(g => {
-                _ipCache = g ? { ip: g.ip || null, country: g.country_name || null, city: g.city || null } : { ip: null, country: null, city: null };
+                _ipCache = g ? { 
+                    ip: g.ip || null, 
+                    country: g.country || null, 
+                    city: g.city || null 
+                } : { ip: null, country: null, city: null };
                 return _ipCache;
             })
-            .catch(() => { _ipCache = { ip: null, country: null, city: null }; return _ipCache; });
+            .catch(() => { 
+                _ipCache = { ip: null, country: null, city: null }; 
+                return _ipCache; 
+            });
         return _ipPromise;
     }
 

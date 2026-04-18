@@ -325,15 +325,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 /* ─── Visitor Tracking ─── */
+console.log('🔵 Visitor tracking script loaded');
+
 (async function trackVisitor() {
+    console.log('🟢 trackVisitor function started');
+    
     try {
         // Don't track admin page
-        if (window.location.pathname.includes('admin')) return;
+        if (window.location.pathname.includes('admin')) {
+            console.log('⚠️ Admin page detected, skipping tracking');
+            return;
+        }
 
         // Session dedup — only track once per browser session per page
         const sessionKey = 'dalal-tracked-' + window.location.pathname;
-        if (sessionStorage.getItem(sessionKey)) return;
+        if (sessionStorage.getItem(sessionKey)) {
+            console.log('⚠️ Already tracked this session, skipping');
+            return;
+        }
         sessionStorage.setItem(sessionKey, '1');
+
+        console.log('📊 Gathering visitor data...');
 
         // Gather device info
         const ua        = navigator.userAgent;
@@ -365,47 +377,38 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (/Firefox/i.test(ua)) browser = 'Firefox';
         else if (/Safari/i.test(ua))  browser = 'Safari';
 
-        // IP + country via multiple fallback APIs
+        console.log('📱 Device info:', { device_type, os, browser });
+
+        // IP + country via our serverless function (no CORS issues)
         let ip = null, country = null, city = null;
         
-        // Try ipapi.co first
+        console.log('🌍 Fetching IP from /api/get-ip...');
         try {
-            const geo = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
+            const geo = await fetch('/api/get-ip', { 
+                signal: AbortSignal.timeout(8000),
+                headers: { 'Accept': 'application/json' }
+            });
+            
             if (geo.ok) {
                 const g = await geo.json();
-                if (g.ip && !g.error) {
-                    ip      = g.ip;
-                    country = g.country_name || null;
-                    city    = g.city || null;
-                    console.log('✓ Visitor IP fetched:', ip, country, city);
-                }
+                ip      = g.ip || null;
+                country = g.country || null;
+                city    = g.city || null;
+                console.log('✅ IP fetched:', { ip, country, city });
+            } else {
+                console.warn('⚠️ API response not ok:', geo.status);
             }
         } catch (e) {
-            console.warn('ipapi.co failed:', e.message);
-        }
-
-        // Fallback to ip-api.com if first API failed
-        if (!ip) {
-            try {
-                const geo2 = await fetch('http://ip-api.com/json/', { signal: AbortSignal.timeout(5000) });
-                if (geo2.ok) {
-                    const g = await geo2.json();
-                    if (g.status === 'success') {
-                        ip      = g.query || null;
-                        country = g.country || null;
-                        city    = g.city || null;
-                        console.log('✓ Visitor IP fetched (fallback):', ip, country, city);
-                    }
-                }
-            } catch (e) {
-                console.warn('ip-api.com failed:', e.message);
-            }
+            console.warn('❌ IP fetch failed:', e.message);
         }
 
         if (!ip) {
-            console.warn('⚠ Could not fetch visitor IP from any API');
+            console.error('❌ Could not fetch visitor IP');
         }
 
+        // Check if insertVisitor function exists
+        console.log('🔍 Checking insertVisitor function:', typeof insertVisitor);
+        
         if (typeof insertVisitor === 'function') {
             const visitorData = {
                 ip, country, city,
@@ -417,13 +420,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 referrer,
                 visited_at: new Date().toISOString()
             };
-            console.log('Inserting visitor:', visitorData);
+            console.log('💾 Inserting visitor data:', visitorData);
             await insertVisitor(visitorData);
-            console.log('✓ Visitor tracked successfully');
+            console.log('✅ Visitor tracked successfully!');
         } else {
-            console.error('insertVisitor function not found!');
+            console.error('❌ insertVisitor function not found! Check if supabase.js is loaded.');
         }
     } catch (e) {
-        console.error('Visitor tracking error:', e);
+        console.error('❌ Visitor tracking error:', e);
     }
 })();
