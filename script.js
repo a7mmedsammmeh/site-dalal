@@ -365,20 +365,49 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (/Firefox/i.test(ua)) browser = 'Firefox';
         else if (/Safari/i.test(ua))  browser = 'Safari';
 
-        // IP + country via free API (no key needed)
+        // IP + country via multiple fallback APIs
         let ip = null, country = null, city = null;
+        
+        // Try ipapi.co first
         try {
-            const geo = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+            const geo = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
             if (geo.ok) {
                 const g = await geo.json();
-                ip      = g.ip      || null;
-                country = g.country_name || null;
-                city    = g.city    || null;
+                if (g.ip && !g.error) {
+                    ip      = g.ip;
+                    country = g.country_name || null;
+                    city    = g.city || null;
+                    console.log('✓ Visitor IP fetched:', ip, country, city);
+                }
             }
-        } catch { /* geo failed silently */ }
+        } catch (e) {
+            console.warn('ipapi.co failed:', e.message);
+        }
+
+        // Fallback to ip-api.com if first API failed
+        if (!ip) {
+            try {
+                const geo2 = await fetch('http://ip-api.com/json/', { signal: AbortSignal.timeout(5000) });
+                if (geo2.ok) {
+                    const g = await geo2.json();
+                    if (g.status === 'success') {
+                        ip      = g.query || null;
+                        country = g.country || null;
+                        city    = g.city || null;
+                        console.log('✓ Visitor IP fetched (fallback):', ip, country, city);
+                    }
+                }
+            } catch (e) {
+                console.warn('ip-api.com failed:', e.message);
+            }
+        }
+
+        if (!ip) {
+            console.warn('⚠ Could not fetch visitor IP from any API');
+        }
 
         if (typeof insertVisitor === 'function') {
-            await insertVisitor({
+            const visitorData = {
                 ip, country, city,
                 device_type, os, browser,
                 screen_res: `${screen_w}x${screen_h}`,
@@ -387,7 +416,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 page,
                 referrer,
                 visited_at: new Date().toISOString()
-            });
+            };
+            console.log('Inserting visitor:', visitorData);
+            await insertVisitor(visitorData);
+            console.log('✓ Visitor tracked successfully');
+        } else {
+            console.error('insertVisitor function not found!');
         }
-    } catch { /* silent fail — never break the site */ }
+    } catch (e) {
+        console.error('Visitor tracking error:', e);
+    }
 })();
