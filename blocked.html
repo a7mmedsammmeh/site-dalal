@@ -271,7 +271,7 @@
                 const currentIP = geo.ip;
 
                 let blockReason = null;
-                let isIPBlocked = false;
+                let isBlocked = false;
 
                 // Check if IP is blocked
                 const { data: ipData } = await db
@@ -282,7 +282,7 @@
 
                 if (ipData && ipData.length > 0) {
                     blockReason = ipData[0].reason;
-                    isIPBlocked = true;
+                    isBlocked = true;
                 } else {
                     // Check if fingerprint is blocked
                     const { data: fpData } = await db
@@ -293,6 +293,7 @@
 
                     if (fpData && fpData.length > 0) {
                         blockReason = fpData[0].reason;
+                        isBlocked = true;
                         const blockedIPRef = fpData[0].blocked_ip_ref;
                         
                         // Update subtitle for fingerprint block
@@ -313,6 +314,12 @@
                     }
                 }
 
+                // If not blocked, redirect to home
+                if (!isBlocked) {
+                    window.location.replace('/');
+                    return;
+                }
+
                 // Display reason (no IP display)
                 const reasonText = blockReason || 'بدون سبب';
                 document.getElementById('reasonBox').style.display = 'block';
@@ -320,9 +327,8 @@
 
             } catch (e) {
                 console.error('Error loading block info:', e);
-                // Show default message
-                document.getElementById('reasonBox').style.display = 'block';
-                document.getElementById('reasonText').textContent = 'بدون سبب';
+                // On error, redirect to home (safe default)
+                window.location.replace('/');
             }
         })();
     </script>
