@@ -56,7 +56,8 @@ export default async function handler(req, res) {
                 // Auto-block fingerprint linked to this blocked IP
                 supabaseInsert('blocked_fingerprints', {
                     fingerprint,
-                    reason: `مرتبط بـ IP محظور: ${ip}`,
+                    reason: ipCheck[0].reason || null,
+                    blocked_ip_ref: ip,
                     blocked_at: new Date().toISOString()
                 }).catch(() => {});
             }

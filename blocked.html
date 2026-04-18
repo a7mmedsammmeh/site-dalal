@@ -99,11 +99,12 @@
             background: var(--bg-light);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 0.65rem 1rem;
-            margin: 1rem 0;
-            font-size: 0.82rem;
+            padding: 0.75rem 1.1rem;
+            margin: 0.5rem 0;
+            font-size: 0.85rem;
             color: var(--text-muted);
-            display: none;
+            text-align: right;
+            direction: rtl;
         }
         .reason-box span { color: var(--gold); font-weight: 500; }
 
@@ -180,11 +181,16 @@
         </div>
 
         <h1>تم حظر وصولك</h1>
-        <p class="subtitle">عنوان IP الخاص بك محظور من الوصول إلى هذا الموقع.</p>
+        <p class="subtitle" id="subtitleText">عنوان IP الخاص بك محظور من الوصول إلى هذا الموقع.</p>
+
+        <!-- IP Display -->
+        <div class="reason-box" id="ipBox" style="display:none;">
+            <span style="color:var(--text-dim);">IP:</span> <span id="ipText" style="font-family:'Poppins',monospace;direction:ltr;display:inline-block;"></span>
+        </div>
 
         <!-- Reason (shown if ?reason= param exists) -->
-        <div class="reason-box" id="reasonBox">
-            السبب: <span id="reasonText"></span>
+        <div class="reason-box" id="reasonBox" style="display:none;">
+            <span style="color:var(--text-dim);">السبب:</span> <span id="reasonText"></span>
         </div>
 
         <div class="divider"></div>
@@ -253,14 +259,83 @@
 
     <div class="footer-note">DALAL © 2025 — جميع الحقوق محفوظة</div>
 
+    <!-- Load Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="fingerprint.js"></script>
     <script>
-        // Show reason if passed in URL
-        const params = new URLSearchParams(window.location.search);
-        const reason = params.get('reason');
-        if (reason) {
-            document.getElementById('reasonBox').style.display = 'block';
-            document.getElementById('reasonText').textContent = decodeURIComponent(reason);
-        }
+        const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        (async function() {
+            try {
+                // Get current IP and fingerprint
+                const fp = await DalalFingerprint.get();
+                const geoRes = await fetch('/api/get-ip?fp=' + encodeURIComponent(fp));
+                const geo = await geoRes.json();
+                const currentIP = geo.ip;
+
+                // Display current IP
+                if (currentIP) {
+                    document.getElementById('ipBox').style.display = 'block';
+                    document.getElementById('ipText').textContent = currentIP;
+                }
+
+                let blockReason = null;
+                let isIPBlocked = false;
+
+                // Check if IP is blocked
+                const { data: ipData } = await db
+                    .from('blocked_ips')
+                    .select('reason')
+                    .eq('ip', currentIP)
+                    .limit(1);
+
+                if (ipData && ipData.length > 0) {
+                    blockReason = ipData[0].reason;
+                    isIPBlocked = true;
+                } else {
+                    // Check if fingerprint is blocked
+                    const { data: fpData } = await db
+                        .from('blocked_fingerprints')
+                        .select('reason, blocked_ip_ref')
+                        .eq('fingerprint', fp)
+                        .limit(1);
+
+                    if (fpData && fpData.length > 0) {
+                        blockReason = fpData[0].reason;
+                        const blockedIPRef = fpData[0].blocked_ip_ref;
+                        
+                        // Update subtitle for fingerprint block
+                        document.getElementById('subtitleText').textContent = 'جهازك محظور من الوصول إلى هذا الموقع.';
+                        
+                        // If no reason but has blocked_ip_ref, fetch reason from blocked_ips
+                        if (!blockReason && blockedIPRef) {
+                            const { data: refIPData } = await db
+                                .from('blocked_ips')
+                                .select('reason')
+                                .eq('ip', blockedIPRef)
+                                .limit(1);
+                            
+                            if (refIPData && refIPData.length > 0) {
+                                blockReason = refIPData[0].reason;
+                            }
+                        }
+                    }
+                }
+
+                // Display reason
+                const reasonText = blockReason || 'بدون سبب';
+                document.getElementById('reasonBox').style.display = 'block';
+                document.getElementById('reasonText').textContent = reasonText;
+
+            } catch (e) {
+                console.error('Error loading block info:', e);
+                // Show default message
+                document.getElementById('reasonBox').style.display = 'block';
+                document.getElementById('reasonText').textContent = 'بدون سبب';
+            }
+        })();
     </script>
 </body>
 </html>

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS blocked_fingerprints (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     fingerprint TEXT NOT NULL UNIQUE,
     reason TEXT,
+    blocked_ip_ref TEXT,
     blocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -40,6 +41,9 @@ ON blocked_fingerprints FOR INSERT TO public WITH CHECK (true);
 
 CREATE POLICY "Allow public delete on blocked_fingerprints"
 ON blocked_fingerprints FOR DELETE TO public USING (true);
+
+-- Add blocked_ip_ref column if it doesn't exist
+ALTER TABLE blocked_fingerprints ADD COLUMN IF NOT EXISTS blocked_ip_ref TEXT;
 
 -- 3. Add client_ip column to reviews table
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS client_ip TEXT;

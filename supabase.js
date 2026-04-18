@@ -250,11 +250,12 @@ async function fetchBlockedFingerprints() {
     return data || [];
 }
 
-async function blockFingerprint(fingerprint, reason = null) {
+async function blockFingerprint(fingerprint, reason = null, blocked_ip_ref = null) {
     const db = await getSupabase();
     const { error } = await db.from('blocked_fingerprints').insert([{
         fingerprint,
         reason,
+        blocked_ip_ref,
         blocked_at: new Date().toISOString()
     }]);
     if (error) throw error;

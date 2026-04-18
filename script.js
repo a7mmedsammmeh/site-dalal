@@ -375,8 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const g = await geo.json();
                 // Blocked check — server-side (IP or fingerprint), runs on every load
                 if (g.blocked) {
-                    const reason = g.reason ? `?reason=${encodeURIComponent(g.reason)}` : '';
-                    window.location.replace('/blocked.html' + reason);
+                    window.location.replace('/blocked.html');
                     return;
                 }
                 ip      = g.ip      || null;

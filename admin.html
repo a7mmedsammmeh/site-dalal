@@ -2057,7 +2057,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             const uniqueFPs = [...new Set(associatedFingerprints)];
             if (uniqueFPs.length > 0) {
                 await Promise.all(uniqueFPs.map(fp => 
-                    blockFingerprint(fp, `مرتبط بـ IP محظور: ${ip}`).catch(() => {})
+                    blockFingerprint(fp, reason || null, ip).catch(() => {})
                 ));
                 showAdminToast(`🚫 تم حظر IP + ${uniqueFPs.length} بصمة جهاز`);
             } else {
