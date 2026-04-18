@@ -363,13 +363,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fetch IP — also checks if blocked (server-side, every page load)
         let ip = null, country = null, city = null;
         try {
-            const geo = await fetch('/api/get-ip', {
+            // Get device fingerprint first
+            const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
+            const fpParam = fp ? `?fp=${encodeURIComponent(fp)}` : '';
+
+            const geo = await fetch('/api/get-ip' + fpParam, {
                 signal: AbortSignal.timeout(8000),
                 headers: { 'Accept': 'application/json' }
             });
             if (geo.ok) {
                 const g = await geo.json();
-                // Blocked check — server-side, runs on every load, can't be bypassed
+                // Blocked check — server-side (IP or fingerprint), runs on every load
                 if (g.blocked) {
                     const reason = g.reason ? `?reason=${encodeURIComponent(g.reason)}` : '';
                     window.location.replace('/blocked.html' + reason);

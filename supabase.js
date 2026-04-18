@@ -199,3 +199,81 @@ async function isIPBlockedWithReason(ip) {
     if (error || !data || !data.length) return { blocked: false, reason: null };
     return { blocked: true, reason: data[0].reason || null };
 }
+
+/* ─── Blocked Phones ─── */
+async function fetchBlockedPhones() {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('blocked_phones')
+        .select('*')
+        .order('blocked_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+}
+
+async function blockPhone(phone, reason = null) {
+    const db = await getSupabase();
+    const { error } = await db.from('blocked_phones').insert([{
+        phone,
+        reason,
+        blocked_at: new Date().toISOString()
+    }]);
+    if (error) throw error;
+}
+
+async function unblockPhone(id) {
+    const db = await getSupabase();
+    const { error } = await db.from('blocked_phones').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function isPhoneBlocked(phone) {
+    if (!phone) return { blocked: false, reason: null };
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('blocked_phones')
+        .select('phone, reason')
+        .eq('phone', phone)
+        .limit(1);
+    if (error || !data || !data.length) return { blocked: false, reason: null };
+    return { blocked: true, reason: data[0].reason || null };
+}
+
+/* ─── Blocked Fingerprints ─── */
+async function fetchBlockedFingerprints() {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('blocked_fingerprints')
+        .select('*')
+        .order('blocked_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+}
+
+async function blockFingerprint(fingerprint, reason = null) {
+    const db = await getSupabase();
+    const { error } = await db.from('blocked_fingerprints').insert([{
+        fingerprint,
+        reason,
+        blocked_at: new Date().toISOString()
+    }]);
+    if (error) throw error;
+}
+
+async function unblockFingerprint(id) {
+    const db = await getSupabase();
+    const { error } = await db.from('blocked_fingerprints').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function isFingerprintBlocked(fp) {
+    if (!fp) return { blocked: false, reason: null };
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('blocked_fingerprints')
+        .select('fingerprint, reason')
+        .eq('fingerprint', fp)
+        .limit(1);
+    if (error || !data || !data.length) return { blocked: false, reason: null };
+    return { blocked: true, reason: data[0].reason || null };
+}

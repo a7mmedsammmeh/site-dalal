@@ -311,6 +311,25 @@
             }
         }
 
+        /* ── Phone Block Check (server-side) ── */
+        try {
+            const phoneCheck = await fetch(`/api/check-phone?phone=${encodeURIComponent(phone)}`, {
+                signal: AbortSignal.timeout(5000)
+            });
+            if (phoneCheck.ok) {
+                const pd = await phoneCheck.json();
+                if (pd.blocked) {
+                    btn.disabled = false;
+                    const errEl = document.getElementById('orderError');
+                    errEl.textContent = lang === 'ar'
+                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصل معنا.'
+                        : 'Sorry, you cannot place an order. Please contact us.';
+                    errEl.classList.add('is-visible');
+                    return;
+                }
+            }
+        } catch (e) { /* silent — don't block order if check fails */ }
+
         /* ── Fetch IP ── */
         let clientIP = null, clientCountry = null, clientCity = null;
         if (typeof SpamGuard !== 'undefined') {

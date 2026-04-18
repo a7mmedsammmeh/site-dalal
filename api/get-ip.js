@@ -1,49 +1,60 @@
 const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
 
+async function checkTable(table, field, value) {
+    if (!value) return { blocked: false };
+    const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/${table}?${field}=eq.${encodeURIComponent(value)}&select=${field},reason&limit=1`,
+        {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            signal: AbortSignal.timeout(3000)
+        }
+    );
+    if (!res.ok) return { blocked: false };
+    const data = await res.json();
+    if (data && data.length > 0) return { blocked: true, reason: data[0].reason || null };
+    return { blocked: false };
+}
+
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // Get client IP from Vercel headers
     const ip = req.headers['x-forwarded-for']?.split(',')[0].trim()
             || req.headers['x-real-ip']
             || req.socket?.remoteAddress
             || null;
 
+    const fingerprint = req.query.fp || null;
+
     if (!ip) {
         return res.status(200).json({ blocked: false, ip: null, country: null, city: null });
     }
 
-    // 1. Check if IP is blocked (server-side — cannot be bypassed by client)
+    // Check IP, fingerprint in parallel (server-side — cannot be bypassed)
     try {
-        const blockRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/blocked_ips?ip=eq.${encodeURIComponent(ip)}&select=ip,reason&limit=1`,
-            {
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
-                },
-                signal: AbortSignal.timeout(3000)
-            }
-        );
-        if (blockRes.ok) {
-            const blockData = await blockRes.json();
-            if (blockData && blockData.length > 0) {
-                return res.status(200).json({
-                    blocked: true,
-                    reason: blockData[0].reason || null,
-                    ip, country: null, city: null
-                });
-            }
+        const checks = await Promise.all([
+            checkTable('blocked_ips', 'ip', ip),
+            fingerprint ? checkTable('blocked_fingerprints', 'fingerprint', fingerprint) : Promise.resolve({ blocked: false })
+        ]);
+
+        const blocked = checks.find(c => c.blocked);
+        if (blocked) {
+            return res.status(200).json({
+                blocked: true,
+                reason: blocked.reason || null,
+                ip, country: null, city: null
+            });
         }
     } catch (e) {
         console.error('Block check error:', e);
     }
 
-    // 2. Fetch geolocation
+    // Fetch geolocation
     let country = null, city = null;
     try {
         const geoRes = await fetch(

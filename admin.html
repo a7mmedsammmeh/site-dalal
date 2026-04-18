@@ -508,8 +508,11 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         <button class="admin-refresh-btn hide-mobile" onclick="showBlockedIPsPanel()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
             المحظورون
-        </button>        <button class="admin-refresh-btn hide-mobile" onclick="showExportMenu()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="admin-refresh-btn hide-mobile" onclick="showBlockedPhonesPanel()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.43 9.88a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.34 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.3 8.91"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            أرقام محظورة
+        </button>            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             تصدير
         </button>
         <!-- Mobile hamburger -->
@@ -536,6 +539,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     <button class="admin-menu-item" onclick="showBlockedIPsPanel();toggleAdminMenu()" style="color:#e05c5c;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
         المحظورون
+    </button>
+    <button class="admin-menu-item" onclick="showBlockedPhonesPanel();toggleAdminMenu()" style="color:#e05c5c;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.43 9.88a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.34 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.3 8.91"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        أرقام محظورة
     </button>    <button class="admin-menu-item" onclick="showExportMenu();toggleAdminMenu()" style="color:#4caf7d;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تصدير
@@ -2067,8 +2074,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 </script>
 
 <!-- ═══════════════════════════════════════════════════════
-     BLOCKED IPs PANEL
-════════════════════════════════════════════════════════ -->
+     BLOCKED IPs PANEL════════════════════════════════════════════════════════ -->
 <div id="blockedIPsPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
 <style>
 .bip-wrap { max-width:900px; margin:0 auto; width:100%; }
@@ -2294,6 +2300,204 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 showAdminToast('هذا IP محظور بالفعل');
             } else {
                 showAdminToast('حدث خطأ أثناء الحظر');
+            }
+        }
+    };
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOCKED PHONES PANEL
+════════════════════════════════════════════════════════ -->
+<div id="blockedPhonesPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
+<div class="bip-wrap">
+    <div class="bip-header">
+        <h2 class="bip-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.43 9.88a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.34 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.3 8.91"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            أرقام الهاتف المحظورة
+        </h2>
+        <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+            <button onclick="loadBlockedPhones()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                تحديث
+            </button>
+            <button onclick="unblockAllPhones()" class="admin-refresh-btn" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                فك حظر الكل
+            </button>
+            <button onclick="hideBlockedPhonesPanel()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                إغلاق
+            </button>
+        </div>
+    </div>
+
+    <div class="bip-stat">
+        <div>
+            <div class="bip-stat-num" id="bppCount">—</div>
+            <div class="bip-stat-lbl">إجمالي الأرقام المحظورة</div>
+        </div>
+    </div>
+
+    <!-- Add phone form -->
+    <div class="bip-add-form">
+        <div class="bip-add-title">🚫 حظر رقم هاتف يدوياً</div>
+        <div class="bip-add-row">
+            <input type="text" id="bppInputPhone" class="bip-input" placeholder="01xxxxxxxxx" dir="ltr" inputmode="numeric">
+            <input type="text" id="bppInputReason" class="bip-input bip-input-reason" placeholder="سبب الحظر (اختياري)">
+            <button class="bip-block-btn" onclick="manualBlockPhone()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="display:inline;vertical-align:middle;margin-left:0.3rem;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                حظر
+            </button>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="bip-search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color:var(--text-dim);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="bppSearch" class="bip-search-input" placeholder="بحث برقم الهاتف أو السبب..." oninput="renderBlockedPhones()">
+        <button id="bppSearchClear" onclick="document.getElementById('bppSearch').value='';renderBlockedPhones()" style="display:none;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1rem;line-height:1;padding:0 0.2rem;">✕</button>
+    </div>
+
+    <div id="bppCards" class="bip-cards"></div>
+    <div id="bppEmpty" class="bip-empty" style="display:none;">
+        <div class="bip-empty-icon">✅</div>
+        <div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.4rem;">لا توجد أرقام محظورة</div>
+    </div>
+</div>
+</div>
+
+<script>
+(function() {
+    let _bppAll = [];
+
+    function timeAgo(dateStr) {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins  = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days  = Math.floor(diff / 86400000);
+        if (mins < 1)   return 'الآن';
+        if (mins < 60)  return `منذ ${mins} دقيقة`;
+        if (hours < 24) return `منذ ${hours} ساعة`;
+        if (days < 30)  return `منذ ${days} يوم`;
+        return `منذ ${Math.floor(days/30)} شهر`;
+    }
+
+    window.showBlockedPhonesPanel = async function() {
+        document.getElementById('blockedPhonesPanel').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        await loadBlockedPhones();
+    };
+
+    window.hideBlockedPhonesPanel = function() {
+        document.getElementById('blockedPhonesPanel').style.display = 'none';
+        document.body.style.overflow = '';
+    };
+
+    window.loadBlockedPhones = async function() {
+        try {
+            _bppAll = await fetchBlockedPhones();
+            document.getElementById('bppCount').textContent = _bppAll.length;
+            renderBlockedPhones();
+        } catch(e) { console.error('blocked phones load error:', e); }
+    };
+
+    window.renderBlockedPhones = function() {
+        const search = (document.getElementById('bppSearch')?.value || '').trim().toLowerCase();
+        document.getElementById('bppSearchClear').style.display = search ? 'block' : 'none';
+
+        const list = _bppAll.filter(b => {
+            if (!search) return true;
+            return [b.phone, b.reason].join(' ').toLowerCase().includes(search);
+        });
+
+        const empty = document.getElementById('bppEmpty');
+        const cards = document.getElementById('bppCards');
+
+        if (!list.length) { cards.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+
+        cards.innerHTML = list.map(b => {
+            const dt = new Date(b.blocked_at);
+            const dateStr = dt.toLocaleDateString('ar-EG', { day:'2-digit', month:'short', year:'numeric' });
+            const timeStr = dt.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
+            const ago = timeAgo(b.blocked_at);
+            const phoneSafe = (b.phone || '').replace(/'/g, "\\'");
+            return `<div class="bip-card">
+                <div class="bip-card-top">
+                    <span class="bip-ip">🚫 ${b.phone || '—'}</span>
+                    <div class="bip-card-actions">
+                        <button class="bip-copy-btn" onclick="navigator.clipboard.writeText('${phoneSafe}').then(()=>showAdminToast('تم نسخ الرقم ✓'))">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            نسخ
+                        </button>
+                        <button class="bip-unblock-btn" onclick="unblockPhoneById('${b.id}', '${phoneSafe}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M9 11l3 3L22 4"/></svg>
+                            فك الحظر
+                        </button>
+                    </div>
+                </div>
+                ${b.reason ? `<div class="bip-reason">السبب: <span>${b.reason}</span></div>` : '<div class="bip-reason" style="color:var(--text-dim);">بدون سبب</div>'}
+                <div class="bip-date">${ago} — ${dateStr} الساعة ${timeStr}</div>
+            </div>`;
+        }).join('');
+    };
+
+    window.unblockPhoneById = async function(id, phone) {
+        if (!confirm(`فك حظر الرقم: ${phone}؟`)) return;
+        try {
+            await unblockPhone(id);
+            _bppAll = _bppAll.filter(b => b.id !== id);
+            document.getElementById('bppCount').textContent = _bppAll.length;
+            renderBlockedPhones();
+            showAdminToast(`✅ تم فك حظر ${phone}`);
+        } catch(e) { showAdminToast('حدث خطأ'); }
+    };
+
+    window.unblockAllPhones = async function() {
+        if (!_bppAll.length) { showAdminToast('لا توجد أرقام محظورة'); return; }
+        if (!confirm(`فك حظر جميع الـ ${_bppAll.length} أرقام؟`)) return;
+        try {
+            await Promise.all(_bppAll.map(b => unblockPhone(b.id)));
+            _bppAll = [];
+            document.getElementById('bppCount').textContent = 0;
+            renderBlockedPhones();
+            showAdminToast('✅ تم فك حظر الجميع');
+        } catch(e) { showAdminToast('حدث خطأ'); }
+    };
+
+    window.manualBlockPhone = async function() {
+        const phone = document.getElementById('bppInputPhone').value.trim();
+        const reason = document.getElementById('bppInputReason').value.trim();
+        if (!phone) { showAdminToast('أدخل رقم الهاتف أولاً'); return; }
+        try {
+            await blockPhone(phone, reason || null);
+            document.getElementById('bppInputPhone').value = '';
+            document.getElementById('bppInputReason').value = '';
+            await loadBlockedPhones();
+            showAdminToast(`🚫 تم حظر ${phone}`);
+        } catch(e) {
+            if (e.message?.includes('unique') || e.message?.includes('duplicate')) {
+                showAdminToast('هذا الرقم محظور بالفعل');
+            } else {
+                showAdminToast('حدث خطأ أثناء الحظر');
+            }
+        }
+    };
+
+    // Block phone directly from order card
+    window.blockPhoneFromOrder = async function(phone) {
+        if (!phone) { showAdminToast('لا يوجد رقم'); return; }
+        const reason = prompt(`حظر الرقم ${phone}\nسبب الحظر (اختياري):`);
+        if (reason === null) return;
+        try {
+            await blockPhone(phone, reason || null);
+            showAdminToast(`🚫 تم حظر ${phone}`);
+        } catch(e) {
+            if (e.message?.includes('unique') || e.message?.includes('duplicate')) {
+                showAdminToast('هذا الرقم محظور بالفعل');
+            } else {
+                showAdminToast('حدث خطأ');
             }
         }
     };
