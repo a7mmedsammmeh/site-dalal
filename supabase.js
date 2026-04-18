@@ -116,3 +116,35 @@ async function toggleReviewPin(id, pinned) {
     const { error } = await db.from('reviews').update({ is_pinned: pinned }).eq('id', id);
     if (error) throw error;
 }
+
+/* ─── Visitors ─── */
+async function insertVisitor(data) {
+    const db = await getSupabase();
+    const { error } = await db.from('visitors').insert([data]);
+    if (error) console.warn('visitor insert:', error.message);
+}
+
+async function fetchVisitors() {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('visitors')
+        .select('*')
+        .order('visited_at', { ascending: false });
+    if (error) throw error;
+    return data;
+}
+
+async function deleteVisitor(id) {
+    const db = await getSupabase();
+    const { error } = await db.from('visitors').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function deleteAllVisitors() {
+    const db = await getSupabase();
+    const { error } = await db
+        .from('visitors')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+}

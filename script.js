@@ -322,3 +322,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 10);
     };
 })();
+
+
+/* ─── Visitor Tracking ─── */
+(async function trackVisitor() {
+    try {
+        // Don't track admin page
+        if (window.location.pathname.includes('admin')) return;
+
+        // Session dedup — only track once per browser session per page
+        const sessionKey = 'dalal-tracked-' + window.location.pathname;
+        if (sessionStorage.getItem(sessionKey)) return;
+        sessionStorage.setItem(sessionKey, '1');
+
+        // Gather device info
+        const ua        = navigator.userAgent;
+        const lang      = navigator.language || '';
+        const screen_w  = window.screen.width;
+        const screen_h  = window.screen.height;
+        const referrer  = document.referrer || null;
+        const page      = window.location.pathname + window.location.hash;
+        const tz        = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+
+        // Device type
+        const isMobile  = /Mobi|Android|iPhone|iPad/i.test(ua);
+        const isTablet  = /iPad|Tablet/i.test(ua) || (isMobile && screen_w >= 768);
+        const device_type = isTablet ? 'tablet' : isMobile ? 'mobile' : 'desktop';
+
+        // OS
+        let os = 'Unknown';
+        if (/Windows/i.test(ua))      os = 'Windows';
+        else if (/Mac OS X/i.test(ua)) os = 'macOS';
+        else if (/Android/i.test(ua)) os = 'Android';
+        else if (/iPhone|iPad/i.test(ua)) os = 'iOS';
+        else if (/Linux/i.test(ua))   os = 'Linux';
+
+        // Browser
+        let browser = 'Unknown';
+        if (/Edg\//i.test(ua))        browser = 'Edge';
+        else if (/OPR|Opera/i.test(ua)) browser = 'Opera';
+        else if (/Chrome/i.test(ua))  browser = 'Chrome';
+        else if (/Firefox/i.test(ua)) browser = 'Firefox';
+        else if (/Safari/i.test(ua))  browser = 'Safari';
+
+        // IP + country via free API (no key needed)
+        let ip = null, country = null, city = null;
+        try {
+            const geo = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+            if (geo.ok) {
+                const g = await geo.json();
+                ip      = g.ip      || null;
+                country = g.country_name || null;
+                city    = g.city    || null;
+            }
+        } catch { /* geo failed silently */ }
+
+        if (typeof insertVisitor === 'function') {
+            await insertVisitor({
+                ip, country, city,
+                device_type, os, browser,
+                screen_res: `${screen_w}x${screen_h}`,
+                lang,
+                timezone: tz,
+                page,
+                referrer,
+                visited_at: new Date().toISOString()
+            });
+        }
+    } catch { /* silent fail — never break the site */ }
+})();

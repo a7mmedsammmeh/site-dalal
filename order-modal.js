@@ -18,6 +18,8 @@
             addressPh:  'المحافظة / المدينة / الشارع',
             size:       'المقاس',
             sizePh:     'اختاري المقاس',
+            color:      'اللون',
+            colorPh:    'مثال: أبيض، أسود، بيج...',
             offer:      'العرض',
             offerPh:    'اختاري العرض',
             submit:     'تأكيد الطلب',
@@ -39,6 +41,8 @@
             addressPh:  'Governorate / City / Street',
             size:       'Size',
             sizePh:     'Select size',
+            color:      'Color',
+            colorPh:    'e.g. White, Black, Beige...',
             offer:      'Offer',
             offerPh:    'Select offer',
             submit:     'Confirm Order',
@@ -103,6 +107,10 @@
         <div class="order-select-wrapper">
           <select class="order-select" id="orderSelectSize" required></select>
         </div>
+      </div>
+      <div class="order-field">
+        <label class="order-label" id="orderLabelColor" for="orderInputColor"></label>
+        <input class="order-input" id="orderInputColor" type="text">
       </div>
       <div class="order-field">
         <label class="order-label" id="orderLabelOffer" for="orderSelectOffer"></label>
@@ -193,6 +201,8 @@
         document.getElementById('orderLabelAddress').textContent = t.address;
         document.getElementById('orderInputAddress').placeholder = t.addressPh;
         document.getElementById('orderLabelSize').textContent    = t.size;
+        document.getElementById('orderLabelColor').textContent   = t.color;
+        document.getElementById('orderInputColor').placeholder   = t.colorPh;
         document.getElementById('orderLabelOffer').textContent   = t.offer;
         document.getElementById('orderSubmitLabel').textContent  = t.submit;
         document.getElementById('orderSuccessMsg').textContent   = t.successMsg;
@@ -260,6 +270,7 @@
         const email    = document.getElementById('orderInputEmail').value.trim();
         const address  = document.getElementById('orderInputAddress').value.trim();
         const sizeVal  = document.getElementById('orderSelectSize').value;
+        const colorVal = document.getElementById('orderInputColor').value.trim();
         const offerIdx = document.getElementById('orderSelectOffer').value;
 
         if (!name || !phone || !address || !sizeVal || offerIdx === '') {
@@ -294,6 +305,7 @@
                     ? (lang === 'ar' ? _product.name.ar : (_product.name.en || _product.name.ar))
                     : _product.name,
                 size:  sizeVal,
+                color: colorVal || '',
                 offer: selectedOffer?.label || '',
                 price: selectedOffer?.value || '',
                 qty:   1

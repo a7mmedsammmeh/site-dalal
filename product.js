@@ -609,16 +609,6 @@ function initProductPage() {
         orderBtn.addEventListener('click', openModal);
     }
 
-    /* Wishlist button on main image */
-    if (typeof createWishlistBtn === 'function') {
-        const mainWrapper = document.querySelector('.main-image-wrapper');
-        if (mainWrapper) {
-            const existing = mainWrapper.querySelector('.wishlist-btn');
-            if (existing) existing.remove();
-            mainWrapper.appendChild(createWishlistBtn(product.id));
-        }
-    }
-
     /* Modal close */
     document.getElementById('modalClose')?.addEventListener('click', closeModal);
     document.getElementById('orderModal')?.addEventListener('click', e => {
@@ -635,27 +625,6 @@ function initProductPage() {
     /* Apply language — fills productName, pricingTitle, pricingList */
     applyProductPageLang(lang);
 
-    /* Sticky order bar — show after scrolling past the main order button */
-    const stickyBar = document.getElementById('stickyOrderBar');
-    const stickyLbl = document.getElementById('stickyOrderLabel');
-    const mainBtn   = document.getElementById('registerOrderBtn');
-
-    if (stickyBar && mainBtn) {
-        const onScroll = () => {
-            const btnBottom = mainBtn.getBoundingClientRect().bottom;
-            if (btnBottom < 0) {
-                stickyBar.classList.add('visible');
-            } else {
-                stickyBar.classList.remove('visible');
-            }
-        };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        // update label on lang change
-        document.addEventListener('dalal-lang-change', () => {
-            const l = localStorage.getItem('dalal-lang') || 'ar';
-            if (stickyLbl) stickyLbl.textContent = l === 'ar' ? 'اطلبي الآن' : 'Order Now';
-        });
-    }
 }
 
 /* ─── Bind help buttons once (lang-aware) ─── */

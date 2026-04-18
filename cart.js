@@ -196,6 +196,32 @@ function openMessengerWithContact(buildMsg) {
     document.getElementById('mcPhone').addEventListener('input', function() {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
+
+    /* Drag to dismiss (mobile) */
+    const mcCard = overlay.querySelector('.order-modal');
+    let _mcStartY = 0, _mcCurrentY = 0, _mcDragging = false;
+    mcCard.addEventListener('touchstart', e => {
+        if (window.innerWidth >= 640 || mcCard.scrollTop > 0) return;
+        _mcDragging = true;
+        _mcStartY = e.touches[0].clientY;
+        _mcCurrentY = 0;
+        mcCard.style.transition = 'none';
+    }, { passive: true });
+    document.addEventListener('touchmove', function mcMove(e) {
+        if (!_mcDragging) return;
+        const dy = e.touches[0].clientY - _mcStartY;
+        if (dy < 0) return;
+        _mcCurrentY = dy;
+        mcCard.style.transform = `translateY(${dy}px)`;
+        e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchend', function mcEnd() {
+        if (!_mcDragging) return;
+        _mcDragging = false;
+        mcCard.style.transition = '';
+        if (_mcCurrentY > 120) closeModal();
+        else mcCard.style.transform = '';
+    });
 }
 function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, flyProduct = null) {
     // Build a stable key from product id + offer label + size + color
@@ -664,7 +690,6 @@ function openCart() {
     if (overlay) overlay.classList.add('active');
     if (sticky)  sticky.style.display = 'none';
     document.body.style.overflow = 'hidden';
-    if (drawer) initDrawerSwipe(drawer, closeCart);
 
     // Render recently viewed in empty cart
     if (cart.length === 0) renderCartRecentlyViewed();
@@ -1448,7 +1473,6 @@ function openWishlist() {
     if (!drawer) return;
     drawer.classList.add('open');
     document.body.style.overflow = 'hidden';
-    initDrawerSwipe(drawer, closeWishlist);
 }
 
 function closeWishlist() {

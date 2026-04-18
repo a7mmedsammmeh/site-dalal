@@ -362,7 +362,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
             التقييمات
         </button>
-        <button class="admin-refresh-btn hide-mobile" onclick="showExportMenu()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
+        <button class="admin-refresh-btn hide-mobile" onclick="showVisitorsPanel()" style="color:#5b9bd5;border-color:rgba(91,155,213,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            الزوار
+        </button>        <button class="admin-refresh-btn hide-mobile" onclick="showExportMenu()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             تصدير
         </button>
@@ -383,7 +386,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
         التقييمات
     </button>
-    <button class="admin-menu-item" onclick="showExportMenu();toggleAdminMenu()" style="color:#4caf7d;">
+    <button class="admin-menu-item" onclick="showVisitorsPanel();toggleAdminMenu()" style="color:#5b9bd5;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        الزوار
+    </button>    <button class="admin-menu-item" onclick="showExportMenu();toggleAdminMenu()" style="color:#4caf7d;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تصدير
     </button>
@@ -1476,6 +1482,289 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     // loadOrders called by checkAuth after session verified
     initAdmin();
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     VISITORS PANEL
+════════════════════════════════════════════════════════ -->
+<div id="visitorsPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
+<style>
+.vp-wrap { max-width:1100px; margin:0 auto; width:100%; }
+.vp-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:0.5rem;flex-wrap:wrap; }
+.vp-title { color:var(--gold);font-size:1.05rem;letter-spacing:0.08em; }
+.vp-stats { display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:1.25rem; }
+@media(max-width:600px){ .vp-stats{grid-template-columns:repeat(2,1fr);} }
+.vp-stat { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:1rem 1.25rem; }
+.vp-stat-label { font-size:0.72rem;color:var(--text-muted);letter-spacing:0.06em;margin-bottom:0.4rem; }
+.vp-stat-value { font-size:1.6rem;font-weight:700;color:var(--gold);line-height:1; }
+.vp-stat.blue .vp-stat-value  { color:var(--blue); }
+.vp-stat.green .vp-stat-value { color:var(--green); }
+.vp-stat.red .vp-stat-value   { color:var(--red); }
+
+.vp-search-wrap { display:flex;align-items:center;gap:0.6rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:0.55rem 1rem;margin-bottom:0.85rem;transition:border-color 0.2s; }
+.vp-search-wrap:focus-within { border-color:var(--gold-dim); }
+.vp-search-input { flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:inherit;font-size:0.85rem;direction:rtl; }
+.vp-search-input::placeholder { color:var(--text-dim); }
+
+.vp-filters { display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1rem; }
+.vp-filter-btn { font-size:0.78rem;padding:0.35rem 0.9rem;border-radius:20px;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;background:transparent;font-family:inherit;transition:all 0.2s;white-space:nowrap; }
+.vp-filter-btn:hover { border-color:var(--gold-dim);color:var(--gold); }
+.vp-filter-btn.active { background:var(--gold);border-color:var(--gold);color:var(--bg);font-weight:600; }
+
+.vp-table-wrap { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden; }
+.vp-table { width:100%;border-collapse:collapse;font-size:0.82rem; }
+.vp-table th { background:var(--bg-light);color:var(--text-muted);font-weight:500;font-size:0.72rem;letter-spacing:0.06em;padding:0.75rem 0.9rem;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap; }
+.vp-table td { padding:0.8rem 0.9rem;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text); }
+.vp-table tr:last-child td { border-bottom:none; }
+.vp-table tr:hover td { background:rgba(224,192,151,0.03); }
+.vp-badge { display:inline-flex;align-items:center;gap:0.3rem;font-size:0.72rem;padding:0.2rem 0.55rem;border-radius:20px;border:1px solid;white-space:nowrap; }
+.vp-badge.mobile  { color:#5b9bd5;border-color:rgba(91,155,213,0.4);background:rgba(91,155,213,0.08); }
+.vp-badge.desktop { color:#4caf7d;border-color:rgba(76,175,125,0.4);background:rgba(76,175,125,0.08); }
+.vp-badge.tablet  { color:#E0C097;border-color:rgba(224,192,151,0.4);background:rgba(224,192,151,0.08); }
+.vp-ip { font-family:'Poppins',monospace;font-size:0.75rem;color:var(--text-dim); }
+.vp-page { font-size:0.75rem;color:var(--text-dim);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.vp-date { font-size:0.75rem;color:var(--text-dim);white-space:nowrap; }
+
+/* Mobile cards */
+@media(max-width:800px){ .vp-table-wrap{background:transparent;border:none;} .vp-table{display:none;} .vp-cards{display:flex;flex-direction:column;gap:0.75rem;} }
+@media(min-width:801px){ .vp-cards{display:none;} }
+.vp-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden; }
+.vp-card-head { display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--bg-light);border-bottom:1px solid var(--border); }
+.vp-card-body { padding:0.65rem 1rem;display:flex;flex-direction:column;gap:0.4rem; }
+.vp-card-row { display:flex;gap:0.5rem;font-size:0.8rem;align-items:flex-start; }
+.vp-card-lbl { color:var(--text-dim);min-width:55px;flex-shrink:0;font-size:0.72rem;padding-top:0.1rem; }
+.vp-card-val { color:var(--text-muted);word-break:break-all; }
+.vp-empty { text-align:center;padding:4rem 2rem;color:var(--text-dim); }
+</style>
+
+<div class="vp-wrap">
+    <div class="vp-header">
+        <h2 class="vp-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="vertical-align:middle;margin-left:0.4rem"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            سجل الزوار
+        </h2>
+        <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+            <button onclick="loadVisitors()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                تحديث
+            </button>
+            <button onclick="confirmDeleteAllVisitors()" class="admin-refresh-btn" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                حذف الكل
+            </button>
+            <button onclick="hideVisitorsPanel()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                إغلاق
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="vp-stats" id="vpStats">
+        <div class="vp-stat"><div class="vp-stat-label">إجمالي الزيارات</div><div class="vp-stat-value" id="vpTotal">—</div></div>
+        <div class="vp-stat blue"><div class="vp-stat-label">زيارات اليوم</div><div class="vp-stat-value" id="vpToday">—</div></div>
+        <div class="vp-stat green"><div class="vp-stat-label">موبايل</div><div class="vp-stat-value" id="vpMobile">—</div></div>
+        <div class="vp-stat"><div class="vp-stat-label">دول مختلفة</div><div class="vp-stat-value" id="vpCountries">—</div></div>
+    </div>
+
+    <!-- Search -->
+    <div class="vp-search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color:var(--text-dim);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="vpSearch" class="vp-search-input" placeholder="بحث بالـ IP أو الدولة أو المدينة أو المتصفح..." oninput="renderVisitors()">
+        <button id="vpSearchClear" onclick="document.getElementById('vpSearch').value='';renderVisitors()" style="display:none;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1rem;line-height:1;padding:0 0.2rem;">✕</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="vp-filters">
+        <button class="vp-filter-btn active" data-vf="all"     onclick="setVpFilter('all')">الكل</button>
+        <button class="vp-filter-btn"        data-vf="mobile"  onclick="setVpFilter('mobile')">موبايل</button>
+        <button class="vp-filter-btn"        data-vf="desktop" onclick="setVpFilter('desktop')">ديسكتوب</button>
+        <button class="vp-filter-btn"        data-vf="tablet"  onclick="setVpFilter('tablet')">تابلت</button>
+        <button class="vp-filter-btn"        data-vf="today"   onclick="setVpFilter('today')">اليوم</button>
+        <button class="vp-filter-btn"        data-vf="7d"      onclick="setVpFilter('7d')">آخر 7 أيام</button>
+    </div>
+
+    <!-- Table -->
+    <div class="vp-table-wrap">
+        <table class="vp-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>IP</th>
+                    <th>الدولة / المدينة</th>
+                    <th>الجهاز</th>
+                    <th>نظام التشغيل</th>
+                    <th>المتصفح</th>
+                    <th>الصفحة</th>
+                    <th>المصدر</th>
+                    <th>التوقيت</th>
+                    <th>التاريخ</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="vpTableBody"></tbody>
+        </table>
+    </div>
+    <div class="vp-cards" id="vpCards"></div>
+    <div id="vpEmpty" class="vp-empty" style="display:none;">
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;opacity:0.3;">👁</div>
+        <div style="color:var(--text-muted);font-size:0.95rem;">لا توجد زيارات مسجلة</div>
+    </div>
+</div>
+</div>
+
+<script>
+(function(){
+    let _vpAll = [], _vpFilter = 'all';
+
+    window.showVisitorsPanel = async function() {
+        document.getElementById('visitorsPanel').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        await loadVisitors();
+    };
+
+    window.hideVisitorsPanel = function() {
+        document.getElementById('visitorsPanel').style.display = 'none';
+        document.body.style.overflow = '';
+    };
+
+    window.loadVisitors = async function() {
+        try {
+            _vpAll = await fetchVisitors();
+            updateVpStats();
+            renderVisitors();
+        } catch(e) {
+            console.error('visitors load error:', e);
+            const tbody = document.getElementById('vpTableBody');
+            const cards = document.getElementById('vpCards');
+            const msg = `<div style="text-align:center;padding:2rem;color:#e05c5c;font-size:0.85rem;">خطأ: ${e.message}</div>`;
+            if (tbody) tbody.innerHTML = `<tr><td colspan="11">${msg}</td></tr>`;
+            if (cards) cards.innerHTML = msg;
+        }
+    };
+
+    function updateVpStats() {
+        const today = new Date().toDateString();
+        document.getElementById('vpTotal').textContent     = _vpAll.length;
+        document.getElementById('vpToday').textContent     = _vpAll.filter(v => new Date(v.visited_at).toDateString() === today).length;
+        document.getElementById('vpMobile').textContent    = _vpAll.filter(v => v.device_type === 'mobile').length;
+        document.getElementById('vpCountries').textContent = new Set(_vpAll.map(v => v.country).filter(Boolean)).size;
+    }
+
+    window.setVpFilter = function(f) {
+        _vpFilter = f;
+        document.querySelectorAll('.vp-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.vf === f));
+        renderVisitors();
+    };
+
+    window.renderVisitors = function() {
+        const search = (document.getElementById('vpSearch')?.value || '').trim().toLowerCase();
+        document.getElementById('vpSearchClear').style.display = search ? 'block' : 'none';
+
+        const now   = new Date();
+        const today = now.toDateString();
+        const ms7d  = 7 * 24 * 60 * 60 * 1000;
+
+        let list = _vpAll.filter(v => {
+            if (_vpFilter === 'mobile'  && v.device_type !== 'mobile')  return false;
+            if (_vpFilter === 'desktop' && v.device_type !== 'desktop') return false;
+            if (_vpFilter === 'tablet'  && v.device_type !== 'tablet')  return false;
+            if (_vpFilter === 'today'   && new Date(v.visited_at).toDateString() !== today) return false;
+            if (_vpFilter === '7d'      && (now - new Date(v.visited_at)) > ms7d) return false;
+            if (search) {
+                const hay = [v.ip, v.country, v.city, v.browser, v.os, v.page, v.referrer].join(' ').toLowerCase();
+                if (!hay.includes(search)) return false;
+            }
+            return true;
+        });
+
+        const empty = document.getElementById('vpEmpty');
+        if (!list.length) {
+            document.getElementById('vpTableBody').innerHTML = '';
+            document.getElementById('vpCards').innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        // Table rows
+        document.getElementById('vpTableBody').innerHTML = list.map((v, i) => {
+            const dt = new Date(v.visited_at);
+            const dateStr = dt.toLocaleDateString('ar-EG', { day:'2-digit', month:'short', year:'numeric' });
+            const timeStr = dt.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
+            const deviceIcon = v.device_type === 'mobile' ? '📱' : v.device_type === 'tablet' ? '📟' : '🖥';
+            const ref = v.referrer ? (v.referrer.length > 30 ? v.referrer.slice(0,30)+'…' : v.referrer) : '—';
+            return `<tr>
+                <td style="color:var(--text-dim);font-size:0.72rem;">${i+1}</td>
+                <td><span class="vp-ip">${v.ip || '—'}</span></td>
+                <td style="font-size:0.8rem;">${v.country || '—'}${v.city ? ' / '+v.city : ''}</td>
+                <td><span class="vp-badge ${v.device_type||'desktop'}">${deviceIcon} ${v.device_type||'—'}</span></td>
+                <td style="font-size:0.8rem;color:var(--text-muted);">${v.os||'—'}</td>
+                <td style="font-size:0.8rem;color:var(--text-muted);">${v.browser||'—'}</td>
+                <td><span class="vp-page" title="${v.page||''}">${v.page||'—'}</span></td>
+                <td style="font-size:0.72rem;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${v.referrer||''}">${ref}</td>
+                <td class="vp-date">${timeStr}</td>
+                <td class="vp-date">${dateStr}</td>
+                <td>
+                    <button class="del-btn" onclick="removeVisitor('${v.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // Mobile cards
+        document.getElementById('vpCards').innerHTML = list.map((v, i) => {
+            const dt = new Date(v.visited_at);
+            const dateStr = dt.toLocaleDateString('ar-EG', { day:'2-digit', month:'short', year:'numeric' });
+            const timeStr = dt.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
+            const deviceIcon = v.device_type === 'mobile' ? '📱' : v.device_type === 'tablet' ? '📟' : '🖥';
+            return `<div class="vp-card">
+                <div class="vp-card-head">
+                    <div style="display:flex;flex-direction:column;gap:0.15rem;">
+                        <span style="font-size:0.88rem;font-weight:600;color:var(--text);">${deviceIcon} ${v.country||'غير معروف'}${v.city ? ' — '+v.city : ''}</span>
+                        <span class="vp-ip">${v.ip||'—'}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span class="vp-badge ${v.device_type||'desktop'}">${v.device_type||'—'}</span>
+                        <button class="del-btn" onclick="removeVisitor('${v.id}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="vp-card-body">
+                    <div class="vp-card-row"><span class="vp-card-lbl">نظام</span><span class="vp-card-val">${v.os||'—'}</span></div>
+                    <div class="vp-card-row"><span class="vp-card-lbl">متصفح</span><span class="vp-card-val">${v.browser||'—'}</span></div>
+                    <div class="vp-card-row"><span class="vp-card-lbl">الشاشة</span><span class="vp-card-val">${v.screen_res||'—'}</span></div>
+                    <div class="vp-card-row"><span class="vp-card-lbl">الصفحة</span><span class="vp-card-val" style="word-break:break-all;">${v.page||'—'}</span></div>
+                    ${v.referrer ? `<div class="vp-card-row"><span class="vp-card-lbl">مصدر</span><span class="vp-card-val" style="word-break:break-all;">${v.referrer}</span></div>` : ''}
+                    <div class="vp-card-row"><span class="vp-card-lbl">التوقيت</span><span class="vp-card-val">${v.timezone||'—'}</span></div>
+                    <div class="vp-card-row"><span class="vp-card-lbl">التاريخ</span><span class="vp-card-val">${dateStr} — ${timeStr}</span></div>
+                </div>
+            </div>`;
+        }).join('');
+    };
+
+    window.removeVisitor = async function(id) {
+        if (!confirm('حذف هذه الزيارة؟')) return;
+        try {
+            await deleteVisitor(id);
+            _vpAll = _vpAll.filter(v => v.id !== id);
+            updateVpStats();
+            renderVisitors();
+        } catch { alert('حدث خطأ'); }
+    };
+
+    window.confirmDeleteAllVisitors = async function() {
+        if (!confirm('هل أنت متأكد من حذف جميع سجلات الزوار؟ لا يمكن التراجع.')) return;
+        try {
+            await deleteAllVisitors();
+            _vpAll = [];
+            updateVpStats();
+            renderVisitors();
+        } catch { alert('حدث خطأ'); }
+    };
 })();
 </script>
 </body>

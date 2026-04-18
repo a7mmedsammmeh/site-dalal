@@ -135,12 +135,6 @@ function createProductCard(product) {
         </div>
     `;
 
-    // Add wishlist button to image wrapper
-    if (typeof createWishlistBtn === 'function') {
-        const wrapper = article.querySelector('.product-image-wrapper');
-        if (wrapper) wrapper.appendChild(createWishlistBtn(product.id));
-    }
-
     return article;
 }
 
