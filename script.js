@@ -391,6 +391,14 @@ console.log('🔵 Visitor tracking script loaded');
             
             if (geo.ok) {
                 const g = await geo.json();
+
+                // Blocked check — server-side, can't be bypassed
+                if (g.blocked) {
+                    const reason = g.reason ? `?reason=${encodeURIComponent(g.reason)}` : '';
+                    window.location.replace('/blocked.html' + reason);
+                    return;
+                }
+
                 ip      = g.ip || null;
                 country = g.country || null;
                 city    = g.city || null;
@@ -406,15 +414,7 @@ console.log('🔵 Visitor tracking script loaded');
             console.error('❌ Could not fetch visitor IP');
         }
 
-        // Check if IP is blocked
-        if (ip && typeof isIPBlocked === 'function') {
-            const blocked = await isIPBlocked(ip);
-            if (blocked) {
-                console.warn('🚫 IP is blocked, redirecting...');
-                window.location.href = '/blocked.html';
-                return;
-            }
-        }
+        // Remove old client-side check (now handled server-side in /api/get-ip)
 
         // Check if insertVisitor function exists
         console.log('🔍 Checking insertVisitor function:', typeof insertVisitor);

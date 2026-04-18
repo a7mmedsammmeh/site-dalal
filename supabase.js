@@ -187,3 +187,15 @@ async function isIPBlocked(ip) {
     if (error) return false;
     return data && data.length > 0;
 }
+
+async function isIPBlockedWithReason(ip) {
+    if (!ip) return { blocked: false, reason: null };
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('blocked_ips')
+        .select('ip, reason')
+        .eq('ip', ip)
+        .limit(1);
+    if (error || !data || !data.length) return { blocked: false, reason: null };
+    return { blocked: true, reason: data[0].reason || null };
+}

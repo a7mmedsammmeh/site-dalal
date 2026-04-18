@@ -504,6 +504,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         <button class="admin-refresh-btn hide-mobile" onclick="showVisitorsPanel()" style="color:#5b9bd5;border-color:rgba(91,155,213,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             الزوار
+        </button>
+        <button class="admin-refresh-btn hide-mobile" onclick="showBlockedIPsPanel()" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            المحظورون
         </button>        <button class="admin-refresh-btn hide-mobile" onclick="showExportMenu()" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             تصدير
@@ -528,6 +532,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     <button class="admin-menu-item" onclick="showVisitorsPanel();toggleAdminMenu()" style="color:#5b9bd5;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         الزوار
+    </button>
+    <button class="admin-menu-item" onclick="showBlockedIPsPanel();toggleAdminMenu()" style="color:#e05c5c;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        المحظورون
     </button>    <button class="admin-menu-item" onclick="showExportMenu();toggleAdminMenu()" style="color:#4caf7d;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تصدير
@@ -566,6 +574,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <option value="phone">الهاتف</option>
             <option value="email">الإيميل</option>
             <option value="product">كود المنتج</option>
+            <option value="ip">الـ IP</option>
         </select>
         <button id="adminSearchClear" onclick="clearSearch()" style="display:none;color:var(--text-dim);font-size:1rem;line-height:1;padding:0 0.3rem;">✕</button>
     </div>
@@ -760,7 +769,8 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             name:    'اكتب اسم العميل...',
             phone:   'اكتب رقم الهاتف...',
             email:   'اكتب الإيميل...',
-            product: 'اكتب كود المنتج...'
+            product: 'اكتب كود المنتج...',
+            ip:      'مثال: 192.168.1.1'
         };
         const input = document.getElementById('adminSearch');
         if (input) input.placeholder = placeholders[type] || 'بحث...';
@@ -814,6 +824,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                         : (typeof o.products === 'string' ? JSON.parse(o.products || '[]') : []);
                     return products.some(p => p.code && p.code.toLowerCase().includes(q));
                 }
+                case 'ip':      return o.client_ip && o.client_ip.includes(_search);
                 default: return false;
             }
         });
@@ -1850,7 +1861,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
 <script>
 (function(){
-    let _vpAll = [], _vpFilter = 'all';
+    let _vpAll = [], _vpFilter = 'all', _vpBlockedIPs = new Set();
 
     window.showVisitorsPanel = async function() {
         document.getElementById('visitorsPanel').style.display = 'block';
@@ -1865,7 +1876,13 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     window.loadVisitors = async function() {
         try {
-            _vpAll = await fetchVisitors();
+            // Load visitors and blocked IPs in parallel
+            const [visitors, blocked] = await Promise.all([
+                fetchVisitors(),
+                fetchBlockedIPs().catch(() => [])
+            ]);
+            _vpAll = visitors;
+            _vpBlockedIPs = new Set((blocked || []).map(b => b.ip));
             updateVpStats();
             renderVisitors();
         } catch(e) {
@@ -1944,9 +1961,14 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                     <button class="del-btn" onclick="removeVisitor('${v.id}')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
                     </button>
-                    <button class="del-btn" onclick="blockVisitorIP('${v.ip}')" style="color:#e05c5c;margin-inline-start:0.3rem;" title="حظر IP">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                    </button>
+                    ${v.ip ? (_vpBlockedIPs.has(v.ip)
+                        ? `<button class="del-btn" onclick="unblockVisitorIP('${v.ip}')" style="color:#4caf7d;border-color:rgba(76,175,125,0.35);margin-inline-start:0.3rem;" title="فك الحظر">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 11l3 3L22 4"/></svg>
+                           </button>`
+                        : `<button class="del-btn" onclick="blockVisitorIP('${v.ip}')" style="color:#e05c5c;margin-inline-start:0.3rem;" title="حظر IP">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                           </button>`)
+                    : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -1968,9 +1990,14 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                         <button class="del-btn" onclick="removeVisitor('${v.id}')">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
                         </button>
-                        <button class="del-btn" onclick="blockVisitorIP('${v.ip}')" style="color:#e05c5c;" title="حظر IP">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                        </button>
+                        ${v.ip ? (_vpBlockedIPs.has(v.ip)
+                            ? `<button class="del-btn" onclick="unblockVisitorIP('${v.ip}')" style="color:#4caf7d;border-color:rgba(76,175,125,0.35);" title="فك الحظر">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 11l3 3L22 4"/></svg>
+                               </button>`
+                            : `<button class="del-btn" onclick="blockVisitorIP('${v.ip}')" style="color:#e05c5c;" title="حظر IP">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                               </button>`)
+                        : ''}
                     </div>
                 </div>
                 <div class="vp-card-body">
@@ -2007,19 +2034,267 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     };
 
     window.blockVisitorIP = async function(ip) {
-        if (!ip) {
-            alert('لا يوجد IP لحظره');
-            return;
-        }
+        if (!ip) { showAdminToast('لا يوجد IP لحظره'); return; }
         const reason = prompt('سبب الحظر (اختياري):');
-        if (reason === null) return; // User cancelled
-        
+        if (reason === null) return;
         try {
             await blockIP(ip, reason || null);
-            alert(`تم حظر IP: ${ip}`);
+            _vpBlockedIPs.add(ip);
+            renderVisitors();
+            showAdminToast(`🚫 تم حظر IP: ${ip}`);
         } catch (e) {
             console.error('Block IP error:', e);
-            alert('حدث خطأ أثناء حظر IP');
+            showAdminToast('حدث خطأ أثناء حظر IP');
+        }
+    };
+
+    window.unblockVisitorIP = async function(ip) {
+        if (!ip) return;
+        if (!confirm(`فك حظر IP: ${ip}؟`)) return;
+        try {
+            const blocked = await fetchBlockedIPs();
+            const record = blocked.find(b => b.ip === ip);
+            if (record) await unblockIP(record.id);
+            _vpBlockedIPs.delete(ip);
+            renderVisitors();
+            showAdminToast(`✅ تم فك حظر ${ip}`);
+        } catch (e) {
+            console.error('Unblock IP error:', e);
+            showAdminToast('حدث خطأ أثناء فك الحظر');
+        }
+    };
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOCKED IPs PANEL
+════════════════════════════════════════════════════════ -->
+<div id="blockedIPsPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
+<style>
+.bip-wrap { max-width:900px; margin:0 auto; width:100%; }
+.bip-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+.bip-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--gold); display:flex; align-items:center; gap:0.6rem; }
+.bip-stat { background:var(--bg-card); border:1px solid rgba(224,92,92,0.3); border-radius:var(--r-lg); padding:0.75rem 1.25rem; display:flex; align-items:center; gap:0.75rem; margin-bottom:1.25rem; }
+.bip-stat-num { font-size:1.8rem; font-weight:700; color:#e05c5c; line-height:1; }
+.bip-stat-lbl { font-size:0.78rem; color:var(--text-muted); }
+.bip-add-form { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:1rem 1.25rem; margin-bottom:1.25rem; display:flex; flex-direction:column; gap:0.75rem; }
+.bip-add-title { font-size:0.8rem; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; }
+.bip-add-row { display:flex; gap:0.6rem; flex-wrap:wrap; }
+.bip-input { flex:1; min-width:160px; background:var(--bg); border:1px solid var(--border); border-radius:var(--r); padding:0.55rem 0.85rem; color:var(--text); font-family:inherit; font-size:0.85rem; outline:none; transition:border-color 0.2s; direction:ltr; }
+.bip-input:focus { border-color:var(--gold-dim); }
+.bip-input-reason { direction:rtl; }
+.bip-block-btn { background:rgba(224,92,92,0.12); border:1px solid rgba(224,92,92,0.4); color:#e05c5c; border-radius:var(--r); padding:0.55rem 1.25rem; font-family:inherit; font-size:0.85rem; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
+.bip-block-btn:hover { background:rgba(224,92,92,0.2); }
+.bip-search-wrap { display:flex; align-items:center; gap:0.6rem; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:0.6rem 1rem; margin-bottom:1rem; transition:border-color 0.2s; }
+.bip-search-wrap:focus-within { border-color:var(--gold-dim); }
+.bip-search-input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:inherit; font-size:0.85rem; direction:rtl; }
+.bip-search-input::placeholder { color:var(--text-dim); }
+.bip-cards { display:flex; flex-direction:column; gap:0.75rem; }
+.bip-card { background:var(--bg-card); border:1px solid rgba(224,92,92,0.2); border-radius:var(--r-lg); padding:0.9rem 1.1rem; transition:border-color 0.2s; }
+.bip-card:hover { border-color:rgba(224,92,92,0.45); }
+.bip-card-top { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.5rem; flex-wrap:wrap; }
+.bip-ip { font-family:'Poppins',monospace; font-size:1rem; font-weight:700; color:#e05c5c; direction:ltr; letter-spacing:0.04em; }
+.bip-card-actions { display:flex; gap:0.4rem; align-items:center; }
+.bip-copy-btn { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; color:var(--text-dim); border:1px solid var(--border); border-radius:var(--r); padding:0.28rem 0.6rem; cursor:pointer; background:transparent; font-family:inherit; transition:all 0.2s; }
+.bip-copy-btn:hover { color:var(--gold); border-color:var(--gold-dim); }
+.bip-unblock-btn { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; color:#4caf7d; border:1px solid rgba(76,175,125,0.35); border-radius:var(--r); padding:0.28rem 0.7rem; cursor:pointer; background:rgba(76,175,125,0.07); font-family:inherit; transition:all 0.2s; }
+.bip-unblock-btn:hover { background:rgba(76,175,125,0.15); border-color:rgba(76,175,125,0.6); }
+.bip-reason { font-size:0.82rem; color:var(--text-muted); margin-bottom:0.3rem; }
+.bip-reason span { color:var(--text); }
+.bip-date { font-size:0.72rem; color:var(--text-dim); }
+.bip-empty { text-align:center; padding:4rem 2rem; color:var(--text-dim); }
+.bip-empty-icon { font-size:3rem; margin-bottom:1rem; opacity:0.4; }
+</style>
+<div class="bip-wrap">
+    <div class="bip-header">
+        <h2 class="bip-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            قائمة المحظورين
+        </h2>
+        <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+            <button onclick="loadBlockedIPs()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                تحديث
+            </button>
+            <button onclick="unblockAllIPs()" class="admin-refresh-btn" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                فك حظر الكل
+            </button>
+            <button onclick="hideBlockedIPsPanel()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                إغلاق
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="bip-stat">
+        <div>
+            <div class="bip-stat-num" id="bipCount">—</div>
+            <div class="bip-stat-lbl">إجمالي المحظورين</div>
+        </div>
+    </div>
+
+    <!-- Add IP form -->
+    <div class="bip-add-form">
+        <div class="bip-add-title">🚫 حظر IP يدوياً</div>
+        <div class="bip-add-row">
+            <input type="text" id="bipInputIP" class="bip-input" placeholder="192.168.1.1" dir="ltr">
+            <input type="text" id="bipInputReason" class="bip-input bip-input-reason" placeholder="سبب الحظر (اختياري)">
+            <button class="bip-block-btn" onclick="manualBlockIP()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="display:inline;vertical-align:middle;margin-left:0.3rem;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                حظر
+            </button>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="bip-search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color:var(--text-dim);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="bipSearch" class="bip-search-input" placeholder="بحث بالـ IP أو السبب..." oninput="renderBlockedIPs()">
+        <button id="bipSearchClear" onclick="document.getElementById('bipSearch').value='';renderBlockedIPs()" style="display:none;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1rem;line-height:1;padding:0 0.2rem;">✕</button>
+    </div>
+
+    <!-- Cards -->
+    <div id="bipCards" class="bip-cards"></div>
+    <div id="bipEmpty" class="bip-empty" style="display:none;">
+        <div class="bip-empty-icon">✅</div>
+        <div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.4rem;">لا يوجد IPs محظورة</div>
+        <div style="font-size:0.82rem;">الموقع مفتوح للجميع حالياً</div>
+    </div>
+</div>
+</div>
+
+<script>
+(function() {
+    let _bipAll = [];
+
+    function timeAgo(dateStr) {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins  = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days  = Math.floor(diff / 86400000);
+        if (mins < 1)   return 'الآن';
+        if (mins < 60)  return `منذ ${mins} دقيقة`;
+        if (hours < 24) return `منذ ${hours} ساعة`;
+        if (days < 30)  return `منذ ${days} يوم`;
+        return `منذ ${Math.floor(days/30)} شهر`;
+    }
+
+    window.showBlockedIPsPanel = async function() {
+        document.getElementById('blockedIPsPanel').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        await loadBlockedIPs();
+    };
+
+    window.hideBlockedIPsPanel = function() {
+        document.getElementById('blockedIPsPanel').style.display = 'none';
+        document.body.style.overflow = '';
+    };
+
+    window.loadBlockedIPs = async function() {
+        try {
+            _bipAll = await fetchBlockedIPs();
+            document.getElementById('bipCount').textContent = _bipAll.length;
+            renderBlockedIPs();
+        } catch(e) {
+            console.error('blocked IPs load error:', e);
+        }
+    };
+
+    window.renderBlockedIPs = function() {
+        const search = (document.getElementById('bipSearch')?.value || '').trim().toLowerCase();
+        document.getElementById('bipSearchClear').style.display = search ? 'block' : 'none';
+
+        let list = _bipAll.filter(b => {
+            if (!search) return true;
+            return [b.ip, b.reason].join(' ').toLowerCase().includes(search);
+        });
+
+        const empty = document.getElementById('bipEmpty');
+        const cards = document.getElementById('bipCards');
+
+        if (!list.length) {
+            cards.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        cards.innerHTML = list.map(b => {
+            const dt = new Date(b.blocked_at);
+            const dateStr = dt.toLocaleDateString('ar-EG', { day:'2-digit', month:'short', year:'numeric' });
+            const timeStr = dt.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
+            const ago = timeAgo(b.blocked_at);
+            const ipSafe = (b.ip || '').replace(/'/g, "\\'");
+            return `<div class="bip-card">
+                <div class="bip-card-top">
+                    <span class="bip-ip">🚫 ${b.ip || '—'}</span>
+                    <div class="bip-card-actions">
+                        <button class="bip-copy-btn" onclick="navigator.clipboard.writeText('${ipSafe}').then(()=>showAdminToast('تم نسخ IP ✓'))">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            نسخ
+                        </button>
+                        <button class="bip-unblock-btn" onclick="unblockIPById('${b.id}', '${ipSafe}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M9 11l3 3L22 4"/></svg>
+                            فك الحظر
+                        </button>
+                    </div>
+                </div>
+                ${b.reason ? `<div class="bip-reason">السبب: <span>${b.reason}</span></div>` : '<div class="bip-reason" style="color:var(--text-dim);">بدون سبب</div>'}
+                <div class="bip-date">${ago} — ${dateStr} الساعة ${timeStr}</div>
+            </div>`;
+        }).join('');
+    };
+
+    window.unblockIPById = async function(id, ip) {
+        if (!confirm(`فك حظر IP: ${ip}؟`)) return;
+        try {
+            await unblockIP(id);
+            _bipAll = _bipAll.filter(b => b.id !== id);
+            document.getElementById('bipCount').textContent = _bipAll.length;
+            renderBlockedIPs();
+            showAdminToast(`✅ تم فك حظر ${ip}`);
+        } catch(e) {
+            console.error(e);
+            showAdminToast('حدث خطأ أثناء فك الحظر');
+        }
+    };
+
+    window.unblockAllIPs = async function() {
+        if (!_bipAll.length) { showAdminToast('لا يوجد IPs محظورة'); return; }
+        if (!confirm(`فك حظر جميع الـ ${_bipAll.length} IPs المحظورة؟`)) return;
+        try {
+            await Promise.all(_bipAll.map(b => unblockIP(b.id)));
+            _bipAll = [];
+            document.getElementById('bipCount').textContent = 0;
+            renderBlockedIPs();
+            showAdminToast('✅ تم فك حظر الجميع');
+        } catch(e) {
+            console.error(e);
+            showAdminToast('حدث خطأ');
+        }
+    };
+
+    window.manualBlockIP = async function() {
+        const ip = document.getElementById('bipInputIP').value.trim();
+        const reason = document.getElementById('bipInputReason').value.trim();
+        if (!ip) { showAdminToast('أدخل عنوان IP أولاً'); return; }
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+        if (!ipRegex.test(ip)) { showAdminToast('صيغة IP غير صحيحة'); return; }
+        try {
+            await blockIP(ip, reason || null);
+            document.getElementById('bipInputIP').value = '';
+            document.getElementById('bipInputReason').value = '';
+            await loadBlockedIPs();
+            showAdminToast(`🚫 تم حظر ${ip}`);
+        } catch(e) {
+            console.error(e);
+            if (e.message?.includes('unique') || e.message?.includes('duplicate')) {
+                showAdminToast('هذا IP محظور بالفعل');
+            } else {
+                showAdminToast('حدث خطأ أثناء الحظر');
+            }
         }
     };
 })();
