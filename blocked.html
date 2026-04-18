@@ -183,12 +183,7 @@
         <h1>تم حظر وصولك</h1>
         <p class="subtitle" id="subtitleText">عنوان IP الخاص بك محظور من الوصول إلى هذا الموقع.</p>
 
-        <!-- IP Display -->
-        <div class="reason-box" id="ipBox" style="display:none;">
-            <span style="color:var(--text-dim);">IP:</span> <span id="ipText" style="font-family:'Poppins',monospace;direction:ltr;display:inline-block;"></span>
-        </div>
-
-        <!-- Reason (shown if ?reason= param exists) -->
+        <!-- Reason only (no IP display) -->
         <div class="reason-box" id="reasonBox" style="display:none;">
             <span style="color:var(--text-dim);">السبب:</span> <span id="reasonText"></span>
         </div>
@@ -275,12 +270,6 @@
                 const geo = await geoRes.json();
                 const currentIP = geo.ip;
 
-                // Display current IP
-                if (currentIP) {
-                    document.getElementById('ipBox').style.display = 'block';
-                    document.getElementById('ipText').textContent = currentIP;
-                }
-
                 let blockReason = null;
                 let isIPBlocked = false;
 
@@ -324,7 +313,7 @@
                     }
                 }
 
-                // Display reason
+                // Display reason (no IP display)
                 const reasonText = blockReason || 'بدون سبب';
                 document.getElementById('reasonBox').style.display = 'block';
                 document.getElementById('reasonText').textContent = reasonText;

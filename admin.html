@@ -2075,12 +2075,27 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         if (!ip) return;
         if (!confirm(`فك حظر IP: ${ip}؟`)) return;
         try {
+            // Unblock the IP
             const blocked = await fetchBlockedIPs();
             const record = blocked.find(b => b.ip === ip);
             if (record) await unblockIP(record.id);
             _vpBlockedIPs.delete(ip);
+            
+            // Also unblock all fingerprints associated with this IP
+            const db = await getSupabase();
+            const { data: fpData } = await db
+                .from('blocked_fingerprints')
+                .select('id')
+                .eq('blocked_ip_ref', ip);
+            
+            if (fpData && fpData.length > 0) {
+                await Promise.all(fpData.map(fp => unblockFingerprint(fp.id).catch(() => {})));
+                showAdminToast(`✅ تم فك حظر ${ip} + ${fpData.length} بصمة جهاز`);
+            } else {
+                showAdminToast(`✅ تم فك حظر ${ip}`);
+            }
+            
             renderVisitors();
-            showAdminToast(`✅ تم فك حظر ${ip}`);
         } catch (e) {
             console.error('Unblock IP error:', e);
             showAdminToast('حدث خطأ أثناء فك الحظر');
