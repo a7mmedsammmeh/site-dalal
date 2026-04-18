@@ -6,6 +6,7 @@
 let DALAL_PRODUCTS     = [];
 let DALAL_PRODUCTS_MAP = {};
 let DALAL_PRODUCTS_SLUG_MAP = {};
+let DALAL_PRODUCTS_STOCK = {}; // Stock status from Supabase
 
 /* ─── Skeleton card HTML ─── */
 function createSkeletonCard() {
@@ -30,9 +31,25 @@ function injectSkeletons(grid, count) {
 }
 
 /* ─── Load products.json then boot the page ─── */
-fetch('products.json')
-    .then(r => r.json())
-    .then(data => {
+async function loadProductsData() {
+    try {
+        let data = [];
+
+        // Try loading from Supabase first
+        if (typeof fetchAllProducts === 'function') {
+            try {
+                data = await fetchAllProducts();
+            } catch(e) {
+                console.warn('Supabase products failed, falling back to JSON:', e);
+            }
+        }
+
+        // Fallback to products.json if Supabase returned nothing
+        if (!data || data.length === 0) {
+            const response = await fetch('products.json');
+            data = await response.json();
+        }
+
         DALAL_PRODUCTS = data;
         DALAL_PRODUCTS_MAP = {};
         DALAL_PRODUCTS_SLUG_MAP = {};
@@ -40,9 +57,27 @@ fetch('products.json')
             DALAL_PRODUCTS_MAP[p.id] = p;
             if (p.slug) DALAL_PRODUCTS_SLUG_MAP[p.slug] = p;
         });
+
+        // Load stock status from Supabase
+        if (typeof fetchProductStock === 'function') {
+            try {
+                const stockData = await fetchProductStock();
+                DALAL_PRODUCTS_STOCK = {};
+                stockData.forEach(s => {
+                    DALAL_PRODUCTS_STOCK[s.product_id] = s.in_stock;
+                });
+            } catch (e) {
+                console.warn('Could not load product stock:', e);
+            }
+        }
+
         document.dispatchEvent(new Event('dalal:products-ready'));
-    })
-    .catch(err => console.error('Could not load products.json', err));
+    } catch (err) {
+        console.error('Could not load products:', err);
+    }
+}
+
+loadProductsData();
 
 /* ─── Load card ratings after products render ─── */
 async function loadCardRatings() {
@@ -100,9 +135,21 @@ function buildMessengerOrderURL(product) {
 
 /* ─── Product Card ─── */
 function createProductCard(product) {
+    // Check if product is in stock (default to true if not set)
+    const inStock = DALAL_PRODUCTS_STOCK[product.id] !== false;
+    
+    // Don't render out-of-stock products
+    if (!inStock) {
+        const article = document.createElement('article');
+        article.style.display = 'none';
+        return article;
+    }
+
     const lang  = getCurrentLang();
     const name  = getProductName(product, lang);
-    const cover = `${product.folder}/${product.main}`;
+    
+    // Use main_image_url if available (from Supabase), otherwise fallback to folder/main
+    const cover = product.main_image_url || `${product.folder}/${product.main}`;
 
     // get starting price (first pricing row)
     const pricingRows = product.pricing?.[lang] || product.pricing?.ar || [];

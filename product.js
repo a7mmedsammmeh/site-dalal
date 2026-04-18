@@ -48,6 +48,18 @@ async function loadProductReviews(product, lang) {
             `<svg width="15" height="15" viewBox="0 0 24 24" fill="${i<fullStars?'#E0C097':'none'}" stroke="#E0C097" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
         ).join('');
 
+        // Update JSON-LD with aggregateRating
+        if (window._productSchema && window._productSchemaElement) {
+            window._productSchema.aggregateRating = {
+                '@type': 'AggregateRating',
+                ratingValue: avgStr,
+                reviewCount: count,
+                bestRating: '5',
+                worstRating: '1'
+            };
+            window._productSchemaElement.textContent = JSON.stringify(window._productSchema);
+        }
+
         const summaryHTML = `<div style="display:inline-flex;align-items:center;gap:0.5rem;flex-wrap:wrap;padding:0.5rem 0.85rem;background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r-lg);"><span style="font-size:1.1rem;font-weight:700;color:var(--gold);font-family:'Poppins',sans-serif;">${avgStr}</span><div style="display:flex;gap:2px;direction:ltr;">${starsHTML}</div><span style="font-size:0.75rem;color:var(--text-dim);">${count} ${isAr ? 'تقييم' : count === 1 ? 'review' : 'reviews'}</span></div>`;
 
         const summaryEl = document.getElementById('productRatingSummary');
@@ -131,7 +143,10 @@ function updateProductMeta(product, lang) {
     const name     = getProductName(product, lang);
     const nameEn   = getProductName(product, 'en');
     const desc     = product.description?.[lang] || product.description?.ar || `${name} — دلال للملابس الداخلية الفاخرة`;
-    const imgPath  = `${product.folder}/${product.main}`;
+    
+    // Use main_image_url if available (from Supabase), otherwise fallback to folder/main
+    const imgPath  = product.main_image_url || `${product.folder}/${product.main}`;
+    
     const baseUrl  = 'https://www.dalalwear.shop';
     const pageUrl  = product.slug
         ? `${baseUrl}/product.html#${product.slug}`
@@ -183,7 +198,8 @@ function updateProductMeta(product, lang) {
         jsonLd.type = 'application/ld+json';
         document.head.appendChild(jsonLd);
     }
-    jsonLd.textContent = JSON.stringify({
+    
+    const productSchema = {
         '@context': 'https://schema.org',
         '@type':    'Product',
         name:       nameEn || name,
@@ -198,7 +214,13 @@ function updateProductMeta(product, lang) {
             availability:    'https://schema.org/InStock',
             seller: { '@type': 'Organization', name: 'DALAL' }
         }
-    });
+    };
+    
+    // Add aggregateRating if reviews exist (will be updated by loadProductReviews)
+    window._productSchemaElement = jsonLd;
+    window._productSchema = productSchema;
+    
+    jsonLd.textContent = JSON.stringify(productSchema);
 }
 const RV_KEY     = 'dalal-recently-viewed';
 const RV_MAX     = 3;
@@ -207,7 +229,18 @@ function saveRecentlyViewed(product) {
     if (!product?.id) return;
     let list = getRecentlyViewed();
     list = list.filter(p => p.id !== product.id); // remove if already exists
-    list.unshift({ id: product.id, slug: product.slug || null, folder: product.folder, main: product.main, name: product.name });
+    
+    // Save with main_image_url if available, otherwise use folder/main
+    const imgUrl = product.main_image_url || `${product.folder}/${product.main}`;
+    list.unshift({ 
+        id: product.id, 
+        slug: product.slug || null, 
+        main_image_url: imgUrl,
+        folder: product.folder, 
+        main: product.main, 
+        name: product.name 
+    });
+    
     if (list.length > RV_MAX) list = list.slice(0, RV_MAX);
     localStorage.setItem(RV_KEY, JSON.stringify(list));
 }
@@ -240,9 +273,11 @@ function renderRecentlyViewed(currentId) {
     grid.innerHTML = list.map(p => {
         const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
         const url  = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
+        // Use main_image_url if available, otherwise fallback to folder/main
+        const imgSrc = p.main_image_url || `${p.folder}/${p.main}`;
         return `
             <a href="${url}" class="rv-card">
-                <img src="${p.folder}/${p.main}" alt="${name}" loading="lazy"
+                <img src="${imgSrc}" alt="${name}" loading="lazy"
                      style="opacity:0;transition:opacity 0.3s"
                      onload="this.style.opacity='1'" onerror="this.style.opacity='0.3'">
                 <div class="rv-card-name">${name}</div>
@@ -493,8 +528,68 @@ function showProductSkeleton() {
     }
 }
 
+/* ─── Show Out of Stock Product ─── */
+function showOutOfStockProduct(product, lang) {
+    const isAr = lang === 'ar';
+    const name = getProductName(product, lang);
+    // Use main_image_url if available, otherwise fallback to folder/main
+    const cover = product.main_image_url || `${product.folder}/${product.main}`;
+    
+    // Hide skeleton
+    const skeleton = document.getElementById('productSkeleton');
+    if (skeleton) skeleton.style.display = 'none';
+    
+    const container = document.getElementById('productDetail');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="max-width:800px;margin:0 auto;padding:2rem 1rem;text-align:center;">
+            <div style="position:relative;max-width:400px;margin:0 auto 2rem;">
+                <img src="${cover}" alt="${name}" style="width:100%;border-radius:12px;opacity:0.4;filter:grayscale(100%);">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(224,92,92,0.95);color:#fff;padding:0.75rem 2rem;border-radius:8px;font-weight:700;font-size:1.1rem;white-space:nowrap;">
+                    ${isAr ? '✕ غير متوفر' : '✕ Out of Stock'}
+                </div>
+            </div>
+            
+            <h1 style="font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--text);margin-bottom:0.75rem;">${name}</h1>
+            
+            <div style="background:var(--bg-card);border:1px solid rgba(224,92,92,0.3);border-radius:12px;padding:1.5rem;margin:2rem auto;max-width:500px;">
+                <div style="font-size:3rem;margin-bottom:1rem;opacity:0.6;">📦</div>
+                <p style="font-size:1.1rem;color:var(--text);margin-bottom:0.5rem;font-weight:600;">
+                    ${isAr ? 'هذا المنتج غير متوفر حالياً' : 'This product is currently out of stock'}
+                </p>
+                <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
+                    ${isAr ? 'نعتذر عن عدم توفر هذا المنتج في الوقت الحالي. يمكنك تصفح منتجات أخرى من تشكيلتنا.' : 'Sorry, this product is not available at the moment. You can browse other products from our collection.'}
+                </p>
+            </div>
+            
+            <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:2rem;">
+                <a href="products.html" style="display:inline-flex;align-items:center;gap:0.5rem;background:var(--gold);color:var(--bg);padding:0.75rem 1.5rem;border-radius:8px;text-decoration:none;font-weight:600;transition:all 0.2s;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                    ${isAr ? 'تصفح المنتجات' : 'Browse Products'}
+                </a>
+                <a href="index.html" style="display:inline-flex;align-items:center;gap:0.5rem;background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:0.75rem 1.5rem;border-radius:8px;text-decoration:none;font-weight:600;transition:all 0.2s;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                    ${isAr ? 'الصفحة الرئيسية' : 'Home Page'}
+                </a>
+            </div>
+        </div>
+    `;
+    
+    // Update page title
+    document.title = `${name} — ${isAr ? 'غير متوفر' : 'Out of Stock'} — دلال`;
+    
+    // Update meta for SEO
+    const descEl = document.querySelector('meta[name="description"]');
+    if (descEl) descEl.setAttribute('content', `${name} — ${isAr ? 'غير متوفر حالياً' : 'Currently out of stock'}`);
+}
+
 /* ─── Boot ─── */
-function initProductPage() {
+async function initProductPage() {
     const slug    = window.location.hash.replace('#', '');
     const params  = new URLSearchParams(window.location.search);
     const product = slug
@@ -509,6 +604,15 @@ function initProductPage() {
     }
 
     currentProduct = product;
+
+    // Check if product is in stock
+    const inStock = DALAL_PRODUCTS_STOCK[product.id] !== false; // Default to true if not set
+    
+    // If out of stock, show message and disable all actions
+    if (!inStock) {
+        showOutOfStockProduct(product, lang);
+        return;
+    }
 
     /* Save & render recently viewed */
     saveRecentlyViewed(product);
@@ -545,7 +649,8 @@ function initProductPage() {
 
         img.addEventListener('load',  onLoad);
         img.addEventListener('error', onError);
-        img.src = `${product.folder}/${product.main}`;
+        // Use main_image_url if available, otherwise fallback to folder/main
+        img.src = product.main_image_url || `${product.folder}/${product.main}`;
 
         // Handle cached images — if already complete before listener fires
         if (img.complete && img.naturalWidth > 0) onLoad();
@@ -558,7 +663,9 @@ function initProductPage() {
     if (thumbsContainer && product.gallery) {
         thumbsContainer.innerHTML = '';
         product.gallery.forEach((file, i) => {
-            const src = `${product.folder}/${file}`;
+            // If file is already a full URL (from Supabase), use it directly
+            // Otherwise, construct path from folder
+            const src = file.startsWith('http') ? file : `${product.folder}/${file}`;
 
             const wrap = document.createElement('div');
             wrap.className = 'img-wrap thumb-wrap';

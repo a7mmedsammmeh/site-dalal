@@ -27,19 +27,40 @@
     <!-- Canonical -->
     <link rel="canonical" href="https://www.dalalwear.shop/">
 
-    <!-- JSON-LD Organization -->
+    <!-- JSON-LD Organization & WebSite -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "DALAL",
+        "alternateName": "دلال",
         "url": "https://www.dalalwear.shop",
         "logo": "https://www.dalalwear.shop/images/dalal-logo.png",
-        "description": "تشكيلة فاخرة من الملابس الداخلية",
+        "description": "تشكيلة فاخرة من الملابس الداخلية — حرير ودانتيل وأناقة",
+        "email": "info@dalalwear.shop",
+        "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "EG"
+        },
         "sameAs": [
             "https://www.facebook.com/dalal.lingerie/",
             "https://www.instagram.com/dalal.lingerie1/"
         ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "DALAL",
+        "url": "https://www.dalalwear.shop",
+        "description": "دلال — ملابس داخلية فاخرة مصنوعة من الحرير والدانتيل. توصيل لجميع المحافظات والدفع عند الاستلام.",
+        "inLanguage": ["ar", "en"],
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.dalalwear.shop/products.html?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
     }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">

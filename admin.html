@@ -517,6 +517,14 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             تصدير
         </button>
+        <button class="admin-refresh-btn hide-mobile" onclick="showActivityLogPanel()" style="color:#9b59b6;border-color:rgba(155,89,182,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            سجل النشاطات
+        </button>
+        <button class="admin-refresh-btn hide-mobile" onclick="showProductsPanel()" style="color:#f39c12;border-color:rgba(243,156,18,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            المنتجات
+        </button>
         <!-- Mobile hamburger -->
         <button class="admin-hamburger" id="adminHamburger" onclick="toggleAdminMenu()" aria-label="القائمة">
             <span></span><span></span><span></span>
@@ -548,6 +556,14 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     </button>    <button class="admin-menu-item" onclick="showExportMenu();toggleAdminMenu()" style="color:#4caf7d;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تصدير
+    </button>
+    <button class="admin-menu-item" onclick="showActivityLogPanel();toggleAdminMenu()" style="color:#9b59b6;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        سجل النشاطات
+    </button>
+    <button class="admin-menu-item" onclick="showProductsPanel();toggleAdminMenu()" style="color:#f39c12;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        المنتجات
     </button>
     <button class="admin-menu-item" onclick="confirmDeleteAll();toggleAdminMenu()" style="color:#e05c5c;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
@@ -921,7 +937,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 </td>
                 <td>${parseProducts(o.products)}</td>
                 <td class="order-total">${o.total ? o.total+' ج' : '—'}</td>
-                <td><select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this)">${statusOpts(o.status)}</select></td>
+                <td><select class="status-select s-${o.status||'pending'}" data-id="${o.id}" data-old-status="${o.status||'pending'}" onchange="changeStatus(this)">${statusOpts(o.status)}</select></td>
                 <td class="order-date">${fmtDate(o.created_at)}</td>
                 <td style="display:flex;gap:0.3rem;align-items:center;">
                     <button class="del-btn" onclick="printOrder('${o.id}')" title="طباعة">
@@ -1038,7 +1054,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <div class="od-row"><span class="od-lbl">الإجمالي</span><span class="od-val" style="color:var(--gold);font-weight:700;">${o.total ? o.total.toLocaleString()+' جنيه' : '—'}</span></div>
                 <div class="od-row"><span class="od-lbl">التاريخ</span><span class="od-val">${fmtDate(o.created_at)}</span></div>
                 <div class="od-row"><span class="od-lbl">الحالة</span>
-                    <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" onchange="changeStatus(this);this.className='status-select s-'+this.value;" style="margin-top:-2px;">
+                    <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" data-old-status="${o.status||'pending'}" onchange="changeStatus(this);this.className='status-select s-'+this.value;" style="margin-top:-2px;">
                         ${statusOpts(o.status)}
                     </select>
                 </div>
@@ -1298,11 +1314,16 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     async function doDeleteAll() {
         try {
+            const count = _all.length;
             await deleteAllOrders();
             _all = [];
             updateStats();
             render();
             toast('تم حذف جميع الطلبات ✓');
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('delete_all', `حذف جميع الطلبات (${count} طلب)`, 'orders', null, { count });
+            }
         } catch (err) {
             console.error(err);
             toast('فشل الحذف، حاول مرة أخرى');
@@ -1311,11 +1332,16 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     async function doDelete(id) {
         try {
+            const order = _all.find(o => String(o.id) === String(id));
             await deleteOrder(id);
             _all = _all.filter(o => String(o.id) !== String(id));
             updateStats();
             render();
             toast('تم حذف الطلب ✓');
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('delete', 'حذف طلب', 'order', id, { order_ref: order?.order_ref });
+            }
         } catch (err) {
             console.error(err);
             toast('فشل الحذف، حاول مرة أخرى');
@@ -1325,13 +1351,23 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.changeStatus = async function(sel) {
         const id = sel.getAttribute('data-id');
         const status = sel.value;
+        const oldStatus = sel.getAttribute('data-old-status') || 'unknown';
         sel.className = `status-select s-${status}`;
+        sel.setAttribute('data-old-status', status);
         try {
             await updateOrderStatus(id, status);
             const o = _all.find(x => String(x.id) === String(id));
             if (o) o.status = status;
             updateStats();
             toast('تم تحديث الحالة ✓');
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('update', `تغيير حالة الطلب من ${oldStatus} إلى ${status}`, 'order', id, { 
+                    old_status: oldStatus, 
+                    new_status: status,
+                    order_ref: o?.order_ref 
+                });
+            }
         } catch { toast('فشل التحديث، حاول مرة أخرى'); }
     };
 
@@ -1703,6 +1739,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         try {
             await deleteReview(id);
             showReviewsPanel();
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('delete', 'حذف تقييم', 'review', id);
+            }
         } catch { alert('حدث خطأ'); }
     };
 
@@ -1710,6 +1750,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         try {
             await toggleReviewVisibility(id, visible);
             showReviewsPanel();
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('update', visible ? 'إظهار تقييم' : 'إخفاء تقييم', 'review', id, { visible });
+            }
         } catch { alert('حدث خطأ'); }
     };
 
@@ -1717,6 +1761,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         try {
             await toggleReviewPin(id, pinned);
             showReviewsPanel();
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('update', pinned ? 'تثبيت تقييم' : 'إلغاء تثبيت تقييم', 'review', id, { pinned });
+            }
         } catch { alert('حدث خطأ'); }
     };
 
@@ -2030,16 +2078,25 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             _vpAll = _vpAll.filter(v => v.id !== id);
             updateVpStats();
             renderVisitors();
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('delete', 'حذف زيارة', 'visitor', id);
+            }
         } catch { alert('حدث خطأ'); }
     };
 
     window.confirmDeleteAllVisitors = async function() {
         if (!confirm('هل أنت متأكد من حذف جميع سجلات الزوار؟ لا يمكن التراجع.')) return;
         try {
+            const count = _vpAll.length;
             await deleteAllVisitors();
             _vpAll = [];
             updateVpStats();
             renderVisitors();
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('delete_all', `حذف جميع الزوار (${count} زيارة)`, 'visitors', null, { count });
+            }
         } catch { alert('حدث خطأ'); }
     };
 
@@ -2074,6 +2131,14 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 showAdminToast(`🚫 تم حظر IP + ${uniqueFPs.length} بصمة جهاز`);
             } else {
                 showAdminToast(`🚫 تم حظر IP: ${ip}`);
+            }
+            
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('block', `حظر IP: ${ip}`, 'ip', ip, { 
+                    reason: reason || 'بدون سبب',
+                    fingerprints_count: uniqueFPs.length 
+                });
             }
         } catch (e) {
             console.error('Block IP error:', e);
@@ -2115,6 +2180,13 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 showAdminToast(`✅ تم فك حظر ${ip} + ${fpCount} بصمة جهاز`);
             } else {
                 showAdminToast(`✅ تم فك حظر ${ip}`);
+            }
+            
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('unblock', `فك حظر IP: ${ip}`, 'ip', ip, { 
+                    fingerprints_count: fpCount 
+                });
             }
         } catch (e) {
             console.error('Unblock IP error:', e);
@@ -2544,6 +2616,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         try {
             await blockPhone(phone, reason || null);
             showAdminToast(`🚫 تم حظر ${phone}`);
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('block', `حظر رقم: ${phone}`, 'phone', phone, { reason: reason || 'بدون سبب' });
+            }
         } catch(e) {
             if (e.message?.includes('unique') || e.message?.includes('duplicate')) {
                 showAdminToast('هذا الرقم محظور بالفعل');
@@ -2554,5 +2630,712 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     };
 })();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════
+     ACTIVITY LOG PANEL
+════════════════════════════════════════════════════════ -->
+<div id="activityLogPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
+<style>
+.al-wrap { max-width:1200px; margin:0 auto; width:100%; }
+.al-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+.al-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--gold); display:flex; align-items:center; gap:0.6rem; }
+.al-stat { background:var(--bg-card); border:1px solid rgba(155,89,182,0.3); border-radius:var(--r-lg); padding:0.75rem 1.25rem; display:flex; align-items:center; gap:0.75rem; margin-bottom:1.25rem; }
+.al-stat-num { font-size:1.8rem; font-weight:700; color:#9b59b6; line-height:1; }
+.al-stat-lbl { font-size:0.78rem; color:var(--text-muted); }
+.al-filters { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+.al-filter-btn { background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:var(--r); padding:0.45rem 0.9rem; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.2s; }
+.al-filter-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
+.al-filter-btn.active { background:rgba(155,89,182,0.12); border-color:rgba(155,89,182,0.4); color:#9b59b6; }
+.al-table-wrap { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; margin-bottom:1rem; }
+.al-table { width:100%; border-collapse:collapse; }
+.al-table th { background:var(--bg-light); padding:0.75rem 1rem; text-align:right; font-size:0.75rem; font-weight:600; color:var(--text-muted); letter-spacing:0.05em; text-transform:uppercase; border-bottom:1px solid var(--border); }
+.al-table td { padding:0.85rem 1rem; border-bottom:1px solid var(--border); font-size:0.85rem; color:var(--text); }
+.al-table tr:last-child td { border-bottom:none; }
+.al-table tr:hover { background:rgba(224,192,151,0.03); }
+.al-action-badge { display:inline-block; padding:0.25rem 0.65rem; border-radius:var(--r); font-size:0.72rem; font-weight:600; }
+.al-action-create { background:rgba(76,175,125,0.12); color:#4caf7d; border:1px solid rgba(76,175,125,0.3); }
+.al-action-update { background:rgba(91,155,213,0.12); color:#5b9bd5; border:1px solid rgba(91,155,213,0.3); }
+.al-action-delete { background:rgba(224,92,92,0.12); color:#e05c5c; border:1px solid rgba(224,92,92,0.3); }
+.al-action-block { background:rgba(224,92,92,0.12); color:#e05c5c; border:1px solid rgba(224,92,92,0.3); }
+.al-action-unblock { background:rgba(76,175,125,0.12); color:#4caf7d; border:1px solid rgba(76,175,125,0.3); }
+.al-action-delete_all { background:rgba(224,92,92,0.15); color:#e05c5c; border:1px solid rgba(224,92,92,0.4); }
+.al-desc { color:var(--text); }
+.al-entity { font-family:'Poppins',monospace; font-size:0.8rem; color:var(--text-dim); }
+.al-ip { font-family:'Poppins',monospace; font-size:0.8rem; color:var(--text-dim); direction:ltr; }
+.al-time { font-size:0.75rem; color:var(--text-dim); white-space:nowrap; }
+.al-empty { text-align:center; padding:4rem 2rem; color:var(--text-dim); }
+.al-empty-icon { font-size:3rem; margin-bottom:1rem; opacity:0.4; }
+</style>
+<div class="al-wrap">
+    <div class="al-header">
+        <h2 class="al-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            سجل النشاطات
+        </h2>
+        <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+            <button onclick="loadActivityLogs()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                تحديث
+            </button>
+            <button onclick="confirmClearActivityLogs()" class="admin-refresh-btn" style="color:#e05c5c;border-color:rgba(224,92,92,0.3);font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                مسح الكل
+            </button>
+            <button onclick="hideActivityLogPanel()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                إغلاق
+            </button>
+        </div>
+    </div>
+
+    <div class="al-stat">
+        <div class="al-stat-num" id="alCount">0</div>
+        <div class="al-stat-lbl">نشاط مسجل</div>
+    </div>
+
+    <div class="al-filters">
+        <button class="al-filter-btn active" data-filter="all" onclick="setActivityFilter('all')">الكل</button>
+        <button class="al-filter-btn" data-filter="create" onclick="setActivityFilter('create')">إضافة</button>
+        <button class="al-filter-btn" data-filter="update" onclick="setActivityFilter('update')">تحديث</button>
+        <button class="al-filter-btn" data-filter="delete" onclick="setActivityFilter('delete')">حذف</button>
+        <button class="al-filter-btn" data-filter="block" onclick="setActivityFilter('block')">حظر</button>
+        <button class="al-filter-btn" data-filter="unblock" onclick="setActivityFilter('unblock')">فك حظر</button>
+    </div>
+
+    <div class="al-table-wrap">
+        <table class="al-table">
+            <thead>
+                <tr>
+                    <th style="width:100px;">النوع</th>
+                    <th>الوصف</th>
+                    <th style="width:120px;">الكيان</th>
+                    <th style="width:130px;">IP</th>
+                    <th style="width:150px;">التاريخ</th>
+                </tr>
+            </thead>
+            <tbody id="alTableBody"></tbody>
+        </table>
+    </div>
+
+    <div id="alEmpty" class="al-empty" style="display:none;">
+        <div class="al-empty-icon">📋</div>
+        <div style="color:var(--text-muted);font-size:0.95rem;">لا توجد نشاطات مسجلة</div>
+    </div>
+</div>
+</div>
+
+<script>
+(function(){
+    let _alAll = [], _alFilter = 'all';
+
+    window.showActivityLogPanel = async function() {
+        document.getElementById('activityLogPanel').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        await loadActivityLogs();
+    };
+
+    window.hideActivityLogPanel = function() {
+        document.getElementById('activityLogPanel').style.display = 'none';
+        document.body.style.overflow = '';
+    };
+
+    window.loadActivityLogs = async function() {
+        try {
+            _alAll = await fetchActivityLogs(200);
+            document.getElementById('alCount').textContent = _alAll.length;
+            renderActivityLogs();
+        } catch(e) {
+            console.error('activity logs load error:', e);
+        }
+    };
+
+    window.setActivityFilter = function(filter) {
+        _alFilter = filter;
+        document.querySelectorAll('.al-filter-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.filter === filter);
+        });
+        renderActivityLogs();
+    };
+
+    window.renderActivityLogs = function() {
+        let list = _alAll;
+        if (_alFilter !== 'all') {
+            list = list.filter(a => a.action_type === _alFilter);
+        }
+
+        const tbody = document.getElementById('alTableBody');
+        const empty = document.getElementById('alEmpty');
+
+        if (!list.length) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        tbody.innerHTML = list.map(a => {
+            const date = new Date(a.created_at);
+            const dateStr = date.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+            const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+            
+            const actionClass = `al-action-${a.action_type}`;
+            const actionLabel = a.action_type === 'create' ? 'إضافة' :
+                               a.action_type === 'update' ? 'تحديث' :
+                               a.action_type === 'delete' ? 'حذف' :
+                               a.action_type === 'block' ? 'حظر' :
+                               a.action_type === 'unblock' ? 'فك حظر' :
+                               a.action_type === 'delete_all' ? 'حذف جماعي' :
+                               a.action_type;
+
+            return `<tr>
+                <td><span class="al-action-badge ${actionClass}">${actionLabel}</span></td>
+                <td class="al-desc">${a.action_description || '—'}</td>
+                <td class="al-entity">${a.entity_type ? `${a.entity_type}${a.entity_id ? ':'+a.entity_id : ''}` : '—'}</td>
+                <td class="al-ip">${a.ip_address || '—'}</td>
+                <td class="al-time">${dateStr}<br>${timeStr}</td>
+            </tr>`;
+        }).join('');
+    };
+
+    window.confirmClearActivityLogs = async function() {
+        if (!confirm('هل أنت متأكد من مسح جميع سجلات النشاطات؟ لا يمكن التراجع.')) return;
+        try {
+            await clearActivityLogs();
+            _alAll = [];
+            document.getElementById('alCount').textContent = '0';
+            renderActivityLogs();
+            showAdminToast('✅ تم مسح السجل');
+        } catch(e) {
+            showAdminToast('حدث خطأ');
+        }
+    };
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     PRODUCTS MANAGEMENT PANEL
+════════════════════════════════════════════════════════ -->
+<div id="productsPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
+<style>
+.pm-wrap { max-width:1400px; margin:0 auto; width:100%; }
+.pm-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+.pm-title { font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--gold); display:flex; align-items:center; gap:0.6rem; }
+.pm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; margin-top:1rem; }
+.pm-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:1rem; transition:border-color 0.2s; position:relative; }
+.pm-card:hover { border-color:var(--gold-dim); }
+.pm-card-img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:var(--r); margin-bottom:0.75rem; }
+.pm-card-name { font-size:0.95rem; font-weight:600; color:var(--text); margin-bottom:0.3rem; }
+.pm-card-code { font-size:0.75rem; color:var(--text-dim); font-family:'Poppins',monospace; margin-bottom:0.5rem; }
+.pm-card-actions { display:flex; gap:0.4rem; margin-top:0.75rem; }
+.pm-btn { flex:1; padding:0.5rem; border-radius:var(--r); font-size:0.75rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; font-family:inherit; }
+.pm-btn-edit { background:rgba(91,155,213,0.12); color:#5b9bd5; border-color:rgba(91,155,213,0.3); }
+.pm-btn-edit:hover { background:rgba(91,155,213,0.2); }
+.pm-btn-delete { background:rgba(224,92,92,0.12); color:#e05c5c; border-color:rgba(224,92,92,0.3); }
+.pm-btn-delete:hover { background:rgba(224,92,92,0.2); }
+.pm-badge-featured { position:absolute; top:0.75rem; right:0.75rem; background:var(--gold); color:var(--bg); padding:0.25rem 0.6rem; border-radius:var(--r); font-size:0.7rem; font-weight:700; }
+.pm-add-card { background:var(--bg-card); border:2px dashed var(--border); border-radius:var(--r-lg); padding:3rem 1rem; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.75rem; cursor:pointer; transition:all 0.2s; min-height:350px; }
+.pm-add-card:hover { border-color:var(--gold); background:rgba(224,192,151,0.03); }
+.pm-add-icon { font-size:3rem; opacity:0.4; }
+</style>
+<div class="pm-wrap">
+    <div class="pm-header">
+        <h2 class="pm-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            إدارة المنتجات
+        </h2>
+        <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+            <button onclick="showAddProductModal()" class="admin-refresh-btn" style="color:#4caf7d;border-color:rgba(76,175,125,0.3);font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                إضافة منتج
+            </button>
+            <button onclick="loadProductsManagement()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                تحديث
+            </button>
+            <button onclick="hideProductsPanel()" class="admin-refresh-btn" style="font-size:0.72rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                إغلاق
+            </button>
+        </div>
+    </div>
+
+    <div class="pm-grid" id="pmGrid">
+        <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-dim);">جاري التحميل...</div>
+    </div>
+</div>
+</div>
+
+<script>
+(function(){
+    let _pmProducts = [];
+
+    window.showProductsPanel = async function() {
+        document.getElementById('productsPanel').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        await loadProductsManagement();
+    };
+
+    window.hideProductsPanel = function() {
+        document.getElementById('productsPanel').style.display = 'none';
+        document.body.style.overflow = '';
+    };
+
+    window.loadProductsManagement = async function() {
+        try {
+            _pmProducts = await fetchAllProducts();
+            renderProductsManagement();
+        } catch(e) {
+            console.error('products load error:', e);
+            document.getElementById('pmGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#e05c5c;">حدث خطأ في تحميل المنتجات</div>';
+        }
+    };
+
+    window.renderProductsManagement = function() {
+        const grid = document.getElementById('pmGrid');
+        
+        if (!_pmProducts.length) {
+            grid.innerHTML = `
+                <div class="pm-add-card" onclick="showAddProductModal()">
+                    <div class="pm-add-icon">📦</div>
+                    <div style="font-size:1rem;color:var(--text);font-weight:600;">إضافة منتج جديد</div>
+                    <div style="font-size:0.8rem;color:var(--text-dim);">ابدأ بإضافة أول منتج</div>
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = _pmProducts.map(p => {
+            const imgSrc = p.main_image_url || 'images/dalal-logo.png';
+            
+            return `<div class="pm-card">
+                ${p.featured ? '<div class="pm-badge-featured">⭐ مميز</div>' : ''}
+                <img src="${imgSrc}" alt="${p.name.ar}" class="pm-card-img" onerror="this.src='images/dalal-logo.png'">
+                <div class="pm-card-name">${p.name.ar}</div>
+                <div class="pm-card-code">#${p.code}</div>
+                <div class="pm-card-actions">
+                    <button class="pm-btn pm-btn-edit" onclick="showEditProductModal(${p.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="display:inline;vertical-align:middle;margin-left:0.3rem;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        تعديل
+                    </button>
+                    <button class="pm-btn pm-btn-delete" onclick="confirmDeleteProduct(${p.id}, '${p.name.ar}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="display:inline;vertical-align:middle;margin-left:0.3rem;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        حذف
+                    </button>
+                </div>
+            </div>`;
+        }).join('') + `
+            <div class="pm-add-card" onclick="showAddProductModal()">
+                <div class="pm-add-icon">➕</div>
+                <div style="font-size:0.9rem;color:var(--text);font-weight:600;">إضافة منتج جديد</div>
+            </div>
+        `;
+    };
+
+    window.confirmDeleteProduct = async function(id, name) {
+        if (!confirm(`هل أنت متأكد من حذف المنتج "${name}"؟\nلا يمكن التراجع عن هذا الإجراء.`)) return;
+        try {
+            await deleteProduct(id);
+            await loadProductsManagement();
+            showAdminToast('✅ تم حذف المنتج');
+            
+            // Log activity
+            if (typeof logActivity === 'function') {
+                logActivity('delete', `حذف منتج: ${name}`, 'product', id);
+            }
+        } catch(e) {
+            console.error('delete product error:', e);
+            showAdminToast('حدث خطأ أثناء الحذف');
+        }
+    };
+
+    let _editingProductId = null;
+
+    window.showAddProductModal = function() {
+        _editingProductId = null;
+        openProductModal(null);
+    };
+
+    window.showEditProductModal = async function(id) {
+        _editingProductId = id;
+        const product = _pmProducts.find(p => p.id === id);
+        if (!product) return;
+        openProductModal(product);
+    };
+
+    function openProductModal(product) {
+        const isEdit = !!product;
+        const modal = document.getElementById('productFormModal');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // Reset form
+        document.getElementById('pfNameAr').value     = product?.name?.ar || '';
+        document.getElementById('pfNameEn').value     = product?.name?.en || '';
+        document.getElementById('pfSlug').value       = product?.slug || '';
+        document.getElementById('pfCode').value       = product?.code || '';
+        document.getElementById('pfDescAr').value     = product?.description?.ar || '';
+        document.getElementById('pfDescEn').value     = product?.description?.en || '';
+        document.getElementById('pfFeatured').checked = product?.featured || false;
+
+        // Sizes
+        const allSizes = ['L','XL','2XL','3XL','4XL'];
+        allSizes.forEach(s => {
+            const cb = document.getElementById('pfSize_' + s);
+            if (cb) cb.checked = product?.sizes?.includes(s) ?? true;
+        });
+
+        // Pricing AR
+        const pricingAr = product?.pricing?.ar || [{label:'قطعة واحدة',value:''},{label:'عرض 3 قطع',value:''},{label:'عرض 6 قطع (نص دستة)',value:''},{label:'عرض 12 قطعة (دستة كاملة)',value:''}];
+        const pricingEn = product?.pricing?.en || [{label:'1 Piece',value:''},{label:'3 Pieces',value:''},{label:'6 Pieces',value:''},{label:'12 Pieces',value:''}];
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById(`pfPrArLabel${i}`).value = pricingAr[i-1]?.label || '';
+            document.getElementById(`pfPrArValue${i}`).value = pricingAr[i-1]?.value || '';
+            document.getElementById(`pfPrEnLabel${i}`).value = pricingEn[i-1]?.label || '';
+            document.getElementById(`pfPrEnValue${i}`).value = pricingEn[i-1]?.value || '';
+        }
+
+        // Images preview
+        document.getElementById('pfMainPreview').src = product?.main_image_url || '';
+        document.getElementById('pfMainPreview').style.display = product?.main_image_url ? 'block' : 'none';
+        document.getElementById('pfMainInput').value = '';
+
+        const galleryPreview = document.getElementById('pfGalleryPreview');
+        galleryPreview.innerHTML = '';
+        if (product?.gallery?.length) {
+            product.gallery.forEach((url, i) => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
+                galleryPreview.appendChild(img);
+            });
+        }
+        document.getElementById('pfGalleryInput').value = '';
+
+        document.getElementById('pfModalTitle').textContent = isEdit ? 'تعديل المنتج' : 'إضافة منتج جديد';
+        document.getElementById('pfSaveBtn').textContent    = isEdit ? 'حفظ التعديلات' : 'إضافة المنتج';
+    }
+
+    window.closeProductModal = function() {
+        document.getElementById('productFormModal').style.display = 'none';
+    };
+
+    window.previewMainImage = function(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.getElementById('pfMainPreview');
+            img.src = e.target.result;
+            img.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    };
+
+    window.previewGalleryImages = function(input) {
+        const files = Array.from(input.files);
+        const preview = document.getElementById('pfGalleryPreview');
+        preview.innerHTML = '';
+        files.slice(0, 4).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border);';
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    window.saveProduct = async function() {
+        const btn = document.getElementById('pfSaveBtn');
+        btn.disabled = true;
+        btn.textContent = 'جاري الحفظ...';
+
+        try {
+            const nameAr = document.getElementById('pfNameAr').value.trim();
+            const nameEn = document.getElementById('pfNameEn').value.trim();
+            const slug   = document.getElementById('pfSlug').value.trim().toLowerCase().replace(/\s+/g,'-');
+            const code   = document.getElementById('pfCode').value.trim();
+            const descAr = document.getElementById('pfDescAr').value.trim();
+            const descEn = document.getElementById('pfDescEn').value.trim();
+            const featured = document.getElementById('pfFeatured').checked;
+
+            if (!nameAr || !nameEn || !slug || !code) {
+                showAdminToast('يرجى ملء جميع الحقول المطلوبة');
+                btn.disabled = false;
+                btn.textContent = _editingProductId ? 'حفظ التعديلات' : 'إضافة المنتج';
+                return;
+            }
+
+            // Sizes
+            const sizes = ['L','XL','2XL','3XL','4XL'].filter(s => document.getElementById('pfSize_'+s)?.checked);
+
+            // Pricing
+            const pricingAr = [], pricingEn = [];
+            for (let i = 1; i <= 4; i++) {
+                const lAr = document.getElementById(`pfPrArLabel${i}`).value.trim();
+                const vAr = document.getElementById(`pfPrArValue${i}`).value.trim();
+                const lEn = document.getElementById(`pfPrEnLabel${i}`).value.trim();
+                const vEn = document.getElementById(`pfPrEnValue${i}`).value.trim();
+                if (lAr && vAr) pricingAr.push({ label: lAr, value: vAr });
+                if (lEn && vEn) pricingEn.push({ label: lEn, value: vEn });
+            }
+
+            // Upload main image
+            let mainImageUrl = _editingProductId ? (_pmProducts.find(p=>p.id===_editingProductId)?.main_image_url || '') : '';
+            const mainFile = document.getElementById('pfMainInput').files[0];
+            if (mainFile) {
+                const ext = mainFile.name.split('.').pop();
+                const fileName = `${slug}/pic.${ext}`;
+                mainImageUrl = await uploadProductImage(mainFile, fileName);
+            }
+
+            // Upload gallery images
+            let galleryUrls = _editingProductId ? (_pmProducts.find(p=>p.id===_editingProductId)?.gallery || []) : [];
+            const galleryFiles = Array.from(document.getElementById('pfGalleryInput').files);
+            if (galleryFiles.length > 0) {
+                galleryUrls = [];
+                for (let i = 0; i < Math.min(galleryFiles.length, 4); i++) {
+                    const file = galleryFiles[i];
+                    const ext = file.name.split('.').pop();
+                    const fileName = `${slug}/${i+1}.${ext}`;
+                    const url = await uploadProductImage(file, fileName);
+                    galleryUrls.push(url);
+                }
+            }
+
+            const productData = { slug, code, name_ar: nameAr, name_en: nameEn, description_ar: descAr, description_en: descEn, main_image_url: mainImageUrl, featured, sizes };
+
+            if (_editingProductId) {
+                // Update product
+                await updateProduct(_editingProductId, productData);
+                // Update pricing
+                await deleteProductPricing(_editingProductId);
+                await insertProductPricing(_editingProductId, 'ar', pricingAr);
+                await insertProductPricing(_editingProductId, 'en', pricingEn);
+                // Update gallery if new files uploaded
+                if (galleryFiles.length > 0) {
+                    await deleteProductImages(_editingProductId);
+                    for (let i = 0; i < galleryUrls.length; i++) {
+                        await insertProductImage(_editingProductId, galleryUrls[i], i+1);
+                    }
+                }
+                showAdminToast('✅ تم تحديث المنتج');
+                if (typeof logActivity === 'function') logActivity('update', `تعديل منتج: ${nameAr}`, 'product', _editingProductId);
+            } else {
+                // Insert product
+                const newProduct = await insertProduct(productData);
+                const newId = newProduct.id;
+                // Insert pricing
+                await insertProductPricing(newId, 'ar', pricingAr);
+                await insertProductPricing(newId, 'en', pricingEn);
+                // Insert gallery
+                for (let i = 0; i < galleryUrls.length; i++) {
+                    await insertProductImage(newId, galleryUrls[i], i+1);
+                }
+                showAdminToast('✅ تم إضافة المنتج');
+                if (typeof logActivity === 'function') logActivity('create', `إضافة منتج جديد: ${nameAr}`, 'product', newId);
+            }
+
+            closeProductModal();
+            await loadProductsManagement();
+
+        } catch(e) {
+            console.error('save product error:', e);
+            showAdminToast('حدث خطأ: ' + (e.message || 'خطأ غير معروف'));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = _editingProductId ? 'حفظ التعديلات' : 'إضافة المنتج';
+        }
+    };
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     PRODUCT FORM MODAL
+════════════════════════════════════════════════════════ -->
+<div id="productFormModal" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,0.7);align-items:flex-start;justify-content:center;overflow-y:auto;padding:1rem;">
+<style>
+.pf-modal { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); width:100%; max-width:780px; margin:auto; padding:1.5rem; }
+.pf-title { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--gold); margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; }
+.pf-section { margin-bottom:1.5rem; }
+.pf-section-title { font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:1px solid var(--border); }
+.pf-row { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem; }
+.pf-row-1 { display:grid; grid-template-columns:1fr; gap:0.75rem; margin-bottom:0.75rem; }
+.pf-field { display:flex; flex-direction:column; gap:0.35rem; }
+.pf-label { font-size:0.78rem; color:var(--text-muted); }
+.pf-label span { color:#e05c5c; }
+.pf-input { background:var(--bg); border:1px solid var(--border); border-radius:var(--r); padding:0.6rem 0.85rem; color:var(--text); font-family:inherit; font-size:0.85rem; outline:none; transition:border-color 0.2s; width:100%; }
+.pf-input:focus { border-color:var(--gold-dim); }
+.pf-textarea { resize:vertical; min-height:80px; }
+.pf-pricing-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
+.pf-pricing-row { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:var(--r); padding:0.5rem 0.75rem; }
+.pf-pricing-num { font-size:0.7rem; color:var(--text-dim); font-weight:600; margin-bottom:0.25rem; }
+.pf-sizes { display:flex; gap:0.5rem; flex-wrap:wrap; }
+.pf-size-cb { display:none; }
+.pf-size-label { padding:0.35rem 0.75rem; border:1px solid var(--border); border-radius:var(--r); font-size:0.8rem; cursor:pointer; transition:all 0.2s; color:var(--text-muted); }
+.pf-size-cb:checked + .pf-size-label { background:rgba(224,192,151,0.15); border-color:var(--gold-dim); color:var(--gold); }
+.pf-upload-zone { border:2px dashed var(--border); border-radius:var(--r); padding:1.25rem; text-align:center; cursor:pointer; transition:all 0.2s; position:relative; }
+.pf-upload-zone:hover { border-color:var(--gold-dim); background:rgba(224,192,151,0.03); }
+.pf-upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.pf-main-preview { width:100%; max-height:200px; object-fit:contain; border-radius:var(--r); margin-top:0.75rem; display:none; }
+.pf-gallery-preview { display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem; }
+.pf-footer { display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border); }
+.pf-btn-cancel { background:var(--bg); border:1px solid var(--border); color:var(--text-muted); border-radius:var(--r); padding:0.65rem 1.5rem; font-family:inherit; font-size:0.85rem; cursor:pointer; transition:all 0.2s; }
+.pf-btn-save { background:var(--gold); color:var(--bg); border:none; border-radius:var(--r); padding:0.65rem 2rem; font-family:inherit; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s; }
+.pf-btn-save:hover { background:var(--gold-dim); }
+.pf-btn-save:disabled { opacity:0.6; cursor:not-allowed; }
+.pf-toggle-wrap { display:flex; align-items:center; gap:0.75rem; }
+.pf-toggle-check { width:18px; height:18px; accent-color:var(--gold); cursor:pointer; }
+@media(max-width:600px) { .pf-row { grid-template-columns:1fr; } .pf-pricing-grid { grid-template-columns:1fr; } }
+</style>
+<div class="pf-modal">
+    <div class="pf-title">
+        <span id="pfModalTitle">إضافة منتج جديد</span>
+        <button onclick="closeProductModal()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.2rem;">✕</button>
+    </div>
+
+    <!-- Basic Info -->
+    <div class="pf-section">
+        <div class="pf-section-title">المعلومات الأساسية</div>
+        <div class="pf-row">
+            <div class="pf-field">
+                <label class="pf-label">الاسم بالعربي <span>*</span></label>
+                <input id="pfNameAr" class="pf-input" type="text" placeholder="مثال: دانتيل عرايس" dir="rtl">
+            </div>
+            <div class="pf-field">
+                <label class="pf-label">الاسم بالإنجليزي <span>*</span></label>
+                <input id="pfNameEn" class="pf-input" type="text" placeholder="e.g. Bridal Lace" dir="ltr">
+            </div>
+        </div>
+        <div class="pf-row">
+            <div class="pf-field">
+                <label class="pf-label">الـ Slug (رابط المنتج) <span>*</span></label>
+                <input id="pfSlug" class="pf-input" type="text" placeholder="e.g. bridal-lace" dir="ltr">
+            </div>
+            <div class="pf-field">
+                <label class="pf-label">كود المنتج <span>*</span></label>
+                <input id="pfCode" class="pf-input" type="text" placeholder="e.g. BL-008" dir="ltr">
+            </div>
+        </div>
+        <div class="pf-row-1">
+            <div class="pf-field">
+                <label class="pf-label">الوصف بالعربي</label>
+                <textarea id="pfDescAr" class="pf-input pf-textarea" placeholder="وصف المنتج بالعربي..." dir="rtl"></textarea>
+            </div>
+        </div>
+        <div class="pf-row-1">
+            <div class="pf-field">
+                <label class="pf-label">الوصف بالإنجليزي</label>
+                <textarea id="pfDescEn" class="pf-input pf-textarea" placeholder="Product description in English..." dir="ltr"></textarea>
+            </div>
+        </div>
+        <div class="pf-toggle-wrap">
+            <input type="checkbox" id="pfFeatured" class="pf-toggle-check">
+            <label for="pfFeatured" class="pf-label" style="cursor:pointer;">⭐ منتج مميز (يظهر في الصفحة الرئيسية)</label>
+        </div>
+    </div>
+
+    <!-- Sizes -->
+    <div class="pf-section">
+        <div class="pf-section-title">المقاسات المتاحة</div>
+        <div class="pf-sizes">
+            <input type="checkbox" id="pfSize_L"   class="pf-size-cb" checked><label for="pfSize_L"   class="pf-size-label">L</label>
+            <input type="checkbox" id="pfSize_XL"  class="pf-size-cb" checked><label for="pfSize_XL"  class="pf-size-label">XL</label>
+            <input type="checkbox" id="pfSize_2XL" class="pf-size-cb" checked><label for="pfSize_2XL" class="pf-size-label">2XL</label>
+            <input type="checkbox" id="pfSize_3XL" class="pf-size-cb" checked><label for="pfSize_3XL" class="pf-size-label">3XL</label>
+            <input type="checkbox" id="pfSize_4XL" class="pf-size-cb" checked><label for="pfSize_4XL" class="pf-size-label">4XL</label>
+        </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="pf-section">
+        <div class="pf-section-title">الأسعار — عربي</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;font-size:0.72rem;color:var(--text-dim);padding:0 0.25rem;">
+                <span style="width:24px;">#</span><span>الوصف</span><span>السعر</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">1</span>
+                <input id="pfPrArLabel1" class="pf-input" type="text" placeholder="قطعة واحدة" dir="rtl">
+                <input id="pfPrArValue1" class="pf-input" type="text" placeholder="120 جنيه" dir="rtl">
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">2</span>
+                <input id="pfPrArLabel2" class="pf-input" type="text" placeholder="عرض 3 قطع" dir="rtl">
+                <input id="pfPrArValue2" class="pf-input" type="text" placeholder="330 جنيه" dir="rtl">
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">3</span>
+                <input id="pfPrArLabel3" class="pf-input" type="text" placeholder="عرض 6 قطع (نص دستة)" dir="rtl">
+                <input id="pfPrArValue3" class="pf-input" type="text" placeholder="600 جنيه" dir="rtl">
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">4</span>
+                <input id="pfPrArLabel4" class="pf-input" type="text" placeholder="عرض 12 قطعة (دستة كاملة)" dir="rtl">
+                <input id="pfPrArValue4" class="pf-input" type="text" placeholder="1100 جنيه" dir="rtl">
+            </div>
+        </div>
+    </div>
+
+    <div class="pf-section">
+        <div class="pf-section-title">الأسعار — إنجليزي</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;font-size:0.72rem;color:var(--text-dim);padding:0 0.25rem;">
+                <span style="width:24px;">#</span><span>Label</span><span>Price</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">1</span>
+                <input id="pfPrEnLabel1" class="pf-input" type="text" placeholder="1 Piece" dir="ltr">
+                <input id="pfPrEnValue1" class="pf-input" type="text" placeholder="120 EGP" dir="ltr">
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">2</span>
+                <input id="pfPrEnLabel2" class="pf-input" type="text" placeholder="3 Pieces" dir="ltr">
+                <input id="pfPrEnValue2" class="pf-input" type="text" placeholder="330 EGP" dir="ltr">
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">3</span>
+                <input id="pfPrEnLabel3" class="pf-input" type="text" placeholder="6 Pieces" dir="ltr">
+                <input id="pfPrEnValue3" class="pf-input" type="text" placeholder="600 EGP" dir="ltr">
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;align-items:center;">
+                <span style="font-size:0.75rem;color:var(--text-dim);width:24px;">4</span>
+                <input id="pfPrEnLabel4" class="pf-input" type="text" placeholder="12 Pieces" dir="ltr">
+                <input id="pfPrEnValue4" class="pf-input" type="text" placeholder="1100 EGP" dir="ltr">
+            </div>
+        </div>
+    </div>
+
+    <!-- Images -->
+    <div class="pf-section">
+        <div class="pf-section-title">صورة المنتج الرئيسية (pic)</div>
+        <div class="pf-upload-zone">
+            <input type="file" id="pfMainInput" accept="image/*" onchange="previewMainImage(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="color:var(--text-dim);margin-bottom:0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div style="font-size:0.82rem;color:var(--text-muted);">اضغط لرفع صورة المنتج الرئيسية</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:0.25rem;">ستُحفظ باسم pic (jpg, png, webp, إلخ)</div>
+        </div>
+        <img id="pfMainPreview" class="pf-main-preview" alt="preview">
+    </div>
+
+    <div class="pf-section">
+        <div class="pf-section-title">صور المعرض (1 — 4)</div>
+        <div class="pf-upload-zone">
+            <input type="file" id="pfGalleryInput" accept="image/*" multiple onchange="previewGalleryImages(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="color:var(--text-dim);margin-bottom:0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div style="font-size:0.82rem;color:var(--text-muted);">اختر حتى 4 صور للمعرض</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:0.25rem;">ستُحفظ بأسماء 1, 2, 3, 4 (بنفس صيغة الصورة الأصلية)</div>
+        </div>
+        <div id="pfGalleryPreview" class="pf-gallery-preview"></div>
+    </div>
+
+    <div class="pf-footer">
+        <button class="pf-btn-cancel" onclick="closeProductModal()">إلغاء</button>
+        <button class="pf-btn-save" id="pfSaveBtn" onclick="saveProduct()">إضافة المنتج</button>
+    </div>
+</div>
+</div>
 </body>
 </html>

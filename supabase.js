@@ -278,3 +278,252 @@ async function isFingerprintBlocked(fp) {
     if (error || !data || !data.length) return { blocked: false, reason: null };
     return { blocked: true, reason: data[0].reason || null };
 }
+
+/* ─── Product Stock ─── */
+async function fetchProductStock() {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('product_stock')
+        .select('*');
+    if (error) throw error;
+    return data || [];
+}
+
+async function updateProductStock(productId, inStock) {
+    const db = await getSupabase();
+    // Try to update first
+    const { data: existing } = await db
+        .from('product_stock')
+        .select('id')
+        .eq('product_id', productId)
+        .limit(1);
+    
+    if (existing && existing.length > 0) {
+        // Update existing
+        const { error } = await db
+            .from('product_stock')
+            .update({ in_stock: inStock, updated_at: new Date().toISOString() })
+            .eq('product_id', productId);
+        if (error) throw error;
+    } else {
+        // Insert new
+        const { error } = await db
+            .from('product_stock')
+            .insert([{ product_id: productId, in_stock: inStock }]);
+        if (error) throw error;
+    }
+}
+
+async function getProductStock(productId) {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('product_stock')
+        .select('in_stock')
+        .eq('product_id', productId)
+        .limit(1);
+    if (error) return true; // Default to in stock on error
+    if (!data || !data.length) return true; // Default to in stock if not found
+    return data[0].in_stock;
+}
+
+/* ─── Activity Logs ─── */
+async function logActivity(actionType, actionDescription, entityType = null, entityId = null, details = null) {
+    try {
+        const db = await getSupabase();
+        // Get IP address
+        let ipAddress = null;
+        try {
+            const ipRes = await fetch('/api/get-ip', { signal: AbortSignal.timeout(3000) });
+            if (ipRes.ok) {
+                const ipData = await ipRes.json();
+                ipAddress = ipData.ip || null;
+            }
+        } catch (e) { /* silent */ }
+        
+        const { error } = await db.from('activity_logs').insert([{
+            action_type: actionType,
+            action_description: actionDescription,
+            entity_type: entityType,
+            entity_id: entityId ? String(entityId) : null,
+            details: details ? JSON.parse(JSON.stringify(details)) : null,
+            ip_address: ipAddress,
+            created_at: new Date().toISOString()
+        }]);
+        if (error) console.warn('Activity log error:', error);
+    } catch (e) {
+        console.warn('Activity log failed:', e);
+    }
+}
+
+async function fetchActivityLogs(limit = 100, actionType = null) {
+    const db = await getSupabase();
+    let query = db
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+    
+    if (actionType) {
+        query = query.eq('action_type', actionType);
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+}
+
+async function deleteActivityLog(id) {
+    const db = await getSupabase();
+    const { error } = await db.from('activity_logs').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function clearActivityLogs() {
+    const db = await getSupabase();
+    const { error } = await db
+        .from('activity_logs')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+}
+
+/* ─── Products Management ─── */
+async function fetchAllProducts() {
+    const db = await getSupabase();
+    const { data: products, error: productsError } = await db
+        .from('products')
+        .select('*')
+        .order('id', { ascending: true });
+    
+    if (productsError) throw productsError;
+    if (!products || !products.length) return [];
+
+    // Fetch images and pricing for all products
+    const productIds = products.map(p => p.id);
+    
+    const [imagesResult, pricingResult] = await Promise.all([
+        db.from('product_images').select('*').in('product_id', productIds).order('image_order'),
+        db.from('product_pricing').select('*').in('product_id', productIds).order('offer_order')
+    ]);
+
+    const images = imagesResult.data || [];
+    const pricing = pricingResult.data || [];
+
+    // Group by product_id
+    const imagesByProduct = {};
+    const pricingByProduct = {};
+
+    images.forEach(img => {
+        if (!imagesByProduct[img.product_id]) imagesByProduct[img.product_id] = [];
+        imagesByProduct[img.product_id].push(img);
+    });
+
+    pricing.forEach(p => {
+        if (!pricingByProduct[p.product_id]) pricingByProduct[p.product_id] = { ar: [], en: [] };
+        pricingByProduct[p.product_id][p.language].push({ label: p.label, value: p.value });
+    });
+
+    // Transform to match products.json format
+    return products.map(p => ({
+        id: p.id,
+        slug: p.slug,
+        code: p.code,
+        name: { ar: p.name_ar, en: p.name_en },
+        description: { ar: p.description_ar || '', en: p.description_en || '' },
+        main_image_url: p.main_image_url,
+        gallery: (imagesByProduct[p.id] || []).map(img => img.image_url),
+        featured: p.featured,
+        sizes: p.sizes || [],
+        pricing: pricingByProduct[p.id] || { ar: [], en: [] }
+    }));
+}
+
+async function insertProduct(productData) {
+    const db = await getSupabase();
+    const { data, error } = await db.from('products').insert([{
+        slug: productData.slug,
+        code: productData.code,
+        name_ar: productData.name_ar,
+        name_en: productData.name_en,
+        description_ar: productData.description_ar,
+        description_en: productData.description_en,
+        main_image_url: productData.main_image_url,
+        featured: productData.featured || false,
+        sizes: productData.sizes || []
+    }]).select();
+    if (error) throw error;
+    return data[0];
+}
+
+async function updateProduct(id, productData) {
+    const db = await getSupabase();
+    const { error } = await db.from('products').update({
+        slug: productData.slug,
+        code: productData.code,
+        name_ar: productData.name_ar,
+        name_en: productData.name_en,
+        description_ar: productData.description_ar,
+        description_en: productData.description_en,
+        main_image_url: productData.main_image_url,
+        featured: productData.featured,
+        sizes: productData.sizes,
+        updated_at: new Date().toISOString()
+    }).eq('id', id);
+    if (error) throw error;
+}
+
+async function deleteProduct(id) {
+    const db = await getSupabase();
+    const { error } = await db.from('products').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function insertProductImage(productId, imageUrl, order) {
+    const db = await getSupabase();
+    const { error } = await db.from('product_images').insert([{
+        product_id: productId,
+        image_url: imageUrl,
+        image_order: order
+    }]);
+    if (error) throw error;
+}
+
+async function deleteProductImages(productId) {
+    const db = await getSupabase();
+    const { error } = await db.from('product_images').delete().eq('product_id', productId);
+    if (error) throw error;
+}
+
+async function insertProductPricing(productId, language, offers) {
+    const db = await getSupabase();
+    const rows = offers.map((offer, index) => ({
+        product_id: productId,
+        language: language,
+        offer_order: index + 1,
+        label: offer.label,
+        value: offer.value
+    }));
+    const { error } = await db.from('product_pricing').insert(rows);
+    if (error) throw error;
+}
+
+async function deleteProductPricing(productId) {
+    const db = await getSupabase();
+    const { error } = await db.from('product_pricing').delete().eq('product_id', productId);
+    if (error) throw error;
+}
+
+async function uploadProductImage(file, fileName) {
+    const db = await getSupabase();
+    const { data, error } = await db.storage
+        .from('products')
+        .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+        });
+    if (error) throw error;
+    
+    // Get public URL
+    const { data: urlData } = db.storage.from('products').getPublicUrl(fileName);
+    return urlData.publicUrl;
+}
