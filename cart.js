@@ -224,6 +224,17 @@ function openMessengerWithContact(buildMsg) {
     });
 }
 function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, flyProduct = null) {
+    // Block if product is out of stock
+    if (typeof DALAL_PRODUCTS_STOCK !== 'undefined') {
+        const stock = DALAL_PRODUCTS_STOCK[product.id];
+        if (stock && stock.visibility_status !== 'visible') {
+            const lang = localStorage.getItem('dalal-lang') || 'ar';
+            const isAr = lang === 'ar';
+            const name = isAr ? (product.name?.ar || product.name) : (product.name?.en || product.name);
+            alert(isAr ? `"${name}" غير متوفر حالياً ولا يمكن إضافته للسلة.` : `"${name}" is currently out of stock.`);
+            return;
+        }
+    }
     // Build a stable key from product id + offer label + size + color
     // so adding the same item twice increments qty instead of duplicating
     const key = `${product.id}_${selectedRow.label}_${(extras.size||'').toLowerCase()}_${(extras.color||'').toLowerCase()}`;
@@ -275,6 +286,15 @@ function openQuickAddModal(product) {
     const lang = localStorage.getItem('dalal-lang') || 'ar';
     const isAr = lang === 'ar';
     const name = isAr ? (product.name?.ar || product.name) : (product.name?.en || product.name);
+
+    // Block if out of stock
+    if (typeof DALAL_PRODUCTS_STOCK !== 'undefined') {
+        const stock = DALAL_PRODUCTS_STOCK[product.id];
+        if (stock && stock.visibility_status !== 'visible') {
+            alert(isAr ? `"${name}" غير متوفر حالياً.` : `"${name}" is currently out of stock.`);
+            return;
+        }
+    }
 
     // Remove old modal if exists
     const old = document.getElementById('quickAddModal');
@@ -411,6 +431,9 @@ function cartRemove(key) {
         cart = cart.filter(i => i.key !== key);
         saveCart();
         updateCartUI();
+        // Remove warning banner before re-render to avoid flash
+        const w = document.getElementById('cartStockWarning');
+        if (w) w.remove();
         renderCartItems();
     };
     if (el) {
@@ -583,6 +606,9 @@ function renderCartItems() {
 
     if (cart.length === 0) {
         container.innerHTML = '';
+        // Remove any stock warning when cart is empty
+        const w = document.getElementById('cartStockWarning');
+        if (w) w.remove();
         if (emptyMsg) emptyMsg.style.display = 'flex';
         if (footer)   footer.style.display   = 'none';
         return;
@@ -591,9 +617,58 @@ function renderCartItems() {
     if (emptyMsg) emptyMsg.style.display = 'none';
     if (footer)   footer.style.display   = 'flex';
 
+    // Check stock status for each item
+    const outOfStockIds = new Set();
+    if (typeof DALAL_PRODUCTS_STOCK !== 'undefined') {
+        cart.forEach(item => {
+            const stock = DALAL_PRODUCTS_STOCK[item.id];
+            if (stock && stock.visibility_status !== 'visible') {
+                outOfStockIds.add(item.id);
+            }
+        });
+    }
+
+    // Show warning banner if any item is out of stock
+    const existingWarning = document.getElementById('cartStockWarning');
+    if (existingWarning) existingWarning.remove();
+
+    if (outOfStockIds.size > 0) {
+        const isAr = lang === 'ar';
+        const warning = document.createElement('div');
+        warning.id = 'cartStockWarning';
+        warning.style.cssText = `
+            display:flex; align-items:flex-start; gap:0.6rem;
+            background:rgba(224,92,92,0.1); border:1px solid rgba(224,92,92,0.3);
+            border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.75rem;
+            font-size:0.82rem; color:#e05c5c; font-weight:600; line-height:1.5;
+        `;
+        warning.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="flex-shrink:0;margin-top:1px;">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>${isAr
+                ? 'بعض المنتجات في سلتك غير متوفرة حالياً. يرجى إزالتها قبل إتمام الطلب.'
+                : 'Some items in your cart are currently out of stock. Please remove them before checkout.'
+            }</span>
+        `;
+        container.parentNode.insertBefore(warning, container);
+    }
+
+    // Disable checkout button if any out-of-stock items
+    const checkoutBtn = document.getElementById('cartCheckoutBtn');
+    const messengerBtn = document.getElementById('cartMessengerBtn');
+    if (outOfStockIds.size > 0) {
+        if (checkoutBtn)  { checkoutBtn.disabled = true;  checkoutBtn.style.opacity = '0.4'; checkoutBtn.style.cursor = 'not-allowed'; }
+        if (messengerBtn) { messengerBtn.disabled = true; messengerBtn.style.opacity = '0.4'; messengerBtn.style.cursor = 'not-allowed'; }
+    } else {
+        if (checkoutBtn)  { checkoutBtn.disabled = false;  checkoutBtn.style.opacity = ''; checkoutBtn.style.cursor = ''; }
+        if (messengerBtn) { messengerBtn.disabled = false; messengerBtn.style.opacity = ''; messengerBtn.style.cursor = ''; }
+    }
+
     container.innerHTML = cart.map(item => {
         const name = lang === 'ar' ? item.nameAr : item.nameEn;
         const keyEsc = item.key.replace(/'/g, "\\'");
+        const isOutOfStock = outOfStockIds.has(item.id);
         
         // Get current language label from product pricing if available
         let displayLabel = item.priceLabel;
@@ -603,7 +678,6 @@ function renderCartItems() {
             const product = DALAL_PRODUCTS_MAP[item.id];
             if (product && product.pricing) {
                 const pricingRows = product.pricing[lang] || product.pricing.ar;
-                // Find matching row by value (since value is consistent across languages)
                 const matchingRow = pricingRows.find(row => {
                     const rowNum = parseFloat(row.value.replace(/[^\d.]/g, ''));
                     return Math.abs(rowNum - item.priceNum) < 0.01;
@@ -617,12 +691,13 @@ function renderCartItems() {
         
         const productUrl = item.slug ? `product.html#${item.slug}` : `product.html?id=${item.id}`;
         return `
-        <div class="cart-item" data-key="${item.key}">
+        <div class="cart-item" data-key="${item.key}" style="${isOutOfStock ? 'opacity:0.6;' : ''}">
             <a href="${productUrl}" onclick="closeCart()">
                 <img class="cart-item-img" src="${item.image}" alt="${name}" loading="lazy">
             </a>
             <div class="cart-item-info">
                 <a href="${productUrl}" onclick="closeCart()" class="cart-item-name" style="color:var(--text);text-decoration:none;">${name}</a>
+                ${isOutOfStock ? `<span style="font-size:0.7rem;color:#e05c5c;font-weight:700;">${lang === 'ar' ? '⚠ غير متوفر' : '⚠ Out of Stock'}</span>` : ''}
                 <span class="cart-item-tier">${displayLabel}</span>
                 ${item.size  ? `<span class="cart-item-meta">${lang === 'ar' ? 'مقاس' : 'Size'}: ${item.size}</span>`  : ''}
                 ${item.color ? `<span class="cart-item-meta">${lang === 'ar' ? 'لون' : 'Color'}: ${item.color}</span>` : ''}
@@ -681,7 +756,22 @@ function renderCartRecentlyViewed() {
 
 /* ─── Drawer open/close ─── */
 function openCart() {
-    renderCartItems();
+    // Refresh stock data before rendering to catch any changes
+    if (typeof fetchProductStock === 'function' && typeof DALAL_PRODUCTS_STOCK !== 'undefined') {
+        fetchProductStock().then(stockData => {
+            DALAL_PRODUCTS_STOCK = {};
+            stockData.forEach(s => {
+                DALAL_PRODUCTS_STOCK[s.product_id] = {
+                    in_stock: s.in_stock,
+                    visibility_status: s.visibility_status || 'visible'
+                };
+            });
+            renderCartItems();
+        }).catch(() => renderCartItems());
+    } else {
+        renderCartItems();
+    }
+
     const drawer  = document.getElementById('cartDrawer');
     const overlay = document.getElementById('cartOverlay');
     const sticky  = document.getElementById('mobileSticky');
@@ -690,7 +780,6 @@ function openCart() {
     if (sticky)  sticky.style.display = 'none';
     document.body.style.overflow = 'hidden';
 
-    // Render recently viewed in empty cart
     if (cart.length === 0) renderCartRecentlyViewed();
 }
 
@@ -921,6 +1010,22 @@ function checkoutViaSite() {
     if (cart.length === 0) return;
     const lang = localStorage.getItem('dalal-lang') || 'ar';
     const isAr = lang === 'ar';
+
+    // Block checkout if any item is out of stock
+    if (typeof DALAL_PRODUCTS_STOCK !== 'undefined') {
+        const outOfStock = cart.filter(item => {
+            const stock = DALAL_PRODUCTS_STOCK[item.id];
+            return stock && stock.visibility_status !== 'visible';
+        });
+        if (outOfStock.length > 0) {
+            const names = outOfStock.map(i => isAr ? i.nameAr : i.nameEn).join('، ');
+            alert(isAr
+                ? `المنتجات التالية غير متوفرة حالياً:\n${names}\n\nيرجى إزالتها من السلة أولاً.`
+                : `The following items are out of stock:\n${names}\n\nPlease remove them from your cart first.`
+            );
+            return;
+        }
+    }
 
     // Remove old modal if exists
     const old = document.getElementById('cartOrderModal');
@@ -1167,6 +1272,23 @@ function checkoutViaSite() {
 function checkoutViaMessenger() {
     if (cart.length === 0) return;
     const lang = localStorage.getItem('dalal-lang') || 'ar';
+    const isAr = lang === 'ar';
+
+    // Block checkout if any item is out of stock
+    if (typeof DALAL_PRODUCTS_STOCK !== 'undefined') {
+        const outOfStock = cart.filter(item => {
+            const stock = DALAL_PRODUCTS_STOCK[item.id];
+            return stock && stock.visibility_status !== 'visible';
+        });
+        if (outOfStock.length > 0) {
+            const names = outOfStock.map(i => isAr ? i.nameAr : i.nameEn).join('، ');
+            alert(isAr
+                ? `المنتجات التالية غير متوفرة حالياً:\n${names}\n\nيرجى إزالتها من السلة أولاً.`
+                : `The following items are out of stock:\n${names}\n\nPlease remove them from your cart first.`
+            );
+            return;
+        }
+    }
 
     const lines = cart.map(i => {
         const name = lang === 'ar' ? i.nameAr : i.nameEn;
@@ -1259,7 +1381,7 @@ function injectCartHTML() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                 <span id="cartClearLabel">${isAr ? 'إفراغ السلة' : 'Clear Cart'}</span>
             </button>
-            <button class="btn btn-primary cart-checkout-btn" onclick="checkoutViaSite()">
+            <button class="btn btn-primary cart-checkout-btn" id="cartCheckoutBtn" onclick="checkoutViaSite()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                     <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                 </svg>
@@ -1269,7 +1391,7 @@ function injectCartHTML() {
                 </span>
             </button>
             <div class="btn-secondary-row" style="margin-top:0">
-                <button class="btn btn-ghost btn-secondary-row-item" onclick="checkoutViaMessenger()">
+                <button class="btn btn-ghost btn-secondary-row-item" id="cartMessengerBtn" onclick="checkoutViaMessenger()">
                     <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                         <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.907 1.434 5.503 3.678 7.199V22l3.38-1.853c.9.25 1.855.384 2.842.384h.1c5.523 0 10-4.145 10-9.243S17.523 2 12 2zm1.076 12.457l-2.55-2.72-4.98 2.72 5.474-5.81 2.613 2.72 4.916-2.72-5.473 5.81z"/>
                     </svg>
