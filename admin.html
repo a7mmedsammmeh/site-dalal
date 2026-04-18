@@ -2049,7 +2049,6 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         if (reason === null) return;
         try {
             await blockIP(ip, reason || null);
-            _vpBlockedIPs.add(ip);
             
             // Auto-block all fingerprints associated with this IP
             const associatedFingerprints = _vpAll
@@ -2061,13 +2060,21 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 await Promise.all(uniqueFPs.map(fp => 
                     blockFingerprint(fp, reason || null, ip).catch(() => {})
                 ));
+            }
+            
+            // Reload blocked IPs from database to update UI
+            const blocked = await fetchBlockedIPs().catch(() => []);
+            _vpBlockedIPs = new Set((blocked || []).map(b => b.ip));
+            
+            // Update UI immediately after reloading blocked IPs
+            renderVisitors();
+            
+            // Show toast after UI update
+            if (uniqueFPs.length > 0) {
                 showAdminToast(`🚫 تم حظر IP + ${uniqueFPs.length} بصمة جهاز`);
             } else {
                 showAdminToast(`🚫 تم حظر IP: ${ip}`);
             }
-            
-            // Update UI immediately without refresh
-            renderVisitors();
         } catch (e) {
             console.error('Block IP error:', e);
             showAdminToast('حدث خطأ أثناء حظر IP');
@@ -2082,7 +2089,6 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             const blocked = await fetchBlockedIPs();
             const record = blocked.find(b => b.ip === ip);
             if (record) await unblockIP(record.id);
-            _vpBlockedIPs.delete(ip);
             
             // Also unblock all fingerprints associated with this IP
             const db = await getSupabase();
@@ -2091,15 +2097,25 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 .select('id')
                 .eq('blocked_ip_ref', ip);
             
+            let fpCount = 0;
             if (fpData && fpData.length > 0) {
                 await Promise.all(fpData.map(fp => unblockFingerprint(fp.id).catch(() => {})));
-                showAdminToast(`✅ تم فك حظر ${ip} + ${fpData.length} بصمة جهاز`);
+                fpCount = fpData.length;
+            }
+            
+            // Reload blocked IPs from database to update UI
+            const blockedUpdated = await fetchBlockedIPs().catch(() => []);
+            _vpBlockedIPs = new Set((blockedUpdated || []).map(b => b.ip));
+            
+            // Update UI immediately after reloading blocked IPs
+            renderVisitors();
+            
+            // Show toast after UI update
+            if (fpCount > 0) {
+                showAdminToast(`✅ تم فك حظر ${ip} + ${fpCount} بصمة جهاز`);
             } else {
                 showAdminToast(`✅ تم فك حظر ${ip}`);
             }
-            
-            // Update UI immediately without refresh
-            renderVisitors();
         } catch (e) {
             console.error('Unblock IP error:', e);
             showAdminToast('حدث خطأ أثناء فك الحظر');
