@@ -1944,6 +1944,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                     <button class="del-btn" onclick="removeVisitor('${v.id}')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
                     </button>
+                    <button class="del-btn" onclick="blockVisitorIP('${v.ip}')" style="color:#e05c5c;margin-inline-start:0.3rem;" title="حظر IP">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    </button>
                 </td>
             </tr>`;
         }).join('');
@@ -1964,6 +1967,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                         <span class="vp-badge ${v.device_type||'desktop'}">${v.device_type||'—'}</span>
                         <button class="del-btn" onclick="removeVisitor('${v.id}')">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        </button>
+                        <button class="del-btn" onclick="blockVisitorIP('${v.ip}')" style="color:#e05c5c;" title="حظر IP">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
                         </button>
                     </div>
                 </div>
@@ -1998,6 +2004,23 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             updateVpStats();
             renderVisitors();
         } catch { alert('حدث خطأ'); }
+    };
+
+    window.blockVisitorIP = async function(ip) {
+        if (!ip) {
+            alert('لا يوجد IP لحظره');
+            return;
+        }
+        const reason = prompt('سبب الحظر (اختياري):');
+        if (reason === null) return; // User cancelled
+        
+        try {
+            await blockIP(ip, reason || null);
+            alert(`تم حظر IP: ${ip}`);
+        } catch (e) {
+            console.error('Block IP error:', e);
+            alert('حدث خطأ أثناء حظر IP');
+        }
     };
 })();
 </script>

@@ -148,3 +148,42 @@ async function deleteAllVisitors() {
         .neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
 }
+
+/* ─── Blocked IPs ─── */
+async function fetchBlockedIPs() {
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('blocked_ips')
+        .select('*')
+        .order('blocked_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+}
+
+async function blockIP(ip, reason = null) {
+    const db = await getSupabase();
+    const { error } = await db.from('blocked_ips').insert([{
+        ip,
+        reason,
+        blocked_at: new Date().toISOString()
+    }]);
+    if (error) throw error;
+}
+
+async function unblockIP(id) {
+    const db = await getSupabase();
+    const { error } = await db.from('blocked_ips').delete().eq('id', id);
+    if (error) throw error;
+}
+
+async function isIPBlocked(ip) {
+    if (!ip) return false;
+    const db = await getSupabase();
+    const { data, error } = await db
+        .from('blocked_ips')
+        .select('ip')
+        .eq('ip', ip)
+        .limit(1);
+    if (error) return false;
+    return data && data.length > 0;
+}

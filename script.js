@@ -406,6 +406,16 @@ console.log('🔵 Visitor tracking script loaded');
             console.error('❌ Could not fetch visitor IP');
         }
 
+        // Check if IP is blocked
+        if (ip && typeof isIPBlocked === 'function') {
+            const blocked = await isIPBlocked(ip);
+            if (blocked) {
+                console.warn('🚫 IP is blocked, redirecting...');
+                window.location.href = '/blocked.html';
+                return;
+            }
+        }
+
         // Check if insertVisitor function exists
         console.log('🔍 Checking insertVisitor function:', typeof insertVisitor);
         
