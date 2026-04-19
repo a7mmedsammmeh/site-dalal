@@ -1,5 +1,11 @@
+const ALLOWED_ORIGINS = ['https://dalalwear.shop', 'https://www.dalalwear.shop', 'https://dalal-lin.vercel.app'];
+
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin || '';
+    if (ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
 
     const ip = req.query.ip || null;
     if (!ip) return res.status(200).json({ blocked: false });

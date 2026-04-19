@@ -340,7 +340,7 @@
             <input type="text" class="track-input" id="trackRef"
                    placeholder="DL-XXXXXXXXXXXX"
                    style="text-transform:uppercase;letter-spacing:0.12em;font-family:'Poppins',monospace;">
-            <button class="track-btn" id="trackSearchBtn" onclick="searchByRef()" id="trackSearchBtnLabel">
+            <button class="track-btn" id="trackSearchBtn" onclick="searchByRef()">
                 <span id="trackSearchLabel">بحث</span>
             </button>
         </div>
@@ -401,7 +401,6 @@
 <script src="supabase.js"></script>
 <script src="fingerprint.js"></script>
 <script src="script.js"></script>
-<script src="supabase.js"></script>
 <script src="products-data.js"></script>
 <script src="cart.js"></script>
 <script>
@@ -426,10 +425,22 @@
     const STEPS_EN = ['Under Review',  'Confirmed',  'Shipped',   'Delivered'];
     const STEP_MAP = { pending: 0, confirmed: 1, shipped: 2, delivered: 3 };
 
-    /* ── Anti-bruteforce state ── */
-    let _trackSearchTimes = [];
+    /* ── Anti-bruteforce state (closure-scoped, not globally accessible) ── */
     const TRACK_MAX_SEARCHES = 5;
     const TRACK_WINDOW_MS = 30000; // 5 searches per 30 seconds
+    const _RL_KEY = '_drl';
+
+    function _getRLTimes() {
+        try {
+            const raw = sessionStorage.getItem(_RL_KEY);
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            return Array.isArray(arr) ? arr.filter(t => typeof t === 'number') : [];
+        } catch { return []; }
+    }
+    function _setRLTimes(arr) {
+        try { sessionStorage.setItem(_RL_KEY, JSON.stringify(arr)); } catch {}
+    }
 
     window.searchByRef = async function () {
         const raw = document.getElementById('trackRef').value.trim().toUpperCase();
@@ -445,15 +456,16 @@
             return;
         }
 
-        /* ── Rate limit ── */
+        /* ── Rate limit (sessionStorage-backed, survives page navigation) ── */
         const now = Date.now();
-        _trackSearchTimes = _trackSearchTimes.filter(t => now - t < TRACK_WINDOW_MS);
-        if (_trackSearchTimes.length >= TRACK_MAX_SEARCHES) {
+        let times = _getRLTimes().filter(t => now - t < TRACK_WINDOW_MS);
+        if (times.length >= TRACK_MAX_SEARCHES) {
             document.getElementById('trackResults').innerHTML =
                 `<div class="track-empty">${lang === 'ar' ? 'محاولات كثيرة. انتظري قليلاً ثم حاولي مرة أخرى.' : 'Too many attempts. Please wait and try again.'}</div>`;
             return;
         }
-        _trackSearchTimes.push(now);
+        times.push(now);
+        _setRLTimes(times);
 
         const btn     = document.getElementById('trackSearchBtn');
         const results = document.getElementById('trackResults');
@@ -474,6 +486,7 @@
     };
 
     function renderOrderCard(order) {
+        try {
         const lang   = localStorage.getItem('dalal-lang') || 'ar';
         const isAr   = lang === 'ar';
         const fromRef = new URLSearchParams(window.location.search).get('ref');
@@ -487,19 +500,26 @@
             </a>` : '';
         const STATUS = lang === 'ar' ? STATUS_AR : STATUS_EN;
         const STEPS  = lang === 'ar' ? STEPS_AR  : STEPS_EN;
-        const status = order.status || 'pending';
-        const s      = STATUS[status] || STATUS.pending;
+        const status = (order.status && STATUS[order.status]) ? order.status : 'pending';
+        const s      = STATUS[status];
         const stepIdx = STEP_MAP[status] ?? 0;
         const isCancelled = status === 'cancelled';
 
-        const products = Array.isArray(order.products)
-            ? order.products
-            : (typeof order.products === 'string' ? JSON.parse(order.products) : []);
+        /* ── Safe JSON parsing — NEVER crashes on bad data ── */
+        let products = [];
+        if (Array.isArray(order.products)) {
+            products = order.products;
+        } else if (typeof order.products === 'string') {
+            try { products = JSON.parse(order.products); } catch { products = []; }
+            if (!Array.isArray(products)) products = [];
+        }
 
         const productsHTML = products.map(p => {
+            if (!p || typeof p !== 'object') return '';
+            const name = esc(p.name || '');
             const details = [p.offer, p.size, p.color].filter(Boolean).join(' · ');
-            return `<span class="track-product-item"><strong>${esc(p.name)}</strong>${details ? ' — ' + esc(details) : ''}</span>`;
-        }).join('');
+            return `<span class="track-product-item"><strong>${name}</strong>${details ? ' — ' + esc(details) : ''}</span>`;
+        }).filter(Boolean).join('');
 
         const stepsHTML = isCancelled
             ? `<div style="padding:1rem 1.25rem;text-align:center;color:#e05c5c;font-size:0.85rem;border-bottom:1px solid var(--border)">
@@ -521,11 +541,19 @@
                 }).join('')}
                </div>`;
 
-        const date = order.created_at
-            ? new Date(order.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { day:'2-digit', month:'short', year:'numeric' })
-            : '—';
+        let date = '—';
+        try {
+            if (order.created_at) {
+                date = new Date(order.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { day:'2-digit', month:'short', year:'numeric' });
+            }
+        } catch { /* keep fallback */ }
 
         const ref = order.order_ref || '—';
+
+        let totalDisplay = '—';
+        if (order.total != null && !isNaN(order.total)) {
+            try { totalDisplay = Number(order.total).toLocaleString() + (lang === 'ar' ? ' جنيه' : ' EGP'); } catch { totalDisplay = order.total + (lang === 'ar' ? ' جنيه' : ' EGP'); }
+        }
 
         return `
         <div class="track-order-card">
@@ -547,16 +575,24 @@
                 </div>
                 <div class="track-order-row">
                     <span class="track-order-label">${lang === 'ar' ? 'الإجمالي' : 'Total'}</span>
-                    <span class="track-order-total">${order.total ? order.total.toLocaleString() + (lang === 'ar' ? ' جنيه' : ' EGP') : '—'}</span>
+                    <span class="track-order-total">${totalDisplay}</span>
                 </div>
             </div>
 
         </div>
         ${backHTML}`;
+
+        } catch (renderErr) {
+            /* Absolute last resort — renderOrderCard must NEVER crash the page */
+            console.error('renderOrderCard error:', renderErr);
+            const lang = localStorage.getItem('dalal-lang') || 'ar';
+            return `<div class="track-empty">${lang === 'ar' ? 'حدث خطأ أثناء عرض الطلب' : 'Error displaying order'}</div>`;
+        }
     }
 
     function esc(s) {
-        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if (s == null) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
     /* Enter key */

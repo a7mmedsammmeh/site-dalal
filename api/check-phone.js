@@ -1,8 +1,14 @@
 const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
+const ALLOWED_ORIGINS = ['https://dalalwear.shop', 'https://www.dalalwear.shop', 'https://dalal-lin.vercel.app'];
+
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin || '';
+    if (ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
