@@ -442,7 +442,25 @@
         try { sessionStorage.setItem(_RL_KEY, JSON.stringify(arr)); } catch {}
     }
 
+    /* ── Debounce + mutex to prevent duplicate/overlapping requests ── */
+    let _searchTimeout = null;
+    let _isSearching = false;
+
+    function _debouncedSearch() {
+        clearTimeout(_searchTimeout);
+        _searchTimeout = setTimeout(() => { searchByRef(); }, 350);
+    }
+
+    /*
+     * fetchOrderByRef (in supabase.js) is CONFIRMED safe:
+     *   .select('order_ref, status, products, total, created_at, cancel_reason')
+     * It does NOT expose: name, phone, email, address, client_ip, fingerprint.
+     */
+
     window.searchByRef = async function () {
+        /* ── Prevent overlapping requests ── */
+        if (_isSearching) return;
+
         const raw = document.getElementById('trackRef').value.trim().toUpperCase();
         const lang = localStorage.getItem('dalal-lang') || 'ar';
 
@@ -467,6 +485,7 @@
         times.push(now);
         _setRLTimes(times);
 
+        _isSearching = true;
         const btn     = document.getElementById('trackSearchBtn');
         const results = document.getElementById('trackResults');
         btn.disabled  = true;
@@ -480,9 +499,10 @@
             results.innerHTML = renderOrderCard(order);
         } catch (err) {
             results.innerHTML = `<div class="track-empty">${lang === 'ar' ? 'لم يتم العثور على هذا الطلب' : 'Order not found'}</div>`;
+        } finally {
+            _isSearching = false;
+            btn.disabled = false;
         }
-
-        btn.disabled = false;
     };
 
     function renderOrderCard(order) {
@@ -595,9 +615,9 @@
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
-    /* Enter key */
+    /* Enter key — debounced to prevent rapid-fire */
     document.getElementById('trackRef').addEventListener('keydown', e => {
-        if (e.key === 'Enter') searchByRef();
+        if (e.key === 'Enter') { e.preventDefault(); _debouncedSearch(); }
     });
 
     /* Auto-uppercase while typing */
@@ -612,7 +632,7 @@
         btn.addEventListener('click', () => {
             setTimeout(() => {
                 const ref = document.getElementById('trackRef').value.trim();
-                if (ref) searchByRef();
+                if (ref) _debouncedSearch();
                 const searchLbl = document.getElementById('trackSearchLabel');
                 if (searchLbl) searchLbl.textContent = localStorage.getItem('dalal-lang') === 'en' ? 'Search' : 'بحث';
             }, 150);
