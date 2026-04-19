@@ -1019,7 +1019,8 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                     }],
                     client_ip: _soIP,
                     client_country: _soCountry,
-                    client_city: _soCity
+                    client_city: _soCity,
+                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null
                 }),
                 signal: AbortSignal.timeout(15000)
             });
@@ -1041,6 +1042,16 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                     btn.disabled = false;
                     label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
                     alert(isAr ? 'عذراً، هذا المنتج غير متوفر حالياً.' : 'Sorry, this product is currently out of stock.');
+                    return;
+                }
+                if (result.error === 'rate_limited') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    const errEl = document.getElementById('soError');
+                    errEl.textContent = isAr
+                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار 30 دقيقة.'
+                        : 'Too many orders in a short time. Please wait 30 minutes.';
+                    errEl.classList.add('is-visible');
                     return;
                 }
                 throw new Error(result.message || 'Order failed');
@@ -1325,7 +1336,8 @@ function checkoutViaSite() {
                     items,
                     client_ip: _coIP,
                     client_country: _coCountry,
-                    client_city: _coCity
+                    client_city: _coCity,
+                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null
                 }),
                 signal: AbortSignal.timeout(15000)
             });
@@ -1350,6 +1362,16 @@ function checkoutViaSite() {
                     alert(isAr
                         ? 'عذراً، بعض المنتجات أصبحت غير متوفرة. يرجى إزالتها من السلة.'
                         : 'Sorry, some items are now out of stock. Please remove them from your cart.');
+                    return;
+                }
+                if (result.error === 'rate_limited') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    const errEl = document.getElementById('coError');
+                    errEl.textContent = isAr
+                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار 30 دقيقة.'
+                        : 'Too many orders in a short time. Please wait 30 minutes.';
+                    errEl.classList.add('is-visible');
                     return;
                 }
                 throw new Error(result.message || 'Order failed');

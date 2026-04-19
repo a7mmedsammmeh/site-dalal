@@ -54,7 +54,7 @@ export default async function handler(req, res) {
         const body = req.body;
         if (!body) return res.status(400).json({ error: 'Missing body' });
 
-        const { name, phone, email, address, lang, items, client_ip, client_country, client_city } = body;
+        const { name, phone, email, address, lang, items, client_ip, client_country, client_city, fingerprint } = body;
 
         /* ── Validate required fields ── */
         if (!name || !phone || !address) {
@@ -78,6 +78,42 @@ export default async function handler(req, res) {
                 });
             }
         } catch (e) { /* don't block order if check fails */ }
+
+        /* ── Server-Side Rate Limiting (by IP + Fingerprint) ── */
+        const RATE_WINDOW_MIN = 15;
+        const MAX_PER_IP = 5;
+        const MAX_PER_FP = 5;
+        const windowTime = new Date(Date.now() - RATE_WINDOW_MIN * 60 * 1000).toISOString();
+
+        try {
+            // Rate limit by IP
+            if (client_ip) {
+                const ipOrders = await supabaseGet(
+                    'orders',
+                    `client_ip=eq.${encodeURIComponent(client_ip)}&created_at=gte.${windowTime}&select=id`
+                );
+                if (ipOrders.length >= MAX_PER_IP) {
+                    return res.status(429).json({
+                        error: 'rate_limited',
+                        message: 'Too many orders. Please wait.'
+                    });
+                }
+            }
+
+            // Rate limit by fingerprint (catches VPN / IP changers)
+            if (fingerprint) {
+                const fpOrders = await supabaseGet(
+                    'orders',
+                    `fingerprint=eq.${encodeURIComponent(fingerprint)}&created_at=gte.${windowTime}&select=id`
+                );
+                if (fpOrders.length >= MAX_PER_FP) {
+                    return res.status(429).json({
+                        error: 'rate_limited',
+                        message: 'Too many orders from this device. Please wait.'
+                    });
+                }
+            }
+        } catch (e) { /* don't block order if rate check fails */ }
 
         /* ── Collect all unique product IDs ── */
         const productIds = [...new Set(items.map(i => i.product_id))];
@@ -199,6 +235,7 @@ export default async function handler(req, res) {
             status: 'pending',
             order_ref: orderRef,
             order_source: 'api',          // ← marks as verified server-side order
+            fingerprint: fingerprint || null,
             client_ip: client_ip || null,
             client_country: client_country || null,
             client_city: client_city || null

@@ -348,7 +348,8 @@
                     }],
                     client_ip: clientIP,
                     client_country: clientCountry,
-                    client_city: clientCity
+                    client_city: clientCity,
+                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null
                 }),
                 signal: AbortSignal.timeout(15000)
             });
@@ -371,6 +372,16 @@
                     label.textContent = t.submit;
                     const pName = typeof _product.name === 'object' ? (lang === 'ar' ? _product.name.ar : (_product.name.en || _product.name.ar)) : _product.name;
                     alert(lang === 'ar' ? `عذراً، "${pName}" غير متوفر حالياً.` : `Sorry, "${pName}" is currently out of stock.`);
+                    return;
+                }
+                if (result.error === 'rate_limited') {
+                    btn.disabled = false;
+                    label.textContent = t.submit;
+                    const errEl = document.getElementById('orderError');
+                    errEl.textContent = lang === 'ar'
+                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار 30 دقيقة.'
+                        : 'Too many orders in a short time. Please wait 30 minutes.';
+                    errEl.classList.add('is-visible');
                     return;
                 }
                 throw new Error(result.message || 'Order failed');
