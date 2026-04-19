@@ -6,7 +6,7 @@ export default async function handler(req, res) {
 
     try {
         const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
+        const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
         const response = await fetch(
             `${SUPABASE_URL}/rest/v1/blocked_ips?ip=eq.${encodeURIComponent(ip)}&select=ip,reason&limit=1`,

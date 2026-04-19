@@ -63,9 +63,10 @@ async function deleteOrder(id) {
 async function fetchOrderByRef(ref) {
     const db = await getSupabase();
     const { data, error } = await db
-        .from('orders')
-        .select('*')
+        .from('public_orders')
+        .select('order_ref, status, products, total, created_at, cancel_reason')
         .eq('order_ref', ref)
+        .limit(1)
         .single();
     if (error) throw error;
     return data;

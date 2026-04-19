@@ -587,24 +587,8 @@
     }
     window.showTrackHelp = showTrackHelp;
 
-    window.cancelOrderFromTrack = async function(ref) {
-        const lang = localStorage.getItem('dalal-lang') || 'ar';
-        const msg  = lang === 'ar' ? 'هل أنت متأكدة من إلغاء هذا الطلب؟' : 'Are you sure you want to cancel this order?';
-        if (!confirm(msg)) return;
-        try {
-            const db = await getSupabase();
-            const { error } = await db.from('orders').update({ status: 'cancelled' }).eq('order_ref', ref);
-            if (error) throw error;
-            // update localStorage
-            const orders = getLocalOrders();
-            const o = orders.find(x => x.ref === ref);
-            if (o) { o.status = 'cancelled'; localStorage.setItem('dalal-my-orders', JSON.stringify(orders)); }
-            // re-search to refresh the card
-            searchByRef();
-        } catch {
-            alert(lang === 'ar' ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'Something went wrong');
-        }
-    };
+    /* cancelOrderFromTrack — removed for security (unauthenticated update) */
+
 
 })();
 </script>

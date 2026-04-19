@@ -47,7 +47,7 @@ async function syncLocalOrders() {
             }
 
             const { data, error } = await db
-                .from('orders')
+                .from('public_orders')
                 .select('order_ref, status, cancel_reason')
                 .eq('order_ref', o.ref)
                 .maybeSingle();
