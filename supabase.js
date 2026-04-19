@@ -39,11 +39,14 @@ async function fetchOrders() {
     return data;
 }
 
-async function updateOrderStatus(id, status) {
+async function updateOrderStatus(id, status, cancelReason = null) {
     const db = await getSupabase();
+    const updateData = { status };
+    if (cancelReason !== null) updateData.cancel_reason = cancelReason;
+    
     const { error } = await db
         .from('orders')
-        .update({ status })
+        .update(updateData)
         .eq('id', id);
     if (error) throw error;
 }

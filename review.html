@@ -585,7 +585,8 @@
 
         try {
             const db = await getSupabase();
-            const comment = document.getElementById('reviewComment').value.trim() || null;
+            const rawComment = document.getElementById('reviewComment').value.trim();
+            const comment = rawComment || (isAr ? 'بدون تعليق' : 'No comment');
 
             // Use name from field if no customerName from order
             const reviewerName = customerName

@@ -148,28 +148,34 @@
 
         /* Drag to dismiss */
         const card = document.getElementById('orderModalCard');
-        card.addEventListener('touchstart', e => {
-            if (window.innerWidth >= 640 || card.scrollTop > 0) return;
-            _isDragging = true;
-            _dragStartY = e.touches[0].clientY;
-            _dragCurrentY = 0;
-            card.style.transition = 'none';
-        }, { passive: true });
-        document.addEventListener('touchmove', e => {
-            if (!_isDragging) return;
-            const dy = e.touches[0].clientY - _dragStartY;
-            if (dy < 0) return;
-            _dragCurrentY = dy;
-            card.style.transform = `translateY(${dy}px)`;
-            e.preventDefault();
-        }, { passive: false });
-        document.addEventListener('touchend', () => {
-            if (!_isDragging) return;
-            _isDragging = false;
-            card.style.transition = '';
-            if (_dragCurrentY > 120) closeOrderModal();
-            else card.style.transform = '';
-        });
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.setupDrag(card, closeOrderModal);
+        } else {
+            card.addEventListener('touchstart', e => {
+                if (window.innerWidth >= 640 || card.scrollTop > 0) return;
+                _isDragging = true;
+                _dragStartY = e.touches[0].clientY;
+                _dragCurrentY = 0;
+                card.style.transition = 'none';
+            }, { passive: true });
+            card.addEventListener('touchmove', e => {
+                if (!_isDragging) return;
+                const dy = e.touches[0].clientY - _dragStartY;
+                if (dy < 0) return;
+                _dragCurrentY = dy;
+                card.style.transform = `translateY(${dy}px)`;
+                e.preventDefault();
+            }, { passive: false });
+            card.addEventListener('touchend', () => {
+                if (!_isDragging) return;
+                _isDragging = false;
+                card.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+                if (_dragCurrentY > 120) {
+                    card.style.transform = 'translateY(100%)';
+                    setTimeout(closeOrderModal, 300);
+                } else card.style.transform = '';
+            });
+        }
     }
 
     /* ── Open ── */
@@ -244,7 +250,8 @@
            before adding is-open, otherwise the CSS transition won't fire */
         const doOpen = () => {
             document.getElementById('orderOverlay').classList.add('is-open');
-            document.body.style.overflow = 'hidden';
+            if (typeof DalalModal !== 'undefined') DalalModal.lock();
+            else document.body.style.overflow = 'hidden';
             setTimeout(() => document.getElementById('orderInputName').focus(), 400);
         };
 
@@ -261,7 +268,8 @@
         const overlay = document.getElementById('orderOverlay');
         if (!overlay) return;
         overlay.classList.remove('is-open');
-        document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
+        else document.body.style.overflow = '';
     }
 
     /* ── Submit ── */
@@ -289,6 +297,19 @@
             }
             hideError();
             return;
+        }
+
+        /* ── Check Stock Before Submit (Race Condition - LIVE DB FETCH) ── */
+        if (_product && typeof getProductStock === 'function') {
+            try {
+                const stock = await getProductStock(_product.id);
+                if (stock && stock.visibility_status !== 'visible') {
+                    const isAr = lang === 'ar';
+                    const pName = typeof _product.name === 'object' ? (isAr ? _product.name.ar : (_product.name.en || _product.name.ar)) : _product.name;
+                    alert(isAr ? `عذراً، "${pName}" غير متوفر حالياً ولا يمكن إتمام الطلب.` : `Sorry, "${pName}" is currently out of stock.`);
+                    return;
+                }
+            } catch (e) { /* ignore db errors and proceed */ }
         }
 
         const pricingRows   = _product.pricing?.[lang] || _product.pricing?.ar || [];

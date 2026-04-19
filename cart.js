@@ -173,12 +173,14 @@ function openMessengerWithContact(buildMsg) {
     document.body.insertAdjacentHTML('beforeend', html);
     const overlay = document.getElementById('messengerContactModal');
     requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
-    document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') DalalModal.lock();
+    else document.body.style.overflow = 'hidden';
 
     const closeModal = () => {
         overlay.classList.remove('is-open');
         setTimeout(() => overlay.remove(), 350);
-        document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
+        else document.body.style.overflow = '';
     };
 
     const submit = (skip = false) => {
@@ -199,29 +201,35 @@ function openMessengerWithContact(buildMsg) {
 
     /* Drag to dismiss (mobile) */
     const mcCard = overlay.querySelector('.order-modal');
-    let _mcStartY = 0, _mcCurrentY = 0, _mcDragging = false;
-    mcCard.addEventListener('touchstart', e => {
-        if (window.innerWidth >= 640 || mcCard.scrollTop > 0) return;
-        _mcDragging = true;
-        _mcStartY = e.touches[0].clientY;
-        _mcCurrentY = 0;
-        mcCard.style.transition = 'none';
-    }, { passive: true });
-    document.addEventListener('touchmove', function mcMove(e) {
-        if (!_mcDragging) return;
-        const dy = e.touches[0].clientY - _mcStartY;
-        if (dy < 0) return;
-        _mcCurrentY = dy;
-        mcCard.style.transform = `translateY(${dy}px)`;
-        e.preventDefault();
-    }, { passive: false });
-    document.addEventListener('touchend', function mcEnd() {
-        if (!_mcDragging) return;
-        _mcDragging = false;
-        mcCard.style.transition = '';
-        if (_mcCurrentY > 120) closeModal();
-        else mcCard.style.transform = '';
-    });
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.setupDrag(mcCard, closeModal);
+    } else {
+        let _mcStartY = 0, _mcCurrentY = 0, _mcDragging = false;
+        mcCard.addEventListener('touchstart', e => {
+            if (window.innerWidth >= 640 || mcCard.scrollTop > 0) return;
+            _mcDragging = true;
+            _mcStartY = e.touches[0].clientY;
+            _mcCurrentY = 0;
+            mcCard.style.transition = 'none';
+        }, { passive: true });
+        mcCard.addEventListener('touchmove', e => {
+            if (!_mcDragging) return;
+            const dy = e.touches[0].clientY - _mcStartY;
+            if (dy < 0) return;
+            _mcCurrentY = dy;
+            mcCard.style.transform = `translateY(${dy}px)`;
+            e.preventDefault();
+        }, { passive: false });
+        mcCard.addEventListener('touchend', () => {
+            if (!_mcDragging) return;
+            _mcDragging = false;
+            mcCard.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+            if (_mcCurrentY > 120) {
+                mcCard.style.transform = 'translateY(100%)';
+                setTimeout(closeModal, 300);
+            } else mcCard.style.transform = '';
+        });
+    }
 }
 function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, flyProduct = null) {
     // Block if product is out of stock
@@ -364,7 +372,8 @@ function openQuickAddModal(product) {
     requestAnimationFrame(() => {
         requestAnimationFrame(() => overlay.classList.add('active'));
     });
-    document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') DalalModal.lock();
+    else document.body.style.overflow = 'hidden';
 
     // Qty selection
     overlay.querySelectorAll('.qa-qty-btn').forEach(btn => {
@@ -379,7 +388,8 @@ function openQuickAddModal(product) {
     const closeQA = () => {
         overlay.classList.remove('active');
         setTimeout(() => overlay.remove(), 350);
-        document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
+        else document.body.style.overflow = '';
     };
     document.getElementById('qaClose').addEventListener('click', closeQA);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeQA(); });
@@ -405,24 +415,29 @@ function openQuickAddModal(product) {
 
     // Drag to dismiss
     const modal = overlay.querySelector('.modal');
-    let startY = 0, curY = 0, dragging = false;
-    modal.addEventListener('touchstart', e => {
-        if (modal.scrollTop > 0) return;
-        startY = e.touches[0].clientY; curY = 0; dragging = true;
-        modal.style.transition = 'none';
-    }, { passive: true });
-    modal.addEventListener('touchmove', e => {
-        if (!dragging) return;
-        const dy = e.touches[0].clientY - startY;
-        if (dy < 0) return;
-        curY = dy; modal.style.transform = `translateY(${dy}px)`;
-    }, { passive: true });
-    modal.addEventListener('touchend', () => {
-        if (!dragging) return; dragging = false;
-        modal.style.transition = 'transform 0.3s cubic-bezier(0.4,0,0.2,1)';
-        if (curY > 120) { modal.style.transform = 'translateY(100%)'; setTimeout(closeQA, 300); }
-        else modal.style.transform = '';
-    });
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.setupDrag(modal, closeQA);
+    } else {
+        let startY = 0, curY = 0, dragging = false;
+        modal.addEventListener('touchstart', e => {
+            if (modal.scrollTop > 0) return;
+            startY = e.touches[0].clientY; curY = 0; dragging = true;
+            modal.style.transition = 'none';
+        }, { passive: true });
+        modal.addEventListener('touchmove', e => {
+            if (!dragging) return;
+            const dy = e.touches[0].clientY - startY;
+            if (dy < 0) return;
+            curY = dy; modal.style.transform = `translateY(${dy}px)`;
+            e.preventDefault();
+        }, { passive: false });
+        modal.addEventListener('touchend', () => {
+            if (!dragging) return; dragging = false;
+            modal.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+            if (curY > 120) { modal.style.transform = 'translateY(100%)'; setTimeout(closeQA, 300); }
+            else modal.style.transform = '';
+        });
+    }
 }
 
 function cartRemove(key) {
@@ -1106,12 +1121,14 @@ function checkoutViaSite() {
     document.body.insertAdjacentHTML('beforeend', html);
     const overlay = document.getElementById('cartOrderModal');
     requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
-    document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') DalalModal.lock();
+    else document.body.style.overflow = 'hidden';
 
     const closeModal = () => {
         overlay.classList.remove('is-open');
         setTimeout(() => overlay.remove(), 350);
-        document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
+        else document.body.style.overflow = '';
     };
 
     document.getElementById('cartOrderClose').addEventListener('click', closeModal);
@@ -1119,29 +1136,35 @@ function checkoutViaSite() {
 
     /* Drag to dismiss (mobile) */
     const card = overlay.querySelector('.order-modal');
-    let _startY = 0, _currentY = 0, _dragging = false;
-    card.addEventListener('touchstart', e => {
-        if (window.innerWidth >= 640 || card.scrollTop > 0) return;
-        _dragging = true;
-        _startY = e.touches[0].clientY;
-        _currentY = 0;
-        card.style.transition = 'none';
-    }, { passive: true });
-    document.addEventListener('touchmove', e => {
-        if (!_dragging) return;
-        const dy = e.touches[0].clientY - _startY;
-        if (dy < 0) return;
-        _currentY = dy;
-        card.style.transform = `translateY(${dy}px)`;
-        e.preventDefault();
-    }, { passive: false });
-    document.addEventListener('touchend', () => {
-        if (!_dragging) return;
-        _dragging = false;
-        card.style.transition = '';
-        if (_currentY > 120) closeModal();
-        else card.style.transform = '';
-    });
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.setupDrag(card, closeModal);
+    } else {
+        let _startY = 0, _currentY = 0, _dragging = false;
+        card.addEventListener('touchstart', e => {
+            if (window.innerWidth >= 640 || card.scrollTop > 0) return;
+            _dragging = true;
+            _startY = e.touches[0].clientY;
+            _currentY = 0;
+            card.style.transition = 'none';
+        }, { passive: true });
+        card.addEventListener('touchmove', e => {
+            if (!_dragging) return;
+            const dy = e.touches[0].clientY - _startY;
+            if (dy < 0) return;
+            _currentY = dy;
+            card.style.transform = `translateY(${dy}px)`;
+            e.preventDefault();
+        }, { passive: false });
+        card.addEventListener('touchend', () => {
+            if (!_dragging) return;
+            _dragging = false;
+            card.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+            if (_currentY > 120) {
+                card.style.transform = 'translateY(100%)';
+                setTimeout(closeModal, 300);
+            } else card.style.transform = '';
+        });
+    }
 
     /* Numbers only */
     overlay.querySelector('#coPhone').addEventListener('input', function () {
@@ -1170,6 +1193,27 @@ function checkoutViaSite() {
             if (!phone)   shake('coPhone');
             if (!address) shake('coAddress');
             return;
+        }
+
+        /* ── Check Stock Before Submit (Race Condition - LIVE DB FETCH) ── */
+        if (typeof getProductStock === 'function') {
+            try {
+                const outOfStockNames = [];
+                for (const item of cart) {
+                    const stock = await getProductStock(item.id);
+                    if (stock && stock.visibility_status !== 'visible') {
+                        outOfStockNames.push(isAr ? item.nameAr : item.nameEn);
+                    }
+                }
+                if (outOfStockNames.length > 0) {
+                    const names = outOfStockNames.join('، ');
+                    alert(isAr
+                        ? `عذراً، المنتجات التالية أصبحت غير متوفرة:\n${names}\n\nيرجى إزالتها من السلة أولاً لتتمكني من إتمام الطلب.`
+                        : `Sorry, the following items are now out of stock:\n${names}\n\nPlease remove them from your cart first.`
+                    );
+                    return;
+                }
+            } catch (e) { /* ignore db errors and proceed */ }
         }
 
         const btn = document.getElementById('coSubmitBtn');

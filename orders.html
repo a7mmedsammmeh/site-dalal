@@ -335,6 +335,7 @@
                 </div>
                 <div class="order-card-body">
                     ${isDelivered ? `<div class="delivered-msg"><span class="dm-icon">🌸</span><span>${DELIVERED_MSG[lang]}</span></div>` : ''}
+                    ${(status === 'cancelled' && o.cancel_reason) ? `<div style="background:rgba(224,92,92,0.08);border:1px solid rgba(224,92,92,0.25);border-radius:var(--r);padding:0.7rem 1rem;font-size:0.82rem;color:#e05c5c;margin-bottom:0.3rem;"><strong>${isAr ? 'سبب الإلغاء:' : 'Reason for cancellation:'}</strong> ${esc(o.cancel_reason)}</div>` : ''}
                     <div class="order-products-mini">${productsHTML || '—'}</div>
                     <div class="order-total-row">
                         <span style="color:var(--text-muted);font-size:0.82rem">${isAr ? 'الإجمالي' : 'Total'}</span>

@@ -48,7 +48,7 @@ async function syncLocalOrders() {
 
             const { data, error } = await db
                 .from('orders')
-                .select('order_ref, status')
+                .select('order_ref, status, cancel_reason')
                 .eq('order_ref', o.ref)
                 .maybeSingle();
 
@@ -57,7 +57,7 @@ async function syncLocalOrders() {
 
             // If data exists → update status
             if (data) {
-                synced.push({ ...o, status: data.status });
+                synced.push({ ...o, status: data.status, cancel_reason: data.cancel_reason });
             } else {
                 // No data but no error → keep as-is (RLS might be blocking)
                 synced.push(o);

@@ -676,6 +676,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     </div>
 </div>
 
+<script src="modal-utils.js"></script>
 <script src="supabase.js"></script>
 <script src="products-data.js"></script>
 <script src="product-form-enhanced.js"></script>
@@ -938,7 +939,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 </td>
                 <td>${parseProducts(o.products)}</td>
                 <td class="order-total">${o.total ? o.total+' ج' : '—'}</td>
-                <td><select class="status-select s-${o.status||'pending'}" data-id="${o.id}" data-old-status="${o.status||'pending'}" onchange="changeStatus(this)">${statusOpts(o.status)}</select></td>
+                <td>
+                    <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" data-old-status="${o.status||'pending'}" onchange="changeStatus(this)">${statusOpts(o.status)}</select>
+                    ${o.status === 'cancelled' && o.cancel_reason ? `<div style="font-size:0.65rem;color:#e05c5c;margin-top:4px;max-width:120px;white-space:normal;background:rgba(224,92,92,0.1);padding:3px 5px;border-radius:3px;" title="${esc(o.cancel_reason)}">السبب: ${esc(o.cancel_reason)}</div>` : ''}
+                </td>
                 <td class="order-date">${fmtDate(o.created_at)}</td>
                 <td style="display:flex;gap:0.3rem;align-items:center;">
                     <button class="del-btn" onclick="printOrder('${o.id}')" title="طباعة">
@@ -991,6 +995,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin:0.35rem 0;">
                     ${prodSummary || '<span style="font-size:0.72rem;color:var(--text-dim)">—</span>'}
                 </div>
+                ${o.status === 'cancelled' && o.cancel_reason ? `<div style="font-size:0.72rem;color:#e05c5c;background:rgba(224,92,92,0.1);padding:0.25rem 0.5rem;border-radius:3px;margin-bottom:0.35rem;">سبب الإلغاء: ${esc(o.cancel_reason)}</div>` : ''}
                 <div class="oc-bot">
                     <span class="oc-date">${fmtDate(o.created_at)}</span>
                     <span style="font-size:0.72rem;color:var(--text-dim);">اضغط للتفاصيل ←</span>
@@ -1054,6 +1059,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <div class="od-section-title">الإجمالي والحالة</div>
                 <div class="od-row"><span class="od-lbl">الإجمالي</span><span class="od-val" style="color:var(--gold);font-weight:700;">${o.total ? o.total.toLocaleString()+' جنيه' : '—'}</span></div>
                 <div class="od-row"><span class="od-lbl">التاريخ</span><span class="od-val">${fmtDate(o.created_at)}</span></div>
+                ${o.status === 'cancelled' && o.cancel_reason ? `<div class="od-row"><span class="od-lbl" style="color:#e05c5c;">سبب الإلغاء</span><span class="od-val" style="color:#e05c5c;font-size:0.8rem;white-space:normal;">${esc(o.cancel_reason)}</span></div>` : ''}
                 <div class="od-row"><span class="od-lbl">الحالة</span>
                     <select class="status-select s-${o.status||'pending'}" data-id="${o.id}" data-old-status="${o.status||'pending'}" onchange="changeStatus(this);this.className='status-select s-'+this.value;" style="margin-top:-2px;">
                         ${statusOpts(o.status)}
@@ -1075,27 +1081,35 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         const drawer  = document.getElementById('odDrawer');
         overlay.classList.add('open');
         drawer.classList.add('open');
-        document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') DalalModal.lock();
+        else document.body.style.overflow = 'hidden';
 
         /* drag to dismiss */
-        let _sy = 0, _cy = 0, _drag = false;
-        drawer.addEventListener('touchstart', e => {
-            if (drawer.scrollTop > 0) return;
-            _sy = e.touches[0].clientY; _cy = 0; _drag = true;
-            drawer.style.transition = 'none';
-        }, { passive: true, once: false });
-        drawer.addEventListener('touchmove', e => {
-            if (!_drag) return;
-            const dy = e.touches[0].clientY - _sy;
-            if (dy < 0) return;
-            _cy = dy; drawer.style.transform = `translateY(${dy}px)`;
-        }, { passive: true });
-        drawer.addEventListener('touchend', () => {
-            if (!_drag) return; _drag = false;
-            drawer.style.transition = '';
-            if (_cy > 100) closeOrderDrawer();
-            else drawer.style.transform = '';
-        });
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.setupDrag(drawer, closeOrderDrawer);
+        } else {
+            let _sy = 0, _cy = 0, _drag = false;
+            drawer.addEventListener('touchstart', e => {
+                if (drawer.scrollTop > 0) return;
+                _sy = e.touches[0].clientY; _cy = 0; _drag = true;
+                drawer.style.transition = 'none';
+            }, { passive: true, once: false });
+            drawer.addEventListener('touchmove', e => {
+                if (!_drag) return;
+                const dy = e.touches[0].clientY - _sy;
+                if (dy < 0) return;
+                _cy = dy; drawer.style.transform = `translateY(${dy}px)`;
+                e.preventDefault();
+            }, { passive: false });
+            drawer.addEventListener('touchend', () => {
+                if (!_drag) return; _drag = false;
+                drawer.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+                if (_cy > 100) {
+                    drawer.style.transform = 'translateY(100%)';
+                    setTimeout(closeOrderDrawer, 300);
+                } else drawer.style.transform = '';
+            });
+        }
     };
 
     window.closeOrderDrawer = function() {
@@ -1103,7 +1117,8 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         const drawer  = document.getElementById('odDrawer');
         if (overlay) overlay.classList.remove('open');
         if (drawer)  { drawer.classList.remove('open'); drawer.style.transform = ''; }
-        document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
+        else document.body.style.overflow = '';
     };
 
     function parseProducts(json) {
@@ -1353,12 +1368,23 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         const id = sel.getAttribute('data-id');
         const status = sel.value;
         const oldStatus = sel.getAttribute('data-old-status') || 'unknown';
+        
+        let cancelReason = null;
+        if (status === 'cancelled') {
+            cancelReason = prompt('اكتب سبب إلغاء الطلب (سيتم إرساله للعميل):');
+            if (cancelReason === null) {
+                // User cancelled the prompt, revert the select value
+                sel.value = oldStatus;
+                return;
+            }
+        }
+        
         sel.className = `status-select s-${status}`;
         sel.setAttribute('data-old-status', status);
         try {
-            await updateOrderStatus(id, status);
+            await updateOrderStatus(id, status, cancelReason);
             const o = _all.find(x => String(x.id) === String(id));
-            if (o) o.status = status;
+            if (o) Object.assign(o, { status, cancel_reason: cancelReason });
             updateStats();
             toast('تم تحديث الحالة ✓');
             // Log activity
@@ -1366,10 +1392,15 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 logActivity('update', `تغيير حالة الطلب من ${oldStatus} إلى ${status}`, 'order', id, { 
                     old_status: oldStatus, 
                     new_status: status,
-                    order_ref: o?.order_ref 
+                    order_ref: o?.order_ref,
+                    cancel_reason: cancelReason
                 });
             }
-        } catch { toast('فشل التحديث، حاول مرة أخرى'); }
+        } catch { 
+            sel.value = oldStatus;
+            sel.className = `status-select s-${oldStatus}`;
+            toast('فشل التحديث، حاول مرة أخرى'); 
+        }
     };
 
     function showSkeleton() {
@@ -2640,6 +2671,44 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 .al-time { font-size:0.75rem; color:var(--text-dim); white-space:nowrap; }
 .al-empty { text-align:center; padding:4rem 2rem; color:var(--text-dim); }
 .al-empty-icon { font-size:3rem; margin-bottom:1rem; opacity:0.4; }
+
+/* ── Activity Log Mobile Responsive ── */
+@media (max-width: 600px) {
+    .al-table-wrap { background:transparent; border:none; border-radius:0; overflow:visible; }
+    .al-table { display:block; }
+    .al-table thead { display:none; }
+    .al-table tbody { display:flex; flex-direction:column; gap:0.65rem; }
+    .al-table tr {
+        display:flex; flex-direction:column; gap:0.35rem;
+        background:var(--bg-card); border:1px solid var(--border);
+        border-radius:var(--r-lg); padding:0.85rem 1rem;
+        transition:border-color 0.2s;
+    }
+    .al-table tr:hover { border-color:var(--border-h); background:var(--bg-card); }
+    .al-table td {
+        display:flex; align-items:flex-start; gap:0.5rem;
+        padding:0; border-bottom:none; font-size:0.82rem;
+    }
+    .al-table td::before {
+        content:attr(data-label);
+        min-width:55px; flex-shrink:0;
+        font-size:0.7rem; font-weight:500;
+        color:var(--text-dim); letter-spacing:0.04em;
+        padding-top:0.15rem;
+    }
+    .al-table td:first-child { margin-bottom:0.15rem; }
+    .al-table td:first-child::before { display:none; }
+    .al-desc { word-break:break-word; }
+    .al-entity { word-break:break-all; }
+    .al-ip { word-break:break-all; }
+    .al-time { white-space:normal; }
+    .al-header { gap:0.5rem; }
+    .al-title { font-size:1.1rem; }
+    .al-stat { padding:0.6rem 1rem; }
+    .al-stat-num { font-size:1.4rem; }
+    .al-filters { gap:0.35rem; }
+    .al-filter-btn { font-size:0.72rem; padding:0.35rem 0.7rem; }
+}
 </style>
 <div class="al-wrap">
     <div class="al-header">
@@ -2763,11 +2832,11 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                                a.action_type;
 
             return `<tr>
-                <td><span class="al-action-badge ${actionClass}">${actionLabel}</span></td>
-                <td class="al-desc">${a.action_description || '—'}</td>
-                <td class="al-entity">${a.entity_type ? `${a.entity_type}${a.entity_id ? ':'+a.entity_id : ''}` : '—'}</td>
-                <td class="al-ip">${a.ip_address || '—'}</td>
-                <td class="al-time">${dateStr}<br>${timeStr}</td>
+                <td data-label="النوع"><span class="al-action-badge ${actionClass}">${actionLabel}</span></td>
+                <td class="al-desc" data-label="الوصف">${a.action_description || '—'}</td>
+                <td class="al-entity" data-label="الكيان">${a.entity_type ? `${a.entity_type}${a.entity_id ? ':'+a.entity_id : ''}` : '—'}</td>
+                <td class="al-ip" data-label="IP">${a.ip_address || '—'}</td>
+                <td class="al-time" data-label="التاريخ">${dateStr}<br>${timeStr}</td>
             </tr>`;
         }).join('');
     };

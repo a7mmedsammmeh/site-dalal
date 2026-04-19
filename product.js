@@ -290,7 +290,8 @@ function renderRecentlyViewed(currentId) {
 /* ─── Modal helpers ─── */
 function openModal() {
     document.getElementById('orderModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') DalalModal.lock();
+    else document.body.style.overflow = 'hidden';
     selectedQtyOption = null;
     selectedSize      = null;
     document.getElementById('modalColorInput').value = '';
@@ -300,7 +301,8 @@ function openModal() {
 
 function closeModal() {
     document.getElementById('orderModal').classList.remove('active');
-    document.body.style.overflow = '';
+    if (typeof DalalModal !== 'undefined') DalalModal.unlock();
+    else document.body.style.overflow = '';
 }
 
 /* ─── Drag to dismiss (mobile) ─── */
@@ -309,39 +311,45 @@ function initModalDrag() {
     const modal   = overlay?.querySelector('.modal');
     if (!modal) return;
 
-    let startY = 0, currentY = 0, dragging = false;
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.setupDrag(modal, closeModal);
+    } else {
+        // Fallback if utility not loaded
+        let startY = 0, currentY = 0, dragging = false;
 
-    modal.addEventListener('touchstart', e => {
-        if (modal.scrollTop > 0) return; // only when scrolled to top
-        startY   = e.touches[0].clientY;
-        currentY = 0;
-        dragging = true;
-        modal.style.transition = 'none';
-    }, { passive: true });
+        modal.addEventListener('touchstart', e => {
+            if (modal.scrollTop > 0) return;
+            startY   = e.touches[0].clientY;
+            currentY = 0;
+            dragging = true;
+            modal.style.transition = 'none';
+        }, { passive: true });
 
-    modal.addEventListener('touchmove', e => {
-        if (!dragging) return;
-        const dy = e.touches[0].clientY - startY;
-        if (dy < 0) return; // block upward drag
-        currentY = dy;
-        modal.style.transform = `translateY(${dy}px)`;
-    }, { passive: true });
+        modal.addEventListener('touchmove', e => {
+            if (!dragging) return;
+            const dy = e.touches[0].clientY - startY;
+            if (dy < 0) return;
+            currentY = dy;
+            modal.style.transform = `translateY(${dy}px)`;
+            e.preventDefault();
+        }, { passive: false });
 
-    modal.addEventListener('touchend', () => {
-        if (!dragging) return;
-        dragging = false;
-        modal.style.transition = 'transform 0.3s cubic-bezier(0.4,0,0.2,1)';
+        modal.addEventListener('touchend', () => {
+            if (!dragging) return;
+            dragging = false;
+            modal.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
 
-        if (currentY > 120) {
-            modal.style.transform = `translateY(100%)`;
-            setTimeout(() => {
-                closeModal();
+            if (currentY > 120) {
+                modal.style.transform = `translateY(100%)`;
+                setTimeout(() => {
+                    closeModal();
+                    modal.style.transform = '';
+                }, 300);
+            } else {
                 modal.style.transform = '';
-            }, 300);
-        } else {
-            modal.style.transform = '';
-        }
-    });
+            }
+        });
+    }
 }
 
 /* ─── Build size options ─── */

@@ -65,6 +65,19 @@ a    { text-decoration:none; color:inherit; transition:color var(--tr); }
 ul   { list-style:none; }
 button { border:none; background:none; cursor:pointer; font-family:inherit; color:inherit; }
 
+/* ─── Body Scroll Lock (modals) ─── */
+.modal-overlay,
+.order-overlay,
+.od-overlay {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+.modal-overlay .modal,
+.order-overlay .order-modal,
+.od-overlay .od-drawer {
+    overscroll-behavior: contain;
+}
+
 /* ─── Typography ─── */
 h1 { font-size:clamp(1.8rem,4vw,3rem); letter-spacing:0.1em; text-transform:uppercase; }
 h2 { font-size:clamp(1.6rem,3.5vw,2.6rem); letter-spacing:0.1em; text-transform:uppercase; }
@@ -407,6 +420,8 @@ body.lang-ar .product-sizes-title { font-family:var(--font-ar); letter-spacing:0
         border-radius: var(--r-lg);
         text-align: center;
         order: 4 !important; /* Place after pricing box (order 3) */
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     .product-sizes-title { 
         font-size: 0.9rem; 
@@ -416,14 +431,16 @@ body.lang-ar .product-sizes-title { font-family:var(--font-ar); letter-spacing:0
         font-weight: 600;
     }
     .product-sizes-list { 
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
         gap: 0.6rem; 
-        justify-content: center;
-        align-items: center;
+        width: 100% !important;
     }
     .product-size-badge { 
-        padding: 0.5rem 1rem; 
+        padding: 0.5rem 0.5rem; 
         font-size: 0.8rem;
-        min-width: 3rem;
+        min-width: 0;
+        width: 100%;
         text-align: center;
         font-weight: 600;
         border: 2px solid var(--border);
@@ -435,6 +452,7 @@ body.lang-ar .product-sizes-title { font-family:var(--font-ar); letter-spacing:0
         background: var(--bg-card) !important; /* Keep original background */
         transform: none !important; /* Disable hover animation */
     }
+
     
     /* Ensure proper order on mobile */
     .product-info-panel {
