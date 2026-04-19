@@ -17,6 +17,21 @@ function loadCart() {
 }
 
 function saveCart() {
+    // Re-verify prices before saving to prevent console manipulation
+    if (typeof DALAL_PRODUCTS_MAP !== 'undefined') {
+        cart.forEach(item => {
+            const product = DALAL_PRODUCTS_MAP[item.id];
+            if (product && product.pricing) {
+                const rows = product.pricing.ar || [];
+                const match = rows.find(r => r.label === item.priceLabel);
+                if (match) {
+                    // Force correct price from product database
+                    item.priceNum = parseFloat(match.value.replace(/[^\d.]/g, '')) || 0;
+                    item.priceValue = match.value;
+                }
+            }
+        });
+    }
     localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }
 
@@ -502,7 +517,35 @@ function cartClear(skipConfirm = false) {
 }
 
 function cartTotal() {
-    return cart.reduce((sum, item) => sum + (item.priceNum * item.qty), 0);
+    return cart.reduce((sum, item) => {
+        // Use VERIFIED price from product data, not from localStorage
+        const verifiedPrice = getVerifiedPrice(item);
+        return sum + (verifiedPrice * item.qty);
+    }, 0);
+}
+
+/* ── Get verified price from product database, fallback to stored price ── */
+function getVerifiedPrice(item) {
+    if (typeof DALAL_PRODUCTS_MAP !== 'undefined') {
+        const product = DALAL_PRODUCTS_MAP[item.id];
+        if (product && product.pricing) {
+            const lang = localStorage.getItem('dalal-lang') || 'ar';
+            const rows = product.pricing[lang] || product.pricing.ar || [];
+            // Match by label (not by priceNum which can be manipulated)
+            const match = rows.find(r => r.label === item.priceLabel);
+            if (match) {
+                return parseFloat(match.value.replace(/[^\d.]/g, '')) || 0;
+            }
+            // Fallback: match by index position
+            const fallbackRows = product.pricing.ar || [];
+            const matchFallback = fallbackRows.find(r => r.label === item.priceLabel);
+            if (matchFallback) {
+                return parseFloat(matchFallback.value.replace(/[^\d.]/g, '')) || 0;
+            }
+        }
+    }
+    // Last resort: use stored price (only if product data not loaded yet)
+    return item.priceNum || 0;
 }
 
 function cartCount() {
@@ -685,7 +728,7 @@ function renderCartItems() {
         const keyEsc = item.key.replace(/'/g, "\\'");
         const isOutOfStock = outOfStockIds.has(item.id);
 
-        // Get current language label from product pricing if available
+        // Get VERIFIED price from product database (not from localStorage)
         let displayLabel = item.priceLabel;
         let displayValue = item.priceValue;
 
@@ -693,10 +736,8 @@ function renderCartItems() {
             const product = DALAL_PRODUCTS_MAP[item.id];
             if (product && product.pricing) {
                 const pricingRows = product.pricing[lang] || product.pricing.ar;
-                const matchingRow = pricingRows.find(row => {
-                    const rowNum = parseFloat(row.value.replace(/[^\d.]/g, ''));
-                    return Math.abs(rowNum - item.priceNum) < 0.01;
-                });
+                // Match by LABEL (tamper-resistant) not by priceNum (tamper-prone)
+                const matchingRow = pricingRows.find(row => row.label === item.priceLabel);
                 if (matchingRow) {
                     displayLabel = matchingRow.label;
                     displayValue = matchingRow.value;
@@ -951,38 +992,63 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             _soCity = geo.city;
         }
 
-        const priceNum = parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0;
-
-        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : (() => { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(12); crypto.getRandomValues(a); return 'DL-' + Array.from(a, b => c[b % c.length]).join(''); })();
-
-        const orderData = {
-            name: customerName,
-            phone,
-            address,
-            products: [{
-                id: product.id,
-                name: typeof product.name === 'object'
-                    ? (isAr ? product.name.ar : (product.name.en || product.name.ar))
-                    : product.name,
-                offer: selectedRow.label,
-                price: selectedRow.value,
-                size: size || '',
-                color: color || '',
-                notes: notes || '',
-                code: product.code || '',
-                qty: 1
-            }],
-            total: priceNum,
-            status: 'pending',
-            order_ref: orderRef,
-            client_ip: _soIP,
-            client_country: _soCountry,
-            client_city: _soCity
-        };
+        /* ── Find offer index from product pricing ── */
+        let offerIndex = 0;
+        const pricingRows = product.pricing?.[lang] || product.pricing?.ar || [];
+        const matchIdx = pricingRows.findIndex(r => r.label === selectedRow.label);
+        if (matchIdx >= 0) offerIndex = matchIdx;
 
         try {
-            const result = await insertOrder(orderData);
-            const savedId = result?.[0]?.id || null;
+            /* ── SERVER-SIDE ORDER CREATION (price validated from DB) ── */
+            const response = await fetch('/api/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: customerName,
+                    phone,
+                    address,
+                    lang,
+                    items: [{
+                        product_id: product.id,
+                        offer_index: offerIndex,
+                        qty: 1,
+                        size: size || '',
+                        color: color || '',
+                        notes: notes || '',
+                        code: product.code || ''
+                    }],
+                    client_ip: _soIP,
+                    client_country: _soCountry,
+                    client_city: _soCity
+                }),
+                signal: AbortSignal.timeout(15000)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                if (result.error === 'phone_blocked') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    const errEl = document.getElementById('soError');
+                    errEl.textContent = isAr
+                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصلي معنا.'
+                        : 'Sorry, you cannot place an order. Please contact us.';
+                    errEl.classList.add('is-visible');
+                    return;
+                }
+                if (result.error === 'out_of_stock') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    alert(isAr ? 'عذراً، هذا المنتج غير متوفر حالياً.' : 'Sorry, this product is currently out of stock.');
+                    return;
+                }
+                throw new Error(result.message || 'Order failed');
+            }
+
+            const orderRef = result.order_ref;
+            const savedId = result.id;
+            const serverTotal = result.total;
 
             if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
 
@@ -990,8 +1056,8 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                 saveOrderLocally({
                     ref: orderRef, dbId: savedId,
                     name: customerName, phone,
-                    products: orderData.products,
-                    total: priceNum, status: 'pending',
+                    products: result.products || [],
+                    total: serverTotal, status: 'pending',
                     date: new Date().toISOString()
                 });
             }
@@ -1195,27 +1261,6 @@ function checkoutViaSite() {
             return;
         }
 
-        /* ── Check Stock Before Submit (Race Condition - LIVE DB FETCH) ── */
-        if (typeof getProductStock === 'function') {
-            try {
-                const outOfStockNames = [];
-                for (const item of cart) {
-                    const stock = await getProductStock(item.id);
-                    if (stock && stock.visibility_status !== 'visible') {
-                        outOfStockNames.push(isAr ? item.nameAr : item.nameEn);
-                    }
-                }
-                if (outOfStockNames.length > 0) {
-                    const names = outOfStockNames.join('، ');
-                    alert(isAr
-                        ? `عذراً، المنتجات التالية أصبحت غير متوفرة:\n${names}\n\nيرجى إزالتها من السلة أولاً لتتمكني من إتمام الطلب.`
-                        : `Sorry, the following items are now out of stock:\n${names}\n\nPlease remove them from your cart first.`
-                    );
-                    return;
-                }
-            } catch (e) { /* ignore db errors and proceed */ }
-        }
-
         const btn = document.getElementById('coSubmitBtn');
         const label = document.getElementById('coSubmitLabel');
         btn.disabled = true;
@@ -1243,46 +1288,83 @@ function checkoutViaSite() {
             _coCity = geo.city;
         }
 
-        // Build products array from cart
-        const products = cart.map(i => ({
-            id: i.id,
-            name: lang === 'ar' ? i.nameAr : (i.nameEn || i.nameAr),
-            size: i.size || '',
-            color: i.color || '',
-            notes: i.notes || '',
-            offer: i.priceLabel,
-            price: i.priceValue,
-            qty: i.qty,
-            code: i.code || ''
-        }));
-
-        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : (() => { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(12); crypto.getRandomValues(a); return 'DL-' + Array.from(a, b => c[b % c.length]).join(''); })();
-
-        const orderData = {
-            name,
-            phone,
-            email: email || null,
-            address,
-            lang: lang,
-            products,
-            total: cartTotal(),
-            status: 'pending',
-            order_ref: orderRef,
-            client_ip: _coIP,
-            client_country: _coCountry,
-            client_city: _coCity
-        };
+        /* ── Build items array with product IDs + offer indices (NO prices from client) ── */
+        const items = cart.map(i => {
+            // Find the offer index by matching the priceLabel against the product's pricing rows
+            let offerIndex = 0;
+            if (typeof DALAL_PRODUCTS_MAP !== 'undefined') {
+                const product = DALAL_PRODUCTS_MAP[i.id];
+                if (product && product.pricing) {
+                    const rows = product.pricing[lang] || product.pricing.ar || [];
+                    const idx = rows.findIndex(r => r.label === i.priceLabel);
+                    if (idx >= 0) offerIndex = idx;
+                }
+            }
+            return {
+                product_id: i.id,
+                offer_index: offerIndex,
+                qty: i.qty,
+                size: i.size || '',
+                color: i.color || '',
+                notes: i.notes || '',
+                code: i.code || ''
+            };
+        });
 
         try {
-            const result = await insertOrder(orderData);
-            const savedId = result?.[0]?.id || null;
+            /* ── SERVER-SIDE ORDER CREATION (price validated from DB) ── */
+            const response = await fetch('/api/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    phone,
+                    email: email || null,
+                    address,
+                    lang,
+                    items,
+                    client_ip: _coIP,
+                    client_country: _coCountry,
+                    client_city: _coCity
+                }),
+                signal: AbortSignal.timeout(15000)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                // Handle specific server errors
+                if (result.error === 'phone_blocked') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    const errEl = document.getElementById('coError');
+                    errEl.textContent = isAr
+                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصلي معنا.'
+                        : 'Sorry, you cannot place an order. Please contact us.';
+                    errEl.classList.add('is-visible');
+                    return;
+                }
+                if (result.error === 'out_of_stock') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    alert(isAr
+                        ? 'عذراً، بعض المنتجات أصبحت غير متوفرة. يرجى إزالتها من السلة.'
+                        : 'Sorry, some items are now out of stock. Please remove them from your cart.');
+                    return;
+                }
+                throw new Error(result.message || 'Order failed');
+            }
+
+            const orderRef = result.order_ref;
+            const savedId = result.id;
+            const serverTotal = result.total;
 
             if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
                     ref: orderRef, dbId: savedId, name, phone,
-                    products, total: cartTotal(), status: 'pending',
+                    products: result.products || [], total: serverTotal, status: 'pending',
                     date: new Date().toISOString()
                 });
             }

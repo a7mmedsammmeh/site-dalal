@@ -299,25 +299,6 @@
             return;
         }
 
-        /* ── Check Stock Before Submit (Race Condition - LIVE DB FETCH) ── */
-        if (_product && typeof getProductStock === 'function') {
-            try {
-                const stock = await getProductStock(_product.id);
-                if (stock && stock.visibility_status !== 'visible') {
-                    const isAr = lang === 'ar';
-                    const pName = typeof _product.name === 'object' ? (isAr ? _product.name.ar : (_product.name.en || _product.name.ar)) : _product.name;
-                    alert(isAr ? `عذراً، "${pName}" غير متوفر حالياً ولا يمكن إتمام الطلب.` : `Sorry, "${pName}" is currently out of stock.`);
-                    return;
-                }
-            } catch (e) { /* ignore db errors and proceed */ }
-        }
-
-        const pricingRows   = _product.pricing?.[lang] || _product.pricing?.ar || [];
-        const selectedOffer = pricingRows[parseInt(offerIdx)];
-        const numericPrice  = parseFloat((selectedOffer?.value || '0').replace(/[^\d.]/g, '')) || 0;
-
-        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : (() => { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(12); crypto.getRandomValues(a); return 'DL-' + Array.from(a, b => c[b % c.length]).join(''); })();
-
         const btn   = document.getElementById('orderSubmitBtn');
         const label = document.getElementById('orderSubmitLabel');
         btn.disabled = true;
@@ -334,25 +315,6 @@
             }
         }
 
-        /* ── Phone Block Check (server-side) ── */
-        try {
-            const phoneCheck = await fetch(`/api/check-phone?phone=${encodeURIComponent(phone)}`, {
-                signal: AbortSignal.timeout(5000)
-            });
-            if (phoneCheck.ok) {
-                const pd = await phoneCheck.json();
-                if (pd.blocked) {
-                    btn.disabled = false;
-                    const errEl = document.getElementById('orderError');
-                    errEl.textContent = lang === 'ar'
-                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصل معنا.'
-                        : 'Sorry, you cannot place an order. Please contact us.';
-                    errEl.classList.add('is-visible');
-                    return;
-                }
-            }
-        } catch (e) { /* silent — don't block order if check fails */ }
-
         /* ── Fetch IP ── */
         let clientIP = null, clientCountry = null, clientCity = null;
         if (typeof SpamGuard !== 'undefined') {
@@ -362,59 +324,84 @@
             clientCity    = geo.city;
         }
 
-        const orderData = {
-            name,
-            phone,
-            email: email || null,
-            address,
-            lang: lang,
-            products: JSON.parse(JSON.stringify([{
-                id:    _product.id,
-                code:  _product.code || '',
-                name:  typeof _product.name === 'object'
-                    ? (lang === 'ar' ? _product.name.ar : (_product.name.en || _product.name.ar))
-                    : _product.name,
-                size:  sizeVal,
-                color: colorVal || '',
-                offer: selectedOffer?.label || '',
-                price: selectedOffer?.value || '',
-                qty:   1
-            }])),
-            total:     numericPrice,
-            status:    'pending',
-            order_ref: orderRef,
-            client_ip: clientIP,
-            client_country: clientCountry,
-            client_city: clientCity
-        };
         label.innerHTML = `<span class="order-loading-dots"><span></span><span></span><span></span></span>`;
 
         try {
-            const result = await insertOrder(orderData);
-            const savedId = result?.[0]?.id || null;
+            /* ── SERVER-SIDE ORDER CREATION (price validated from DB) ── */
+            const response = await fetch('/api/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    phone,
+                    email: email || null,
+                    address,
+                    lang,
+                    items: [{
+                        product_id: _product.id,
+                        offer_index: parseInt(offerIdx),
+                        qty: 1,
+                        size: sizeVal,
+                        color: colorVal || '',
+                        notes: '',
+                        code: _product.code || ''
+                    }],
+                    client_ip: clientIP,
+                    client_country: clientCountry,
+                    client_city: clientCity
+                }),
+                signal: AbortSignal.timeout(15000)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                if (result.error === 'phone_blocked') {
+                    btn.disabled = false;
+                    label.textContent = t.submit;
+                    const errEl = document.getElementById('orderError');
+                    errEl.textContent = lang === 'ar'
+                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصل معنا.'
+                        : 'Sorry, you cannot place an order. Please contact us.';
+                    errEl.classList.add('is-visible');
+                    return;
+                }
+                if (result.error === 'out_of_stock') {
+                    btn.disabled = false;
+                    label.textContent = t.submit;
+                    const pName = typeof _product.name === 'object' ? (lang === 'ar' ? _product.name.ar : (_product.name.en || _product.name.ar)) : _product.name;
+                    alert(lang === 'ar' ? `عذراً، "${pName}" غير متوفر حالياً.` : `Sorry, "${pName}" is currently out of stock.`);
+                    return;
+                }
+                throw new Error(result.message || 'Order failed');
+            }
+
+            const orderRef = result.order_ref;
+            const savedId = result.id;
+            const serverTotal = result.total;
 
             if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
                     ref: orderRef, dbId: savedId, name, phone,
-                    products: orderData.products,
-                    total: numericPrice, status: 'pending',
+                    products: result.products || [],
+                    total: serverTotal, status: 'pending',
                     date: new Date().toISOString()
                 });
             }
 
             document.getElementById('orderForm').style.display = 'none';
-            const lang = localStorage.getItem('dalal-lang') || 'ar';
-            const t    = T[lang] || T.ar;
-            document.getElementById('orderSuccessMsg').textContent = t.successMsg;
+            const lang2 = localStorage.getItem('dalal-lang') || 'ar';
+            const t2    = T[lang2] || T.ar;
+            document.getElementById('orderSuccessMsg').textContent = t2.successMsg;
             document.getElementById('orderSuccessSub').innerHTML =
-                `${t.successSub}<br>
+                `${t2.successSub}<br>
                 <span style="font-size:0.8rem;color:var(--text-dim);margin-top:0.4rem;display:block">
-                    ${lang === 'ar' ? 'رقم طلبك' : 'Order ID'}: <strong style="color:var(--gold)">${orderRef}</strong>
+                    ${lang2 === 'ar' ? 'رقم طلبك' : 'Order ID'}: <strong style="color:var(--gold)">${orderRef}</strong>
                 </span>
                 <a href="track.html?ref=${orderRef}" style="color:var(--gold);text-decoration:underline;font-size:0.82rem;margin-top:0.4rem;display:inline-block">
-                    ${lang === 'ar' ? 'تتبع طلبك ←' : 'Track your order ←'}
+                    ${lang2 === 'ar' ? 'تتبع طلبك ←' : 'Track your order ←'}
                 </a>`;
             document.getElementById('orderSuccess').classList.add('is-visible');
             if (typeof playSuccessSound === 'function') playSuccessSound();
