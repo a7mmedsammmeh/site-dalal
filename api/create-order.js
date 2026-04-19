@@ -198,6 +198,7 @@ export default async function handler(req, res) {
             total: serverTotal,           // ← CALCULATED BY SERVER
             status: 'pending',
             order_ref: orderRef,
+            order_source: 'api',          // ← marks as verified server-side order
             client_ip: client_ip || null,
             client_country: client_country || null,
             client_city: client_city || null
