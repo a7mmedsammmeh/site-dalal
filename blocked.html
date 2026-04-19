@@ -254,76 +254,25 @@
 
     <div class="footer-note">DALAL © 2025 — جميع الحقوق محفوظة</div>
 
-    <!-- Load Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="fingerprint.js"></script>
     <script>
-        const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
-        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         (async function() {
             try {
-                // Get current IP and fingerprint
+                // Get fingerprint and check block status via server-side API
                 const fp = await DalalFingerprint.get();
                 const geoRes = await fetch('/api/get-ip?fp=' + encodeURIComponent(fp));
                 const geo = await geoRes.json();
-                const currentIP = geo.ip;
-
-                let blockReason = null;
-                let isBlocked = false;
-
-                // Check if IP is blocked
-                const { data: ipData } = await db
-                    .from('blocked_ips')
-                    .select('reason')
-                    .eq('ip', currentIP)
-                    .limit(1);
-
-                if (ipData && ipData.length > 0) {
-                    blockReason = ipData[0].reason;
-                    isBlocked = true;
-                } else {
-                    // Check if fingerprint is blocked
-                    const { data: fpData } = await db
-                        .from('blocked_fingerprints')
-                        .select('reason, blocked_ip_ref')
-                        .eq('fingerprint', fp)
-                        .limit(1);
-
-                    if (fpData && fpData.length > 0) {
-                        blockReason = fpData[0].reason;
-                        isBlocked = true;
-                        const blockedIPRef = fpData[0].blocked_ip_ref;
-                        
-                        // Update subtitle for fingerprint block
-                        document.getElementById('subtitleText').textContent = 'جهازك محظور من الوصول إلى هذا الموقع.';
-                        
-                        // If no reason but has blocked_ip_ref, fetch reason from blocked_ips
-                        if (!blockReason && blockedIPRef) {
-                            const { data: refIPData } = await db
-                                .from('blocked_ips')
-                                .select('reason')
-                                .eq('ip', blockedIPRef)
-                                .limit(1);
-                            
-                            if (refIPData && refIPData.length > 0) {
-                                blockReason = refIPData[0].reason;
-                            }
-                        }
-                    }
-                }
 
                 // If not blocked, redirect to home
-                if (!isBlocked) {
+                if (!geo.blocked) {
                     window.location.replace('/');
                     return;
                 }
 
-                // Display reason (no IP display)
-                const reasonText = blockReason || 'بدون سبب';
+                // Display reason (no IP display for security)
+                const blockReason = geo.reason || 'بدون سبب';
                 document.getElementById('reasonBox').style.display = 'block';
-                document.getElementById('reasonText').textContent = reasonText;
+                document.getElementById('reasonText').textContent = blockReason;
 
             } catch (e) {
                 console.error('Error loading block info:', e);

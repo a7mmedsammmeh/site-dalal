@@ -25,7 +25,7 @@ function buildMessengerMsg({ lang, productName, code, priceLabel, priceValue, si
     const codeStr = code ? ` — Code: [${code}]` : '';
     if (lang === 'ar') {
         let msg = `DALAL — طلب جديد${codeStr}\n\nالمنتج: ${productName}\nالكمية: ${priceLabel} — ${priceValue}`;
-        if (size)  msg += `\nالمقاس: ${size}`;
+        if (size) msg += `\nالمقاس: ${size}`;
         if (color) msg += `\nاللون: ${color}`;
         if (notes) msg += `\nملاحظات: ${notes}`;
         if (phone) msg += `\n\nرقم الهاتف: ${phone}`;
@@ -33,7 +33,7 @@ function buildMessengerMsg({ lang, productName, code, priceLabel, priceValue, si
         return msg;
     } else {
         let msg = `DALAL — New Order${codeStr}\n\nProduct: ${productName}\nQuantity: ${priceLabel} — ${priceValue}`;
-        if (size)  msg += `\nSize: ${size}`;
+        if (size) msg += `\nSize: ${size}`;
         if (color) msg += `\nColor: ${color}`;
         if (notes) msg += `\nNotes: ${notes}`;
         if (phone) msg += `\n\nPhone: ${phone}`;
@@ -110,7 +110,7 @@ function playSuccessSound() {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const notes = [523, 659, 784]; // C5, E5, G5 — major chord arpeggio
         notes.forEach((freq, i) => {
-            const osc  = ctx.createOscillator();
+            const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
             gain.connect(ctx.destination);
@@ -195,7 +195,7 @@ function openMessengerWithContact(buildMsg) {
     document.getElementById('mcSubmit').addEventListener('click', () => submit(false));
     document.getElementById('mcSkip').addEventListener('click', () => submit(true));
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-    document.getElementById('mcPhone').addEventListener('input', function() {
+    document.getElementById('mcPhone').addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
@@ -245,7 +245,7 @@ function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, fl
     }
     // Build a stable key from product id + offer label + size + color
     // so adding the same item twice increments qty instead of duplicating
-    const key = `${product.id}_${selectedRow.label}_${(extras.size||'').toLowerCase()}_${(extras.color||'').toLowerCase()}`;
+    const key = `${product.id}_${selectedRow.label}_${(extras.size || '').toLowerCase()}_${(extras.color || '').toLowerCase()}`;
 
     const existing = cart.find(i => i.key === key);
     if (existing) {
@@ -261,18 +261,18 @@ function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, fl
 
     cart.push({
         key,
-        id:         product.id,
-        slug:       product.slug || null,
-        code:       product.code || null,
-        nameAr:     typeof product.name === 'object' ? product.name.ar : product.name,
-        nameEn:     typeof product.name === 'object' ? product.name.en : product.name,
-        image:      product.main_image_url || `${product.folder}/${product.main}`,
+        id: product.id,
+        slug: product.slug || null,
+        code: product.code || null,
+        nameAr: typeof product.name === 'object' ? product.name.ar : product.name,
+        nameEn: typeof product.name === 'object' ? product.name.en : product.name,
+        image: product.main_image_url || `${product.folder}/${product.main}`,
         priceLabel: selectedRow.label,
         priceValue: selectedRow.value,
-        priceNum:   parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0,
-        size:       extras.size  || '',
-        color:      extras.color || '',
-        notes:      extras.notes || '',
+        priceNum: parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0,
+        size: extras.size || '',
+        color: extras.color || '',
+        notes: extras.notes || '',
         qty
     });
     saveCart();
@@ -288,7 +288,7 @@ let _quickAddProduct = null;
 let _quickSelectedQty = null;
 
 function openQuickAddModal(product) {
-    _quickAddProduct  = product;
+    _quickAddProduct = product;
     _quickSelectedQty = null;
 
     const lang = localStorage.getItem('dalal-lang') || 'ar';
@@ -403,7 +403,7 @@ function openQuickAddModal(product) {
             });
             return;
         }
-        const size  = document.getElementById('qaSizeInput')?.value.trim() || '';
+        const size = document.getElementById('qaSizeInput')?.value.trim() || '';
         const color = document.getElementById('qaColorInput')?.value.trim() || '';
         const notes = document.getElementById('qaNotesInput')?.value.trim() || '';
         // qty is always 1 — priceValue is the total price for the selected tier
@@ -453,8 +453,8 @@ function cartRemove(key) {
     };
     if (el) {
         el.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
-        el.style.opacity    = '0';
-        el.style.transform  = 'translateX(40px)';
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(40px)';
         setTimeout(doRemove, 240);
     } else {
         doRemove();
@@ -474,7 +474,7 @@ function cartSetQty(key, qty) {
 function cartClear(skipConfirm = false) {
     if (!skipConfirm) {
         const lang = localStorage.getItem('dalal-lang') || 'ar';
-        const msg  = lang === 'ar' ? 'هل أنت متأكدة من إفراغ السلة؟' : 'Are you sure you want to clear the cart?';
+        const msg = lang === 'ar' ? 'هل أنت متأكدة من إفراغ السلة؟' : 'Are you sure you want to clear the cart?';
         if (!confirm(msg)) return;
     }
 
@@ -489,7 +489,7 @@ function cartClear(skipConfirm = false) {
     // animate each item out with stagger
     items.forEach((el, i) => {
         el.style.transition = `opacity 0.25s ease ${i * 60}ms, transform 0.25s ease ${i * 60}ms`;
-        el.style.opacity   = '0';
+        el.style.opacity = '0';
         el.style.transform = 'translateX(40px)';
     });
     const totalDuration = items.length * 60 + 280;
@@ -533,30 +533,30 @@ function flyToCart(sourceEl, product) {
     const cartBtn = document.querySelector('.cart-icon-btn');
     if (!cartBtn || !sourceEl) return;
 
-    const srcRect  = sourceEl.getBoundingClientRect();
+    const srcRect = sourceEl.getBoundingClientRect();
     const destRect = cartBtn.getBoundingClientRect();
 
-    const imgSrc = product?.main_image_url 
+    const imgSrc = product?.main_image_url
         || (product?.folder && product?.main ? `${product.folder}/${product.main}` : null);
 
     // Start size = same as product card image area
     const startSize = 120;
-    const endSize   = 20;
+    const endSize = 20;
 
-    const startX = srcRect.left + srcRect.width  / 2 - startSize / 2;
-    const startY = srcRect.top  + srcRect.height / 2 - startSize / 2;
-    const destX  = destRect.left + destRect.width  / 2;
-    const destY  = destRect.top  + destRect.height / 2;
+    const startX = srcRect.left + srcRect.width / 2 - startSize / 2;
+    const startY = srcRect.top + srcRect.height / 2 - startSize / 2;
+    const destX = destRect.left + destRect.width / 2;
+    const destY = destRect.top + destRect.height / 2;
 
     // Inject keyframes dynamically
     const animId = 'fly-' + Date.now();
-    const style  = document.createElement('style');
+    const style = document.createElement('style');
     style.textContent = `
         @keyframes ${animId} {
             0%   { top:${startY}px; left:${startX}px; width:${startSize}px; height:${startSize}px; transform:rotate(0deg) scale(1);   opacity:1; }
             60%  { transform:rotate(200deg) scale(0.5); opacity:1; }
-            85%  { top:${destY - endSize/2}px; left:${destX - endSize/2}px; width:${endSize}px; height:${endSize}px; transform:rotate(340deg) scale(0.3); opacity:0.8; }
-            100% { top:${destY - endSize/2}px; left:${destX - endSize/2}px; width:${endSize}px; height:${endSize}px; transform:rotate(360deg) scale(0);   opacity:0; }
+            85%  { top:${destY - endSize / 2}px; left:${destX - endSize / 2}px; width:${endSize}px; height:${endSize}px; transform:rotate(340deg) scale(0.3); opacity:0.8; }
+            100% { top:${destY - endSize / 2}px; left:${destX - endSize / 2}px; width:${endSize}px; height:${endSize}px; transform:rotate(360deg) scale(0);   opacity:0; }
         }
     `;
     document.head.appendChild(style);
@@ -590,7 +590,7 @@ function flyToCart(sourceEl, product) {
 function showAddToCartToast(product) {
     const lang = localStorage.getItem('dalal-lang') || 'ar';
     const name = lang === 'ar' ? (product.name?.ar || product.name) : (product.name?.en || product.name);
-    const msg  = lang === 'ar' ? `✓ تمت الإضافة: ${name}` : `✓ Added: ${name}`;
+    const msg = lang === 'ar' ? `✓ تمت الإضافة: ${name}` : `✓ Added: ${name}`;
 
     let toast = document.getElementById('cartToast');
     if (!toast) {
@@ -613,8 +613,8 @@ function showAddToCartToast(product) {
 /* ─── Render cart drawer items ─── */
 function renderCartItems() {
     const container = document.getElementById('cartItems');
-    const emptyMsg  = document.getElementById('cartEmpty');
-    const footer    = document.getElementById('cartFooter');
+    const emptyMsg = document.getElementById('cartEmpty');
+    const footer = document.getElementById('cartFooter');
     if (!container) return;
 
     const lang = localStorage.getItem('dalal-lang') || 'ar';
@@ -625,12 +625,12 @@ function renderCartItems() {
         const w = document.getElementById('cartStockWarning');
         if (w) w.remove();
         if (emptyMsg) emptyMsg.style.display = 'flex';
-        if (footer)   footer.style.display   = 'none';
+        if (footer) footer.style.display = 'none';
         return;
     }
 
     if (emptyMsg) emptyMsg.style.display = 'none';
-    if (footer)   footer.style.display   = 'flex';
+    if (footer) footer.style.display = 'flex';
 
     // Check stock status for each item
     const outOfStockIds = new Set();
@@ -673,10 +673,10 @@ function renderCartItems() {
     const checkoutBtn = document.getElementById('cartCheckoutBtn');
     const messengerBtn = document.getElementById('cartMessengerBtn');
     if (outOfStockIds.size > 0) {
-        if (checkoutBtn)  { checkoutBtn.disabled = true;  checkoutBtn.style.opacity = '0.4'; checkoutBtn.style.cursor = 'not-allowed'; }
+        if (checkoutBtn) { checkoutBtn.disabled = true; checkoutBtn.style.opacity = '0.4'; checkoutBtn.style.cursor = 'not-allowed'; }
         if (messengerBtn) { messengerBtn.disabled = true; messengerBtn.style.opacity = '0.4'; messengerBtn.style.cursor = 'not-allowed'; }
     } else {
-        if (checkoutBtn)  { checkoutBtn.disabled = false;  checkoutBtn.style.opacity = ''; checkoutBtn.style.cursor = ''; }
+        if (checkoutBtn) { checkoutBtn.disabled = false; checkoutBtn.style.opacity = ''; checkoutBtn.style.cursor = ''; }
         if (messengerBtn) { messengerBtn.disabled = false; messengerBtn.style.opacity = ''; messengerBtn.style.cursor = ''; }
     }
 
@@ -684,11 +684,11 @@ function renderCartItems() {
         const name = lang === 'ar' ? item.nameAr : item.nameEn;
         const keyEsc = item.key.replace(/'/g, "\\'");
         const isOutOfStock = outOfStockIds.has(item.id);
-        
+
         // Get current language label from product pricing if available
         let displayLabel = item.priceLabel;
         let displayValue = item.priceValue;
-        
+
         if (typeof DALAL_PRODUCTS_MAP !== 'undefined') {
             const product = DALAL_PRODUCTS_MAP[item.id];
             if (product && product.pricing) {
@@ -703,7 +703,7 @@ function renderCartItems() {
                 }
             }
         }
-        
+
         const productUrl = item.slug ? `product.html#${item.slug}` : `product.html?id=${item.id}`;
         return `
         <div class="cart-item" data-key="${item.key}" style="${isOutOfStock ? 'opacity:0.6;' : ''}">
@@ -714,7 +714,7 @@ function renderCartItems() {
                 <a href="${productUrl}" onclick="closeCart()" class="cart-item-name" style="color:var(--text);text-decoration:none;">${name}</a>
                 ${isOutOfStock ? `<span style="font-size:0.7rem;color:#e05c5c;font-weight:700;">${lang === 'ar' ? '⚠ غير متوفر' : '⚠ Out of Stock'}</span>` : ''}
                 <span class="cart-item-tier">${displayLabel}</span>
-                ${item.size  ? `<span class="cart-item-meta">${lang === 'ar' ? 'مقاس' : 'Size'}: ${item.size}</span>`  : ''}
+                ${item.size ? `<span class="cart-item-meta">${lang === 'ar' ? 'مقاس' : 'Size'}: ${item.size}</span>` : ''}
                 ${item.color ? `<span class="cart-item-meta">${lang === 'ar' ? 'لون' : 'Color'}: ${item.color}</span>` : ''}
                 ${item.notes ? `<span class="cart-item-meta">${lang === 'ar' ? 'ملاحظة' : 'Note'}: ${item.notes}</span>` : ''}
                 <span class="cart-item-price"><strong>${displayValue}</strong></span>
@@ -744,7 +744,7 @@ function renderCartRecentlyViewed() {
     if (!container) return;
     const lang = localStorage.getItem('dalal-lang') || 'ar';
     let list = [];
-    try { list = JSON.parse(localStorage.getItem('dalal-recently-viewed')) || []; } catch {}
+    try { list = JSON.parse(localStorage.getItem('dalal-recently-viewed')) || []; } catch { }
     if (!list.length) return;
 
     container.innerHTML = `
@@ -753,9 +753,9 @@ function renderCartRecentlyViewed() {
         </p>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;">
             ${list.slice(0, 3).map(p => {
-                const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
-                const url  = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
-                return `
+        const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
+        const url = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
+        return `
                     <a href="${url}" onclick="closeCart()" style="text-decoration:none;color:inherit;">
                         <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color 0.15s;">
                             <img src="${p.folder}/${p.main}" alt="${name}" loading="lazy"
@@ -764,7 +764,7 @@ function renderCartRecentlyViewed() {
                             <div style="font-size:0.68rem;color:var(--text-dim);padding:0.3rem 0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
                         </div>
                     </a>`;
-            }).join('')}
+    }).join('')}
         </div>
     `;
 }
@@ -787,24 +787,24 @@ function openCart() {
         renderCartItems();
     }
 
-    const drawer  = document.getElementById('cartDrawer');
+    const drawer = document.getElementById('cartDrawer');
     const overlay = document.getElementById('cartOverlay');
-    const sticky  = document.getElementById('mobileSticky');
-    if (drawer)  drawer.classList.add('open');
+    const sticky = document.getElementById('mobileSticky');
+    if (drawer) drawer.classList.add('open');
     if (overlay) overlay.classList.add('active');
-    if (sticky)  sticky.style.display = 'none';
+    if (sticky) sticky.style.display = 'none';
     document.body.style.overflow = 'hidden';
 
     if (cart.length === 0) renderCartRecentlyViewed();
 }
 
 function closeCart() {
-    const drawer  = document.getElementById('cartDrawer');
+    const drawer = document.getElementById('cartDrawer');
     const overlay = document.getElementById('cartOverlay');
-    const sticky  = document.getElementById('mobileSticky');
-    if (drawer)  drawer.classList.remove('open');
+    const sticky = document.getElementById('mobileSticky');
+    if (drawer) drawer.classList.remove('open');
     if (overlay) overlay.classList.remove('active');
-    if (sticky)  sticky.style.display = '';
+    if (sticky) sticky.style.display = '';
     document.body.style.overflow = '';
 }
 
@@ -822,7 +822,7 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             <span style="color:var(--text-muted)">${isAr ? 'الكمية' : 'Qty'}</span>
             <span style="color:var(--gold)">${selectedRow.label} — ${selectedRow.value}</span>
         </div>`,
-        size  ? `<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:0.3rem 0;">
+        size ? `<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:0.3rem 0;">
             <span style="color:var(--text-muted)">${isAr ? 'المقاس' : 'Size'}</span>
             <span style="color:var(--text)">${size}</span>
         </div>` : '',
@@ -914,8 +914,8 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
     document.getElementById('siteOrderForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const customerName = document.getElementById('soName').value.trim();
-        const phone        = document.getElementById('soPhone').value.trim();
-        const address      = document.getElementById('soAddress').value.trim();
+        const phone = document.getElementById('soPhone').value.trim();
+        const address = document.getElementById('soAddress').value.trim();
 
         if (!customerName || !phone || !address) {
             const errEl = document.getElementById('soError');
@@ -924,7 +924,7 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             return;
         }
 
-        const btn   = document.getElementById('soSubmitBtn');
+        const btn = document.getElementById('soSubmitBtn');
         const label = document.getElementById('soSubmitLabel');
         btn.disabled = true;
         label.innerHTML = '<span class="order-loading-dots"><span></span><span></span><span></span></span>';
@@ -946,34 +946,34 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
         let _soIP = null, _soCountry = null, _soCity = null;
         if (typeof SpamGuard !== 'undefined') {
             const geo = await SpamGuard.getClientIP();
-            _soIP      = geo.ip;
+            _soIP = geo.ip;
             _soCountry = geo.country;
-            _soCity    = geo.city;
+            _soCity = geo.city;
         }
 
         const priceNum = parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0;
 
-        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : ('DL-' + Math.random().toString(36).slice(2,7).toUpperCase());
+        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : (() => { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(12); crypto.getRandomValues(a); return 'DL-' + Array.from(a, b => c[b % c.length]).join(''); })();
 
         const orderData = {
-            name:    customerName,
+            name: customerName,
             phone,
             address,
             products: [{
-                id:    product.id,
-                name:  typeof product.name === 'object'
+                id: product.id,
+                name: typeof product.name === 'object'
                     ? (isAr ? product.name.ar : (product.name.en || product.name.ar))
                     : product.name,
                 offer: selectedRow.label,
                 price: selectedRow.value,
-                size:  size  || '',
+                size: size || '',
                 color: color || '',
                 notes: notes || '',
-                code:  product.code || '',
-                qty:   1
+                code: product.code || '',
+                qty: 1
             }],
-            total:     priceNum,
-            status:    'pending',
+            total: priceNum,
+            status: 'pending',
             order_ref: orderRef,
             client_ip: _soIP,
             client_country: _soCountry,
@@ -1063,13 +1063,13 @@ function checkoutViaSite() {
             <!-- Cart summary -->
             <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:var(--r-lg);padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;flex-direction:column;gap:0.6rem;">
                 ${cart.map(i => {
-                    const name = lang === 'ar' ? i.nameAr : i.nameEn;
-                    const meta = [
-                        i.size  ? (isAr ? `مقاس: ${i.size}`   : `Size: ${i.size}`)   : '',
-                        i.color ? (isAr ? `لون: ${i.color}`    : `Color: ${i.color}`) : '',
-                        i.notes ? (isAr ? `ملاحظة: ${i.notes}` : `Note: ${i.notes}`) : '',
-                    ].filter(Boolean).join('<br>');
-                    return `<div style="display:flex;align-items:center;gap:0.7rem;">
+        const name = lang === 'ar' ? i.nameAr : i.nameEn;
+        const meta = [
+            i.size ? (isAr ? `مقاس: ${i.size}` : `Size: ${i.size}`) : '',
+            i.color ? (isAr ? `لون: ${i.color}` : `Color: ${i.color}`) : '',
+            i.notes ? (isAr ? `ملاحظة: ${i.notes}` : `Note: ${i.notes}`) : '',
+        ].filter(Boolean).join('<br>');
+        return `<div style="display:flex;align-items:center;gap:0.7rem;">
                         <img src="${i.image}" alt="${name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0;">
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:0.83rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name} × ${i.qty}</div>
@@ -1078,7 +1078,7 @@ function checkoutViaSite() {
                         </div>
                         <span style="color:var(--gold);font-size:0.82rem;font-weight:600;flex-shrink:0;">${i.priceValue}</span>
                     </div>`;
-                }).join('')}
+    }).join('')}
                 <div style="border-top:1px solid var(--border);margin-top:0.2rem;padding-top:0.5rem;display:flex;justify-content:space-between;font-size:0.85rem;font-weight:600;">
                     <span style="color:var(--text-muted)">${isAr ? 'الإجمالي' : 'Total'}</span>
                     <span style="color:var(--gold)">${cartTotal().toLocaleString()} ${isAr ? 'جنيه' : 'EGP'}</span>
@@ -1175,9 +1175,9 @@ function checkoutViaSite() {
 
     document.getElementById('cartOrderForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name    = document.getElementById('coName').value.trim();
-        const phone   = document.getElementById('coPhone').value.trim();
-        const email   = document.getElementById('coEmail')?.value.trim() || '';
+        const name = document.getElementById('coName').value.trim();
+        const phone = document.getElementById('coPhone').value.trim();
+        const email = document.getElementById('coEmail')?.value.trim() || '';
         const address = document.getElementById('coAddress').value.trim();
 
         if (!name || !phone || !address) {
@@ -1189,8 +1189,8 @@ function checkoutViaSite() {
                 el.classList.add('input-error');
                 setTimeout(() => el.classList.remove('input-error'), 600);
             };
-            if (!name)    shake('coName');
-            if (!phone)   shake('coPhone');
+            if (!name) shake('coName');
+            if (!phone) shake('coPhone');
             if (!address) shake('coAddress');
             return;
         }
@@ -1238,25 +1238,25 @@ function checkoutViaSite() {
         let _coIP = null, _coCountry = null, _coCity = null;
         if (typeof SpamGuard !== 'undefined') {
             const geo = await SpamGuard.getClientIP();
-            _coIP      = geo.ip;
+            _coIP = geo.ip;
             _coCountry = geo.country;
-            _coCity    = geo.city;
+            _coCity = geo.city;
         }
 
         // Build products array from cart
         const products = cart.map(i => ({
-            id:    i.id,
-            name:  lang === 'ar' ? i.nameAr : (i.nameEn || i.nameAr),
-            size:  i.size  || '',
+            id: i.id,
+            name: lang === 'ar' ? i.nameAr : (i.nameEn || i.nameAr),
+            size: i.size || '',
             color: i.color || '',
             notes: i.notes || '',
             offer: i.priceLabel,
             price: i.priceValue,
-            qty:   i.qty,
-            code:  i.code || ''
+            qty: i.qty,
+            code: i.code || ''
         }));
 
-        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : ('DL-' + Math.random().toString(36).slice(2,7).toUpperCase());
+        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : (() => { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(12); crypto.getRandomValues(a); return 'DL-' + Array.from(a, b => c[b % c.length]).join(''); })();
 
         const orderData = {
             name,
@@ -1265,8 +1265,8 @@ function checkoutViaSite() {
             address,
             lang: lang,
             products,
-            total:     cartTotal(),
-            status:    'pending',
+            total: cartTotal(),
+            status: 'pending',
             order_ref: orderRef,
             client_ip: _coIP,
             client_country: _coCountry,
@@ -1352,9 +1352,9 @@ function checkoutViaMessenger() {
         let line = lang === 'ar'
             ? `${name}${codeStr}\n   الكمية: ${i.qty} × ${label}\n   السعر: ${value}`
             : `${name}${codeStr}\n   Qty: ${i.qty} × ${label}\n   Price: ${value}`;
-        if (i.size)  line += lang === 'ar' ? `\n   المقاس: ${i.size}`    : `\n   Size: ${i.size}`;
-        if (i.color) line += lang === 'ar' ? `\n   اللون: ${i.color}`    : `\n   Color: ${i.color}`;
-        if (i.notes) line += lang === 'ar' ? `\n   ملاحظات: ${i.notes}`  : `\n   Notes: ${i.notes}`;
+        if (i.size) line += lang === 'ar' ? `\n   المقاس: ${i.size}` : `\n   Size: ${i.size}`;
+        if (i.color) line += lang === 'ar' ? `\n   اللون: ${i.color}` : `\n   Color: ${i.color}`;
+        if (i.notes) line += lang === 'ar' ? `\n   ملاحظات: ${i.notes}` : `\n   Notes: ${i.notes}`;
         return line;
     }).join('\n\n');
 
@@ -1365,7 +1365,7 @@ function checkoutViaMessenger() {
             ? `DALAL — طلب جديد\n${'─'.repeat(28)}\n\n${lines}\n\n${'─'.repeat(28)}\nالاجمالي: ${total} جنيه`
             : `DALAL — New Order\n${'─'.repeat(28)}\n\n${lines}\n\n${'─'.repeat(28)}\nTotal: ${total} EGP`;
         if (phone) msg += lang === 'ar' ? `\n\nرقم الهاتف: ${phone}` : `\n\nPhone: ${phone}`;
-        if (email) msg += lang === 'ar' ? `\nالإيميل: ${email}`     : `\nEmail: ${email}`;
+        if (email) msg += lang === 'ar' ? `\nالإيميل: ${email}` : `\nEmail: ${email}`;
         return msg;
     });
 }
@@ -1480,10 +1480,10 @@ function updateCartLang(lang) {
     const isAr = lang === 'ar';
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
     set('cartDrawerTitle', isAr ? 'سلة التسوق' : 'Shopping Cart');
-    set('cartEmptyText',   isAr ? 'السلة فارغة' : 'Your cart is empty');
+    set('cartEmptyText', isAr ? 'السلة فارغة' : 'Your cart is empty');
     set('cartShopNowLabel', isAr ? 'تسوّقي الآن' : 'Shop Now');
-    set('cartTotalLabel',    isAr ? 'الإجمالي' : 'Total');
-    set('cartClearLabel',    isAr ? 'إفراغ السلة' : 'Clear Cart');
+    set('cartTotalLabel', isAr ? 'الإجمالي' : 'Total');
+    set('cartClearLabel', isAr ? 'إفراغ السلة' : 'Clear Cart');
     set('cartCheckoutLabel', isAr ? 'الطلب عبر ماسنجر' : 'Order via Messenger');
     set('cartSiteOrderLabel', isAr ? 'اطلبي الآن' : 'Order Now');
     renderCartItems();
@@ -1500,10 +1500,10 @@ function patchProductCards() {
     const original = window.createProductCard;
     if (!original) return;
 
-    window.createProductCard = function(product) {
+    window.createProductCard = function (product) {
         const article = original(product);
-        const lang    = localStorage.getItem('dalal-lang') || 'ar';
-        const info    = article.querySelector('.product-info');
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const info = article.querySelector('.product-info');
         if (!info) return article;
 
         // Check product stock status
@@ -1520,7 +1520,7 @@ function patchProductCards() {
         const addBtn = document.createElement('button');
         addBtn.className = 'btn-cart-add';
         addBtn.setAttribute('data-product-id', product.id);
-        
+
         // Disable button for out of stock products
         if (isOutOfStock) {
             addBtn.disabled = true;
@@ -1528,7 +1528,7 @@ function patchProductCards() {
             addBtn.style.cursor = 'not-allowed';
             addBtn.title = lang === 'ar' ? 'المنتج غير متوفر حالياً' : 'Product currently out of stock';
         }
-        
+
         addBtn.innerHTML = `
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                 <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
@@ -1536,7 +1536,7 @@ function patchProductCards() {
             </svg>
             <span>${lang === 'ar' ? 'أضيفي للسلة' : 'Add to Cart'}</span>
         `;
-        
+
         // Only add click listener if product is available
         if (!isOutOfStock) {
             addBtn.addEventListener('click', (e) => {
@@ -1584,7 +1584,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const origApplyLanguage = window.applyLanguage;
         if (origApplyLanguage) {
-            window.applyLanguage = function(lang) {
+            window.applyLanguage = function (lang) {
                 origApplyLanguage(lang);
                 updateCartLang(lang);
             };
@@ -1605,11 +1605,11 @@ function initDrawerSwipe(drawer, closeFn) {
     let startX = 0, startY = 0, currentX = 0, startTime = 0, dragging = false;
 
     drawer.addEventListener('touchstart', e => {
-        startX    = e.touches[0].clientX;
-        startY    = e.touches[0].clientY;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
         startTime = Date.now();
-        currentX  = 0;
-        dragging  = true;
+        currentX = 0;
+        dragging = true;
         drawer.style.transition = 'none';
     }, { passive: true });
 
@@ -1629,8 +1629,8 @@ function initDrawerSwipe(drawer, closeFn) {
         if (!dragging) return;
         dragging = false;
         drawer.style.transition = '';
-        const isRTL    = document.documentElement.dir === 'rtl';
-        const elapsed  = Date.now() - startTime;
+        const isRTL = document.documentElement.dir === 'rtl';
+        const elapsed = Date.now() - startTime;
         const velocity = Math.abs(currentX) / elapsed; // px/ms
         // Close if: dragged > 80px OR fast flick (velocity > 0.3 px/ms with > 20px drag)
         const shouldClose = isRTL
@@ -1655,11 +1655,11 @@ function updateWishlistBadge() {
 
 function renderWishlistItems() {
     const container = document.getElementById('wishlistItems');
-    const emptyEl   = document.getElementById('wishlistEmpty');
+    const emptyEl = document.getElementById('wishlistEmpty');
     if (!container) return;
 
     const lang = localStorage.getItem('dalal-lang') || 'ar';
-    const ids  = getWishlist();
+    const ids = getWishlist();
 
     if (!ids.length) {
         container.innerHTML = '';
@@ -1672,9 +1672,9 @@ function renderWishlistItems() {
     const titleEl = document.getElementById('wishlistTitle');
     const emptyTxt = document.getElementById('wishlistEmptyText');
     const emptyHint = document.getElementById('wishlistEmptyHint');
-    if (titleEl)    titleEl.textContent    = lang === 'ar' ? 'المفضلة' : 'Wishlist';
-    if (emptyTxt)   emptyTxt.textContent   = lang === 'ar' ? 'قائمة المفضلة فارغة' : 'Your wishlist is empty';
-    if (emptyHint)  emptyHint.textContent  = lang === 'ar' ? 'اضغطي على القلب على أي منتج لإضافته' : 'Tap the heart on any product to save it';
+    if (titleEl) titleEl.textContent = lang === 'ar' ? 'المفضلة' : 'Wishlist';
+    if (emptyTxt) emptyTxt.textContent = lang === 'ar' ? 'قائمة المفضلة فارغة' : 'Your wishlist is empty';
+    if (emptyHint) emptyHint.textContent = lang === 'ar' ? 'اضغطي على القلب على أي منتج لإضافته' : 'Tap the heart on any product to save it';
 
     if (typeof DALAL_PRODUCTS_MAP === 'undefined') {
         container.innerHTML = '';
@@ -1685,7 +1685,7 @@ function renderWishlistItems() {
         const p = DALAL_PRODUCTS_MAP[id];
         if (!p) return '';
         const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
-        const url  = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
+        const url = p.slug ? `product.html#${p.slug}` : `product.html?id=${p.id}`;
         const pricingRows = p.pricing?.[lang] || p.pricing?.ar || [];
         const price = pricingRows.length ? pricingRows[0].value : '';
         return `

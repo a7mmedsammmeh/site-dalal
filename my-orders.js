@@ -4,14 +4,16 @@
 
 const MY_ORDERS_KEY = 'dalal-my-orders';
 
-/* ─── Generate order ref ─── */
+/* ─── Generate order ref (cryptographically secure) ─── */
 function generateOrderRef() {
+    // 30 chars (A-Z minus O/I, 2-9 minus 0/1) = no confusing chars
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    // Use last 3 chars of timestamp (base36) + 3 random chars = very low collision chance
-    const timePart = Date.now().toString(36).slice(-3).toUpperCase();
-    let randPart = '';
-    for (let i = 0; i < 3; i++) randPart += chars[Math.floor(Math.random() * chars.length)];
-    return `DL-${timePart}${randPart}`;
+    const len = 12;
+    const arr = new Uint8Array(len);
+    crypto.getRandomValues(arr);
+    let ref = '';
+    for (let i = 0; i < len; i++) ref += chars[arr[i] % chars.length];
+    return `DL-${ref}`;
 }
 
 /* ─── Save order to localStorage ─── */
@@ -47,7 +49,7 @@ async function syncLocalOrders() {
             }
 
             const { data, error } = await db
-                .from('public_orders')
+                .from('orders')
                 .select('order_ref, status, cancel_reason')
                 .eq('order_ref', o.ref)
                 .maybeSingle();

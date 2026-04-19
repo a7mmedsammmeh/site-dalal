@@ -316,7 +316,7 @@
         const selectedOffer = pricingRows[parseInt(offerIdx)];
         const numericPrice  = parseFloat((selectedOffer?.value || '0').replace(/[^\d.]/g, '')) || 0;
 
-        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : ('DL-' + Math.random().toString(36).slice(2,7).toUpperCase());
+        const orderRef = (typeof generateOrderRef === 'function') ? generateOrderRef() : (() => { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint8Array(12); crypto.getRandomValues(a); return 'DL-' + Array.from(a, b => c[b % c.length]).join(''); })();
 
         const btn   = document.getElementById('orderSubmitBtn');
         const label = document.getElementById('orderSubmitLabel');

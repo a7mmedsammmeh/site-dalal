@@ -328,7 +328,7 @@
     <div class="track-header">
         <div class="track-logo">DALAL</div>
         <h1 class="track-title" id="trackPageTitle">تتبع طلبك</h1>
-        <p class="track-subtitle" id="trackPageSub">أدخلي رقم الطلب (مثال: DL-AB123)</p>
+        <p class="track-subtitle" id="trackPageSub">أدخلي رقم الطلب (مثال: DL-ABCD1234EFGH)</p>
         <div style="display:flex;align-items:center;justify-content:center;gap:0.4rem;margin-top:0.4rem;">
             <span id="trackHelpLabel" style="font-size:0.78rem;color:var(--text-dim)">كيف أجد رقم طلبي؟</span>
             <button class="help-btn" id="trackHelpBtn" onclick="showTrackHelp(this)" aria-label="مساعدة">?</button>
@@ -338,7 +338,7 @@
     <div class="track-form-box">
         <div class="track-input-wrap">
             <input type="text" class="track-input" id="trackRef"
-                   placeholder="DL-XXXXX"
+                   placeholder="DL-XXXXXXXXXXXX"
                    style="text-transform:uppercase;letter-spacing:0.12em;font-family:'Poppins',monospace;">
             <button class="track-btn" id="trackSearchBtn" onclick="searchByRef()" id="trackSearchBtnLabel">
                 <span id="trackSearchLabel">بحث</span>
@@ -426,20 +426,47 @@
     const STEPS_EN = ['Under Review',  'Confirmed',  'Shipped',   'Delivered'];
     const STEP_MAP = { pending: 0, confirmed: 1, shipped: 2, delivered: 3 };
 
+    /* ── Anti-bruteforce state ── */
+    let _trackSearchTimes = [];
+    const TRACK_MAX_SEARCHES = 5;
+    const TRACK_WINDOW_MS = 30000; // 5 searches per 30 seconds
+
     window.searchByRef = async function () {
         const raw = document.getElementById('trackRef').value.trim().toUpperCase();
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+
         if (!raw) return;
+
+        /* ── Validate format: DL- followed by 5–12 alphanumeric chars ── */
+        /* Accepts old refs (DL-XXXXXX, 6 chars) and new refs (DL-XXXXXXXXXXXX, 12 chars) */
+        if (!/^DL-[A-Z2-9]{5,12}$/.test(raw)) {
+            document.getElementById('trackResults').innerHTML =
+                `<div class="track-empty">${lang === 'ar' ? 'رقم الطلب غير صحيح. يجب أن يبدأ بـ DL-' : 'Invalid order ID. Must start with DL-'}</div>`;
+            return;
+        }
+
+        /* ── Rate limit ── */
+        const now = Date.now();
+        _trackSearchTimes = _trackSearchTimes.filter(t => now - t < TRACK_WINDOW_MS);
+        if (_trackSearchTimes.length >= TRACK_MAX_SEARCHES) {
+            document.getElementById('trackResults').innerHTML =
+                `<div class="track-empty">${lang === 'ar' ? 'محاولات كثيرة. انتظري قليلاً ثم حاولي مرة أخرى.' : 'Too many attempts. Please wait and try again.'}</div>`;
+            return;
+        }
+        _trackSearchTimes.push(now);
 
         const btn     = document.getElementById('trackSearchBtn');
         const results = document.getElementById('trackResults');
         btn.disabled  = true;
         results.innerHTML = '<div class="track-spinner"></div>';
 
+        /* ── Delay (anti-bruteforce) ── */
+        await new Promise(r => setTimeout(r, 500));
+
         try {
             const order = await fetchOrderByRef(raw);
             results.innerHTML = renderOrderCard(order);
         } catch (err) {
-            const lang = localStorage.getItem('dalal-lang') || 'ar';
             results.innerHTML = `<div class="track-empty">${lang === 'ar' ? 'لم يتم العثور على هذا الطلب' : 'Order not found'}</div>`;
         }
 
