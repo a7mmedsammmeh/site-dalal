@@ -17,6 +17,20 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "dalal-lin.vercel.app" }],
+      "destination": "https://dalalwear.shop/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.dalalwear.shop" }],
+      "destination": "https://dalalwear.shop/:path",
+      "permanent": true
+    }
+  ],
   "routes": [
     { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
