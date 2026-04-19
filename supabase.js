@@ -23,10 +23,12 @@ async function getSupabase() {
 }
 
 async function insertOrder(orderData) {
-    const db = await getSupabase();
-    const { data, error } = await db.from('orders').insert([orderData]).select();
-    if (error) throw error;
-    return data;
+    // ══════════════════════════════════════════════════════════
+    // ⛔ BLOCKED: Direct insert is disabled for security.
+    // All orders MUST go through /api/create-order (server-side)
+    // which validates prices from the database.
+    // ══════════════════════════════════════════════════════════
+    throw new Error('Direct order insertion is disabled. Use /api/create-order instead.');
 }
 
 async function fetchOrders() {
