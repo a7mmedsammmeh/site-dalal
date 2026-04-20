@@ -356,48 +356,66 @@
     const lang      = localStorage.getItem('dalal-lang') || 'ar';
     const isAr      = lang === 'ar';
 
-    let orderProducts = []; // products from the order
+    // ── MODE: 'order' (from email link) or 'product' (from product page) ──
+    const isOrderMode = !!orderRef;
+    const isProductMode = !!productId && !orderRef;
+
+    let orderProducts = [];
+    let customerName = '';
 
     // Apply direction
     document.documentElement.lang = lang;
     document.documentElement.dir  = isAr ? 'rtl' : 'ltr';
     document.body.style.fontFamily = isAr ? "'Tajawal', sans-serif" : "'Poppins', sans-serif";
 
+    // ═══════════════════════════════════════════════════
+    // ACCESS GUARD: Block if no pid and no ref
+    // ═══════════════════════════════════════════════════
+    if (!productId && !orderRef) {
+        document.getElementById('reviewForm').style.display = 'none';
+        document.getElementById('greeting').innerHTML = isAr
+            ? '<span style="font-size:1.1rem">⚠️ هذه الصفحة غير متاحة</span><br><span style="font-size:0.85rem;color:var(--muted)">يمكنك كتابة تقييم من صفحة المنتج أو من لينك التقييم في إيميلك</span>'
+            : '<span style="font-size:1.1rem">⚠️ This page is not available</span><br><span style="font-size:0.85rem;color:var(--muted)">You can write a review from the product page or from the review link in your email</span>';
+        return;
+    }
+
     // Translations
     const T = {
         ar: {
-            greeting:     (name) => name ? `أهلاً <strong>${name}</strong> 🌸<br><span style="font-size:0.88rem">يسعدنا سماع رأيك في هذا المنتج</span>` : 'شاركي تجربتك معنا',
-            starsLabel:   'كيف تقيّمين هذا المنتج؟',
-            ratings:      ['', 'سيء', 'مقبول', 'جيد', 'رائع', 'ممتاز! 🌟'],
-            labelName:    'اسمك',
-            namePh:       'مثال: سارة م.',
-            nameHint:     'اختياري — سيظهر مع تقييمك',
-            labelComment: 'تجربتك مع المنتج',
-            commentPh:    'شاركينا رأيك في الجودة، المقاس، الشعور...',
-            submitBtn:    'إرسال التقييم',
-            errorRating:  'يرجى اختيار تقييم بالنجوم أولاً',
-            errorFail:    'حدث خطأ، يرجى المحاولة مرة أخرى',
-            successTitle: 'شكراً لكِ! 🌸',
-            successSub:   'تقييمك وصلنا وسعدنا بتجربتك معنا 🤍',
-            backLink:     'العودة للرئيسية',
-            orderLabel:   'رقم الطلب',
+            greeting:       (name) => name ? `أهلاً <strong>${name}</strong> 🌸<br><span style="font-size:0.88rem">يسعدنا سماع رأيك في هذا المنتج</span>` : 'شاركي تجربتك معنا',
+            orderGreeting:  (name) => `مرحباً <strong>${name}</strong> 🤍<br><span style="font-size:0.88rem;line-height:1.8">سعدنا جداً بتعاملك معنا وإن طلبك وصلك بالسلامة ✨<br>رأيك يهمنا! شاركينا تجربتك مع منتجاتنا عشان نقدر نطوّر ونقدملك الأفضل دايماً</span>`,
+            starsLabel:     'كيف تقيّمين هذا المنتج؟',
+            ratings:        ['', 'سيء', 'مقبول', 'جيد', 'رائع', 'ممتاز! 🌟'],
+            labelName:      'اسمك',
+            namePh:         'مثال: سارة م.',
+            nameHint:       'اختياري — سيظهر مع تقييمك',
+            labelComment:   'تجربتك مع المنتج',
+            commentPh:      'شاركينا رأيك في الجودة، المقاس، الشعور...',
+            submitBtn:      'إرسال التقييم',
+            errorRating:    'يرجى اختيار تقييم بالنجوم أولاً',
+            errorFail:      'حدث خطأ، يرجى المحاولة مرة أخرى',
+            successTitle:   'شكراً لكِ! 🌸',
+            successSub:     'تقييمك وصلنا وسعدنا بتجربتك معنا 🤍',
+            backLink:       'العودة للرئيسية',
+            orderLabel:     'رقم الطلب',
         },
         en: {
-            greeting:     (name) => name ? `Hello <strong>${name}</strong> 🌸<br><span style="font-size:0.88rem">We'd love to hear your thoughts on this product</span>` : 'Share your experience',
-            starsLabel:   'How would you rate this product?',
-            ratings:      ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent! 🌟'],
-            labelName:    'Your name',
-            namePh:       'e.g. Sarah M.',
-            nameHint:     'Optional — will appear with your review',
-            labelComment: 'Your experience with the product',
-            commentPh:    'Tell us about the quality, fit, feel...',
-            submitBtn:    'Submit Review',
-            errorRating:  'Please select a star rating first',
-            errorFail:    'Something went wrong, please try again',
-            successTitle: 'Thank you! 🌸',
-            successSub:   'Your review has been received 🤍',
-            backLink:     'Back to Home',
-            orderLabel:   'Order',
+            greeting:       (name) => name ? `Hello <strong>${name}</strong> 🌸<br><span style="font-size:0.88rem">We'd love to hear your thoughts on this product</span>` : 'Share your experience',
+            orderGreeting:  (name) => `Welcome back <strong>${name}</strong> 🤍<br><span style="font-size:0.88rem;line-height:1.8">We're so glad your order arrived safely ✨<br>Your feedback means the world to us! Share your experience with our products so we can keep delivering the best for you</span>`,
+            starsLabel:     'How would you rate this product?',
+            ratings:        ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent! 🌟'],
+            labelName:      'Your name',
+            namePh:         'e.g. Sarah M.',
+            nameHint:       'Optional — will appear with your review',
+            labelComment:   'Your experience with the product',
+            commentPh:      'Tell us about the quality, fit, feel...',
+            submitBtn:      'Submit Review',
+            errorRating:    'Please select a star rating first',
+            errorFail:      'Something went wrong, please try again',
+            successTitle:   'Thank you! 🌸',
+            successSub:     'Your review has been received 🤍',
+            backLink:       'Back to Home',
+            orderLabel:     'Order',
         }
     };
     const t = T[isAr ? 'ar' : 'en'];
@@ -411,12 +429,13 @@
     document.getElementById('successSub').textContent    = t.successSub;
     document.getElementById('backLink').textContent      = t.backLink;
 
-    // Fetch order via SECURE RPC (no direct table access)
-    if (orderRef) {
+    // ═══════════════════════════════════════════════════
+    // MODE A: ORDER REVIEW (from email link with ?ref=)
+    // → Hide name field, auto-fetch name from order
+    // ═══════════════════════════════════════════════════
+    if (isOrderMode) {
+        // Name field stays hidden (default display:none)
         getSupabase().then(async db => {
-            // ── Use RPC instead of direct table query ──
-            // get_order_by_ref returns: order_ref, status, products, total, created_at, cancel_reason
-            // It does NOT return name/phone/address (intentionally — security)
             let order = null;
             try {
                 const { data, error } = await db.rpc('get_order_by_ref', { p_ref: orderRef });
@@ -424,7 +443,7 @@
                 if (data && data.length > 0) order = data[0];
             } catch { order = null; }
 
-            // ── Block if order not found or not delivered ──
+            // Block if order not found or not delivered
             if (!order || order.status !== 'delivered') {
                 document.getElementById('reviewForm').style.display = 'none';
                 document.getElementById('greeting').innerHTML = isAr
@@ -433,7 +452,7 @@
                 return;
             }
 
-            // ── Block if already reviewed ──
+            // Block if already reviewed
             const { data: existing } = await db
                 .from('reviews')
                 .select('id')
@@ -448,10 +467,18 @@
                 return;
             }
 
-            // ── Greeting (no customer name — RPC doesn't expose it for security) ──
-            document.getElementById('greeting').innerHTML = t.greeting('');
+            // Fetch customer name from order
+            try {
+                const { data: nameData } = await db.rpc('get_order_customer_name', { p_ref: orderRef });
+                if (nameData) customerName = nameData;
+            } catch { /* silent */ }
 
-            // Store products for later use in submit
+            // Show warm greeting with name
+            document.getElementById('greeting').innerHTML = customerName
+                ? t.orderGreeting(customerName)
+                : t.greeting('');
+
+            // Store products for submit
             if (order.products) {
                 try {
                     orderProducts = Array.isArray(order.products)
@@ -460,7 +487,7 @@
                 } catch { orderProducts = []; }
             }
 
-            // Get product info from order products array
+            // Show product preview if pid in URL
             if (productId && order.products) {
                 try {
                     const prods = Array.isArray(order.products)
@@ -469,15 +496,13 @@
                     const prod = prods.find(p => +p.id === productId);
                     if (prod) {
                         document.getElementById('productName').textContent = prod.name || '';
-                        // Try to get image from products-data if loaded, else skip
                         const tryImg = () => {
                             if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && DALAL_PRODUCTS_MAP[productId]) {
                                 const p = DALAL_PRODUCTS_MAP[productId];
-                                document.getElementById('productImg').src = `${p.folder}/${p.main}`;
+                                document.getElementById('productImg').src = p.main_image_url || `${p.folder}/${p.main}`;
                                 document.getElementById('productImg').alt = prod.name || '';
                                 document.getElementById('productPreview').style.display = 'flex';
                             } else {
-                                // Show preview without image
                                 document.getElementById('productImg').style.display = 'none';
                                 document.getElementById('productPreview').style.display = 'flex';
                             }
@@ -486,7 +511,6 @@
                             tryImg();
                         } else {
                             document.addEventListener('dalal:products-ready', tryImg, { once: true });
-                            // Fallback after 2s
                             setTimeout(() => {
                                 if (document.getElementById('productPreview').style.display === 'none') {
                                     document.getElementById('productImg').style.display = 'none';
@@ -499,31 +523,30 @@
                 } catch { /* silent */ }
             }
         });
-    }
 
-    // Show name field always (was previously hidden for order-based reviews
-    // since name came from order, but RPC no longer exposes customer name)
-    {
-        const nameField = document.getElementById('nameField');
-        if (nameField) nameField.style.display = '';
-        document.getElementById('labelName').textContent  = isAr ? 'اسمك' : 'Your Name';
-        document.getElementById('reviewName').placeholder = isAr ? 'مثال: سارة م.' : 'e.g. Sarah M.';
-        document.getElementById('hintName').textContent   = isAr ? 'اختياري — سيظهر مع تقييمك' : 'Optional — will appear with your review';
-    }
-
-    // Show order ref
-    if (orderRef) {
+        // Show order ref
         document.getElementById('productRef').textContent = `${t.orderLabel}: ${orderRef}`;
     }
 
-    // Show product preview from DALAL_PRODUCTS_MAP if pid provided but no order ref
-    if (productId && !orderRef) {
+    // ═══════════════════════════════════════════════════
+    // MODE B: PRODUCT REVIEW (from product page with ?pid=)
+    // → Show name field, any visitor can review
+    // ═══════════════════════════════════════════════════
+    if (isProductMode) {
+        // Show name field
+        const nameField = document.getElementById('nameField');
+        if (nameField) nameField.style.display = '';
+        document.getElementById('labelName').textContent  = t.labelName;
+        document.getElementById('reviewName').placeholder = t.namePh;
+        document.getElementById('hintName').textContent   = t.nameHint;
+
+        // Show product preview
         const showDirectProduct = () => {
             if (typeof DALAL_PRODUCTS_MAP !== 'undefined' && DALAL_PRODUCTS_MAP[productId]) {
                 const p = DALAL_PRODUCTS_MAP[productId];
                 const name = typeof p.name === 'object' ? (p.name[lang] || p.name.ar) : p.name;
                 document.getElementById('productName').textContent = name;
-                document.getElementById('productImg').src = `${p.folder}/${p.main}`;
+                document.getElementById('productImg').src = p.main_image_url || `${p.folder}/${p.main}`;
                 document.getElementById('productImg').alt = name;
                 document.getElementById('productPreview').style.display = 'flex';
             }
@@ -535,8 +558,10 @@
         }
     }
 
-    // Greeting default
-    document.getElementById('greeting').innerHTML = t.greeting('');
+    // Greeting default (for product mode)
+    if (!isOrderMode) {
+        document.getElementById('greeting').innerHTML = t.greeting('');
+    }
 
     // Stars
     let selectedRating = 0;
@@ -589,8 +614,10 @@
             const rawComment = document.getElementById('reviewComment').value.trim();
             const comment = rawComment || (isAr ? 'بدون تعليق' : 'No comment');
 
-            // Use name from input field (customer name not available from RPC for security)
-            const reviewerName = document.getElementById('reviewName')?.value.trim() || null;
+            // Use order name if order mode, or input field if product mode
+            const reviewerName = isOrderMode
+                ? (customerName || null)
+                : (document.getElementById('reviewName')?.value.trim() || null);
 
             // Fetch client IP silently
             let clientIP = null;
