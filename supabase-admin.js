@@ -139,7 +139,7 @@ async function fetchVisitors() {
     const db = await _requireAdmin();
     const { data, error } = await db
         .from('visitors')
-        .select('id, ip, country, city, fingerprint, visited_at, referrer, page')
+        .select('id, ip, country, city, fingerprint, device_type, os, browser, screen_res, lang, timezone, visited_at, referrer, page')
         .order('visited_at', { ascending: false });
     if (error) throw error;
     return data;
