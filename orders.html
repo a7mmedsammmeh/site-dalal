@@ -368,12 +368,23 @@
         if (!confirm(msg)) return;
 
         try {
-            const db = await getSupabase();
-            const { error } = await db
-                .from('orders')
-                .update({ status: 'cancelled' })
-                .eq('order_ref', ref);
-            if (error) throw error;
+            /* ── SERVER-SIDE cancellation (secure — only changes status) ── */
+            const response = await fetch('/api/cancel-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_ref: ref }),
+                signal: AbortSignal.timeout(10000)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                if (result.error === 'cannot_cancel') {
+                    alert(lang === 'ar' ? 'لا يمكن إلغاء هذا الطلب — تم تأكيده بالفعل' : 'Cannot cancel — order already confirmed');
+                    return;
+                }
+                throw new Error(result.error || 'Cancel failed');
+            }
 
             // Update localStorage
             const orders = getLocalOrders();
