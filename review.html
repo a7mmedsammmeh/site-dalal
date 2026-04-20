@@ -331,6 +331,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
             <span id="submitLabel">إرسال التقييم</span>
         </button>
+        <!-- Honeypot: hidden from real users, filled by bots -->
+        <div style="position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none;" aria-hidden="true">
+            <input type="text" id="dalal_website" name="dalal_website" tabindex="-1" autocomplete="off">
+        </div>
         <p class="error-msg" id="errorMsg"></p>
     </div>
 
@@ -348,6 +352,7 @@
 </div>
 
 <script src="supabase.js"></script>
+<script src="fingerprint.js"></script>
 <script src="products-data.js"></script>
 <script>
 (function() {
@@ -356,6 +361,9 @@
     const orderRef  = params.get('ref') || '';
     const lang      = localStorage.getItem('dalal-lang') || 'ar';
     const isAr      = lang === 'ar';
+
+    // Anti-bot: track when form was opened
+    const _formOpenedAt = Date.now();
 
     // ── MODE: 'order' (from email link) or 'product' (from product page) ──
     const isOrderMode = !!orderRef;
@@ -611,7 +619,6 @@
         lbl.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>';
 
         try {
-            const db = await getSupabase();
             const rawComment = document.getElementById('reviewComment').value.trim();
             const comment = rawComment || (isAr ? 'بدون تعليق' : 'No comment');
 
@@ -620,52 +627,38 @@
                 ? (customerName || null)
                 : (document.getElementById('reviewName')?.value.trim() || null);
 
-            // Fetch client IP silently
-            let clientIP = null;
-            try {
-                const geoRes = await fetch('/api/get-ip', { signal: AbortSignal.timeout(5000) });
-                if (geoRes.ok) {
-                    const g = await geoRes.json();
-                    if (!g.blocked) clientIP = g.ip || null;
-                }
-            } catch { /* silent */ }
+            // Collect fingerprint
+            const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
 
-            // Build reviews array — one per unique product in the order (same rating/comment goes to all)
-            let reviewsToInsert = [];
-
-            if (orderProducts.length > 0) {
-                // Deduplicate by product_id — same product with different offers counts once
-                const seenIds = new Set();
-                const uniqueProducts = orderProducts.filter(p => {
-                    const key = p.id ?? p.name;
-                    if (seenIds.has(key)) return false;
-                    seenIds.add(key);
-                    return true;
-                });
-                reviewsToInsert = uniqueProducts.map(p => ({
-                    order_ref:     orderRef || null,
-                    product_id:    p.id || null,
-                    reviewer_name: reviewerName,
-                    rating:        selectedRating,
-                    comment,
-                    client_ip:     clientIP,
-                    is_visible:    false
-                }));
-            } else {
-                // Fallback: use pid from URL if available, otherwise general review
-                reviewsToInsert = [{
-                    order_ref:     orderRef || null,
+            /* ── SERVER-SIDE review submission ── */
+            const response = await fetch('/api/submit-review', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     product_id:    productId || null,
-                    reviewer_name: reviewerName,
+                    order_ref:     orderRef || null,
                     rating:        selectedRating,
                     comment,
-                    client_ip:     clientIP,
-                    is_visible:    false
-                }];
-            }
+                    reviewer_name: reviewerName,
+                    fingerprint:   fp,
+                    products:      orderProducts.length > 0 ? orderProducts : null,
+                    form_opened_at: _formOpenedAt,
+                    dalal_website: document.getElementById('dalal_website')?.value || ''
+                }),
+                signal: AbortSignal.timeout(10000)
+            });
 
-            const { error } = await db.from('reviews').insert(reviewsToInsert);
-            if (error) throw error;
+            const result = await response.json();
+
+            if (!response.ok) {
+                if (result.error === 'rate_limited') {
+                    throw new Error(isAr ? 'لقد أرسلت عدة تقييمات. حاول لاحقاً.' : 'Too many reviews. Try again later.');
+                }
+                if (result.error === 'already_reviewed') {
+                    throw new Error(isAr ? 'لقد قيّمتِ هذا الطلب من قبل' : 'You already reviewed this order.');
+                }
+                throw new Error(result.message || 'Review failed');
+            }
 
             // Back link — return to product page if came from direct review, else home
             const backEl = document.getElementById('backLink');

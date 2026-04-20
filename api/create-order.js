@@ -141,6 +141,45 @@ function simpleHash(str) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   SECURITY LAYER: Phone Cooldown
+   ─────────────────────────────────────────────────────────────
+   Same phone number cannot place more than 1 order every 2 min.
+   Prevents phone-number-based spam even with IP/device changes.
+   ═══════════════════════════════════════════════════════════════ */
+const phoneCooldownMap = new Map();
+const PHONE_COOLDOWN_MS = 2 * 60 * 1000;  // 2 minutes
+
+function isPhoneOnCooldown(normalizedPhone) {
+    if (!normalizedPhone) return false;
+    const now = Date.now();
+    const lastOrder = phoneCooldownMap.get(normalizedPhone);
+
+    // Cleanup old entries
+    if (phoneCooldownMap.size > 300) {
+        for (const [k, v] of phoneCooldownMap) {
+            if (now - v > PHONE_COOLDOWN_MS) phoneCooldownMap.delete(k);
+        }
+    }
+
+    if (lastOrder && now - lastOrder < PHONE_COOLDOWN_MS) return true;
+    phoneCooldownMap.set(normalizedPhone, now);
+    return false;
+}
+
+/* ── Log suspicious activity to activity_logs ── */
+async function logSuspicious(ip, type, description) {
+    try {
+        await supabaseInsert('activity_logs', {
+            action_type: 'block',
+            action_description: `[order:${type}] IP: ${ip || '?'} | ${description}`,
+            entity_type: 'security',
+            entity_id: ip || null
+        });
+    } catch { /* logging should never break the flow */ }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
    SECURITY LAYER: Bot Detection
    ─────────────────────────────────────────────────────────────
    Rejects requests from known bots, scripts, and headless
@@ -269,6 +308,7 @@ export default async function handler(req, res) {
            LAYER 7: In-Memory Rate Limiting (fast)
            ────────────────────────────────────────────────────── */
         if (checkMemoryRateLimit(serverIP)) {
+            logSuspicious(serverIP, 'rate_limited', 'In-memory rate limit exceeded');
             return res.status(429).json({
                 error: 'rate_limited',
                 message: 'Too many orders. Please wait.'
@@ -387,9 +427,23 @@ export default async function handler(req, res) {
            ────────────────────────────────────────────────────── */
         const payloadHash = simpleHash(JSON.stringify({ phone, address, items }));
         if (isDuplicatePayload(serverIP, payloadHash)) {
+            logSuspicious(serverIP, 'duplicate', `Duplicate payload from phone: ${normalizePhone(phone)}`);
             return res.status(429).json({
                 error: 'duplicate',
                 message: 'This order was already submitted. Please wait.'
+            });
+        }
+
+        /* ──────────────────────────────────────────────────────
+           LAYER 12b: Phone Cooldown
+           Same phone → max 1 order per 2 minutes.
+           ────────────────────────────────────────────────────── */
+        const normalizedPhone = normalizePhone(phone);
+        if (isPhoneOnCooldown(normalizedPhone)) {
+            logSuspicious(serverIP, 'phone_cooldown', `Phone cooldown: ${normalizedPhone}`);
+            return res.status(429).json({
+                error: 'rate_limited',
+                message: 'Please wait before placing another order.'
             });
         }
 
