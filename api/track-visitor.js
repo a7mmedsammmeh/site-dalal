@@ -104,9 +104,16 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    /* ── Validate origin (reject requests from unknown origins) ── */
-    if (!ALLOWED_ORIGINS.includes(origin)) {
-        return res.status(403).json({ error: 'Forbidden' });
+    /* ── Validate origin ── */
+    /* Same-origin POST requests may not include Origin header,
+       so we only REJECT when Origin IS present and NOT in allowlist.
+       Also check Referer as fallback for extra safety. */
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+        const referer = req.headers.referer || req.headers.referrer || '';
+        const refererAllowed = ALLOWED_ORIGINS.some(o => referer.startsWith(o));
+        if (!refererAllowed) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
     }
 
     /* ── Extract real IP from server headers ── */

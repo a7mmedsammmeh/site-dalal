@@ -196,11 +196,17 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     /* ──────────────────────────────────────────────────────────
-       LAYER 2: Origin Validation (STRICT)
-       Reject requests from unknown origins entirely.
+       LAYER 2: Origin Validation
+       Same-origin POST may not include Origin header, so we
+       only reject when Origin IS present and NOT in allowlist.
+       Referer header is checked as fallback.
        ────────────────────────────────────────────────────────── */
-    if (!ALLOWED_ORIGINS.includes(origin)) {
-        return res.status(403).json({ error: 'Forbidden: origin not allowed' });
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+        const referer = req.headers.referer || req.headers.referrer || '';
+        const refererAllowed = ALLOWED_ORIGINS.some(o => referer.startsWith(o));
+        if (!refererAllowed) {
+            return res.status(403).json({ error: 'Forbidden: origin not allowed' });
+        }
     }
 
     /* ──────────────────────────────────────────────────────────
