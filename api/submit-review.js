@@ -65,7 +65,7 @@ const BOT_PATTERNS = [
 /* ── In-memory rate limiter (per IP) ── */
 const rateLimitMap = new Map();
 const RATE_WINDOW_MS = 24 * 60 * 60 * 1000;  // 24 hours
-const MAX_REVIEWS_PER_IP = 3;
+const MAX_REVIEWS_PER_IP = 10;
 
 function isRateLimited(ip) {
     if (!ip) return false;
