@@ -63,16 +63,16 @@ async function fetchReviews(limit = 20) {
     return data;
 }
 
-/* ─── Visitors (Public — insert only) ─── */
+/* ─── Visitors (BLOCKED — server-side only) ─── */
 
 async function insertVisitor(data) {
-    try {
-        const db = await getSupabase();
-        const { error } = await db.from('visitors').insert([data]);
-        if (error) console.warn('visitor insert:', error.message);
-    } catch (e) {
-        console.warn('insertVisitor failed:', e.message);
-    }
+    // ══════════════════════════════════════════════════════════
+    // ⛔ BLOCKED: Direct insert is disabled for security.
+    // All visitor tracking MUST go through /api/track-visitor
+    // (server-side) which validates origin, rate-limits, and
+    // extracts IP from headers — not from client input.
+    // ══════════════════════════════════════════════════════════
+    throw new Error('Direct visitor insertion is disabled. Use /api/track-visitor instead.');
 }
 
 /* ─── Blocking Checks (via secure RPC — no direct table access) ─── */

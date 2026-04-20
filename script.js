@@ -324,13 +324,13 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 
-/* ─── Visitor Tracking ─── */
+/* ─── Visitor Tracking (server-side via /api/track-visitor) ─── */
 (async function trackVisitor() {
     try {
         // Don't track admin page
         if (window.location.pathname.includes('admin')) return;
 
-        // Gather device info
+        // Gather device info (non-sensitive — server handles IP/geo)
         const ua        = navigator.userAgent;
         const lang      = navigator.language || '';
         const screen_w  = window.screen.width;
@@ -360,10 +360,9 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (/Firefox/i.test(ua)) browser = 'Firefox';
         else if (/Safari/i.test(ua))  browser = 'Safari';
 
-        // Fetch IP — also checks if blocked (server-side, every page load)
-        let ip = null, country = null, city = null;
+        // Check blocked status via /api/get-ip (server-side, every page load)
+        let blocked = false;
         try {
-            // Get device fingerprint first
             const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
             const fpParam = fp ? `?fp=${encodeURIComponent(fp)}` : '';
 
@@ -373,36 +372,36 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (geo.ok) {
                 const g = await geo.json();
-                // Blocked check — server-side (IP or fingerprint), runs on every load
                 if (g.blocked) {
                     window.location.replace('/blocked.html');
                     return;
                 }
-                ip      = g.ip      || null;
-                country = g.country || null;
-                city    = g.city    || null;
             }
         } catch (e) { /* silent */ }
 
         // Session dedup — track visit once per session per page (not per load)
-        // IP block check above already runs every load regardless
         const sessionKey = 'dalal-tracked-' + window.location.pathname;
         if (sessionStorage.getItem(sessionKey)) return;
         sessionStorage.setItem(sessionKey, '1');
 
-        if (typeof insertVisitor === 'function') {
-            const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
-            await insertVisitor({
-                ip, country, city,
+        // Send tracking data to server-side endpoint
+        // Server handles: IP extraction, geolocation, rate limiting, bot detection
+        const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
+        fetch('/api/track-visitor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 fingerprint: fp,
                 device_type, os, browser,
                 screen_res: `${screen_w}x${screen_h}`,
                 lang,
                 timezone: tz,
                 page,
-                referrer,
-                visited_at: new Date().toISOString()
-            });
-        }
+                referrer
+            }),
+            signal: AbortSignal.timeout(5000)
+        }).catch(() => { /* silent fail — never break the site */ });
+
     } catch (e) { /* silent fail — never break the site */ }
 })();
+

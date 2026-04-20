@@ -142,8 +142,8 @@ GRANT EXECUTE ON FUNCTION public.is_fingerprint_blocked(text) TO authenticated;
 -- ─────────────────────────────────────────────────────────────
 -- ✅ orders:              orders_admin_all (authenticated ALL)
 -- ✅ orders:              allow_anon_cancel_pending (anon UPDATE, restricted)
--- ✅ visitors:            visitors_guest_insert (anon INSERT)
 -- ✅ visitors:            visitors_admin_all (authenticated ALL)
+-- ⚠️  visitors:            visitors_guest_insert → DROP (now uses /api/track-visitor with service key)
 -- ✅ activity_logs:       activity_logs_guest_insert (anon INSERT)
 -- ✅ activity_logs:       activity_logs_admin_all (authenticated ALL)
 -- ✅ blocked_ips:         blocked_ips_admin_all (authenticated ALL)

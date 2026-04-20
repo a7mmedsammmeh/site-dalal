@@ -983,14 +983,9 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             }
         }
 
-        /* ── Fetch IP ── */
-        let _soIP = null, _soCountry = null, _soCity = null;
-        if (typeof SpamGuard !== 'undefined') {
-            const geo = await SpamGuard.getClientIP();
-            _soIP = geo.ip;
-            _soCountry = geo.country;
-            _soCity = geo.city;
-        }
+        /* ── Honeypot value (for server-side check) ── */
+        const honeypotEl = document.getElementById('dalal_website');
+        const honeypotVal = honeypotEl ? honeypotEl.value : '';
 
         /* ── Find offer index from product pricing ── */
         let offerIndex = 0;
@@ -1017,10 +1012,8 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                         notes: notes || '',
                         code: product.code || ''
                     }],
-                    client_ip: _soIP,
-                    client_country: _soCountry,
-                    client_city: _soCity,
-                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null
+                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null,
+                    dalal_website: honeypotVal
                 }),
                 signal: AbortSignal.timeout(15000)
             });
@@ -1044,13 +1037,23 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                     alert(isAr ? 'عذراً، هذا المنتج غير متوفر حالياً.' : 'Sorry, this product is currently out of stock.');
                     return;
                 }
-                if (result.error === 'rate_limited') {
+                if (result.error === 'rate_limited' || result.error === 'duplicate') {
                     btn.disabled = false;
                     label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
                     const errEl = document.getElementById('soError');
                     errEl.textContent = isAr
-                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار 30 دقيقة.'
-                        : 'Too many orders in a short time. Please wait 30 minutes.';
+                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار قليلاً.'
+                        : 'Too many orders in a short time. Please wait a moment.';
+                    errEl.classList.add('is-visible');
+                    return;
+                }
+                if (result.error === 'ip_blocked' || result.error === 'device_blocked') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    const errEl = document.getElementById('soError');
+                    errEl.textContent = isAr
+                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصلي معنا.'
+                        : 'Sorry, you cannot place an order. Please contact us.';
                     errEl.classList.add('is-visible');
                     return;
                 }
@@ -1290,14 +1293,9 @@ function checkoutViaSite() {
             }
         }
 
-        /* ── Fetch IP ── */
-        let _coIP = null, _coCountry = null, _coCity = null;
-        if (typeof SpamGuard !== 'undefined') {
-            const geo = await SpamGuard.getClientIP();
-            _coIP = geo.ip;
-            _coCountry = geo.country;
-            _coCity = geo.city;
-        }
+        /* ── Honeypot value (for server-side check) ── */
+        const coHoneypotEl = document.getElementById('dalal_website');
+        const coHoneypotVal = coHoneypotEl ? coHoneypotEl.value : '';
 
         /* ── Build items array with product IDs + offer indices (NO prices from client) ── */
         const items = cart.map(i => {
@@ -1334,10 +1332,8 @@ function checkoutViaSite() {
                     address,
                     lang,
                     items,
-                    client_ip: _coIP,
-                    client_country: _coCountry,
-                    client_city: _coCity,
-                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null
+                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null,
+                    dalal_website: coHoneypotVal
                 }),
                 signal: AbortSignal.timeout(15000)
             });
@@ -1364,13 +1360,23 @@ function checkoutViaSite() {
                         : 'Sorry, some items are now out of stock. Please remove them from your cart.');
                     return;
                 }
-                if (result.error === 'rate_limited') {
+                if (result.error === 'rate_limited' || result.error === 'duplicate') {
                     btn.disabled = false;
                     label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
                     const errEl = document.getElementById('coError');
                     errEl.textContent = isAr
-                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار 30 دقيقة.'
-                        : 'Too many orders in a short time. Please wait 30 minutes.';
+                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار قليلاً.'
+                        : 'Too many orders in a short time. Please wait a moment.';
+                    errEl.classList.add('is-visible');
+                    return;
+                }
+                if (result.error === 'ip_blocked' || result.error === 'device_blocked') {
+                    btn.disabled = false;
+                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
+                    const errEl = document.getElementById('coError');
+                    errEl.textContent = isAr
+                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصلي معنا.'
+                        : 'Sorry, you cannot place an order. Please contact us.';
                     errEl.classList.add('is-visible');
                     return;
                 }

@@ -315,14 +315,9 @@
             }
         }
 
-        /* ── Fetch IP ── */
-        let clientIP = null, clientCountry = null, clientCity = null;
-        if (typeof SpamGuard !== 'undefined') {
-            const geo = await SpamGuard.getClientIP();
-            clientIP      = geo.ip;
-            clientCountry = geo.country;
-            clientCity    = geo.city;
-        }
+        /* ── Honeypot value (for server-side check) ── */
+        const honeypotEl = document.getElementById('dalal_website');
+        const honeypotVal = honeypotEl ? honeypotEl.value : '';
 
         label.innerHTML = `<span class="order-loading-dots"><span></span><span></span><span></span></span>`;
 
@@ -346,10 +341,8 @@
                         notes: '',
                         code: _product.code || ''
                     }],
-                    client_ip: clientIP,
-                    client_country: clientCountry,
-                    client_city: clientCity,
-                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null
+                    fingerprint: (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null,
+                    dalal_website: honeypotVal
                 }),
                 signal: AbortSignal.timeout(15000)
             });
@@ -374,13 +367,23 @@
                     alert(lang === 'ar' ? `عذراً، "${pName}" غير متوفر حالياً.` : `Sorry, "${pName}" is currently out of stock.`);
                     return;
                 }
-                if (result.error === 'rate_limited') {
+                if (result.error === 'rate_limited' || result.error === 'duplicate') {
                     btn.disabled = false;
                     label.textContent = t.submit;
                     const errEl = document.getElementById('orderError');
                     errEl.textContent = lang === 'ar'
-                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار 30 دقيقة.'
-                        : 'Too many orders in a short time. Please wait 30 minutes.';
+                        ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار قليلاً.'
+                        : 'Too many orders in a short time. Please wait a moment.';
+                    errEl.classList.add('is-visible');
+                    return;
+                }
+                if (result.error === 'ip_blocked' || result.error === 'device_blocked') {
+                    btn.disabled = false;
+                    label.textContent = t.submit;
+                    const errEl = document.getElementById('orderError');
+                    errEl.textContent = lang === 'ar'
+                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصل معنا.'
+                        : 'Sorry, you cannot place an order. Please contact us.';
                     errEl.classList.add('is-visible');
                     return;
                 }
