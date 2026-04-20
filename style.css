@@ -348,6 +348,8 @@ body.lang-ar .footer-heading { font-family:var(--font-ar); letter-spacing:0.05em
 .footer-bottom p { font-size:0.72rem; color:var(--text-dim); letter-spacing:0.05em; }
 .footer-credit { font-family:var(--font-en); font-style:italic; }
 body.lang-ar .footer-credit { font-family:var(--font-ar); font-style:normal; }
+.footer-bottom-link { font-size:0.75rem; color:var(--text-dim); text-decoration:none; transition:color 0.15s; }
+.footer-bottom-link:hover { color:var(--gold); }
 
 /* ─── FLOATING BUTTONS ─── */
 .floating-buttons { position:fixed; bottom:2rem; right:2rem; display:flex; flex-direction:column; gap:0.7rem; z-index:900; }

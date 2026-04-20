@@ -82,34 +82,29 @@ async function loadProductsData() {
 
 loadProductsData();
 
-/* ─── Load card ratings after products render ─── */
+/* ─── Load card ratings via SECURE RPC (no direct reviews access) ─── */
 async function loadCardRatings() {
     const ratingEls = document.querySelectorAll('.product-card-rating[data-product-id]');
     if (!ratingEls.length) return;
     try {
         const db = await getSupabase();
         const ids = [...new Set([...ratingEls].map(el => +el.dataset.productId))];
-        const { data: reviews } = await db
-            .from('reviews')
-            .select('product_id, rating')
-            .eq('is_visible', true)
-            .in('product_id', ids);
-        if (!reviews?.length) return;
 
-        // Group by product_id
+        // Use RPC — returns only aggregated data: { product_id, avg_rating, review_count }
+        const { data: ratings, error } = await db.rpc('get_product_ratings', { p_ids: ids });
+        if (error || !ratings?.length) return;
+
+        // Build lookup by product_id
         const byProduct = {};
-        reviews.forEach(r => {
-            if (!byProduct[r.product_id]) byProduct[r.product_id] = [];
-            byProduct[r.product_id].push(r.rating);
-        });
+        ratings.forEach(r => { byProduct[r.product_id] = r; });
 
         ratingEls.forEach(el => {
             const pid = +el.dataset.productId;
-            const ratings = byProduct[pid];
-            if (!ratings?.length) return;
-            const avg = ratings.reduce((s, r) => s + r, 0) / ratings.length;
+            const r = byProduct[pid];
+            if (!r) return;
+            const avg = parseFloat(r.avg_rating);
             const star = avg >= 4.5 ? '★★★★★' : avg >= 3.5 ? '★★★★☆' : avg >= 2.5 ? '★★★☆☆' : '★★☆☆☆';
-            el.innerHTML = `<span style="color:#E0C097;font-size:0.72rem;letter-spacing:0.05em">${star}</span><span style="color:var(--text-dim)">(${ratings.length})</span>`;
+            el.innerHTML = `<span style="color:#E0C097;font-size:0.72rem;letter-spacing:0.05em">${star}</span><span style="color:var(--text-dim)">(${r.review_count})</span>`;
             el.style.display = 'flex';
         });
     } catch { /* silent */ }

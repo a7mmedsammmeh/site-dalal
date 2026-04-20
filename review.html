@@ -356,7 +356,6 @@
     const lang      = localStorage.getItem('dalal-lang') || 'ar';
     const isAr      = lang === 'ar';
 
-    let customerName = '';
     let orderProducts = []; // products from the order
 
     // Apply direction
@@ -412,17 +411,20 @@
     document.getElementById('successSub').textContent    = t.successSub;
     document.getElementById('backLink').textContent      = t.backLink;
 
-    // Fetch order + product data from Supabase
+    // Fetch order via SECURE RPC (no direct table access)
     if (orderRef) {
         getSupabase().then(async db => {
-            // Get order with status check
-            const { data: order } = await db
-                .from('orders')
-                .select('name, products, status')
-                .eq('order_ref', orderRef)
-                .maybeSingle();
+            // ── Use RPC instead of direct table query ──
+            // get_order_by_ref returns: order_ref, status, products, total, created_at, cancel_reason
+            // It does NOT return name/phone/address (intentionally — security)
+            let order = null;
+            try {
+                const { data, error } = await db.rpc('get_order_by_ref', { p_ref: orderRef });
+                if (error) throw error;
+                if (data && data.length > 0) order = data[0];
+            } catch { order = null; }
 
-            // ── Block if order not delivered ──
+            // ── Block if order not found or not delivered ──
             if (!order || order.status !== 'delivered') {
                 document.getElementById('reviewForm').style.display = 'none';
                 document.getElementById('greeting').innerHTML = isAr
@@ -446,13 +448,11 @@
                 return;
             }
 
-            if (order?.name) {
-                customerName = order.name;
-                document.getElementById('greeting').innerHTML = t.greeting(customerName);
-            }
+            // ── Greeting (no customer name — RPC doesn't expose it for security) ──
+            document.getElementById('greeting').innerHTML = t.greeting('');
 
             // Store products for later use in submit
-            if (order?.products) {
+            if (order.products) {
                 try {
                     orderProducts = Array.isArray(order.products)
                         ? order.products
@@ -461,7 +461,7 @@
             }
 
             // Get product info from order products array
-            if (productId && order?.products) {
+            if (productId && order.products) {
                 try {
                     const prods = Array.isArray(order.products)
                         ? order.products
@@ -501,8 +501,9 @@
         });
     }
 
-    // Show name field only for direct reviews (no order ref)
-    if (!orderRef) {
+    // Show name field always (was previously hidden for order-based reviews
+    // since name came from order, but RPC no longer exposes customer name)
+    {
         const nameField = document.getElementById('nameField');
         if (nameField) nameField.style.display = '';
         document.getElementById('labelName').textContent  = isAr ? 'اسمك' : 'Your Name';
@@ -588,9 +589,8 @@
             const rawComment = document.getElementById('reviewComment').value.trim();
             const comment = rawComment || (isAr ? 'بدون تعليق' : 'No comment');
 
-            // Use name from field if no customerName from order
-            const reviewerName = customerName
-                || (document.getElementById('reviewName')?.value.trim() || null);
+            // Use name from input field (customer name not available from RPC for security)
+            const reviewerName = document.getElementById('reviewName')?.value.trim() || null;
 
             // Fetch client IP silently
             let clientIP = null;

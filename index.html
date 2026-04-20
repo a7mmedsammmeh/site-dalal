@@ -283,26 +283,18 @@
     <script src="my-orders.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script>
-    // Load public reviews (general only — no product_id)
+    // Load public reviews via secure RPC (no direct table access)
     (async function() {
         try {
             const db = await getSupabase();
-            const { data: reviews } = await db
-                .from('reviews')
-                .select('*')
-                .eq('is_visible', true)
-                .order('created_at', { ascending: false })
-                .limit(50);
+            const { data: reviews } = await db.rpc('get_public_reviews');
 
             if (!reviews || !reviews.length) return;
 
-            // Deduplicate by order_ref — show only one review per order
+            // Deduplicate by reviewer_name + rating + comment
             const seen = new Set();
             const unique = reviews.filter(r => {
-                // Use order_ref if available, otherwise fall back to name+rating+comment combo
-                const key = r.order_ref
-                    ? r.order_ref
-                    : `${r.reviewer_name||''}|${r.rating}|${r.comment||''}`;
+                const key = `${r.reviewer_name||''}|${r.rating}|${r.comment||''}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
@@ -318,8 +310,8 @@
 
             // Sort: verified buyers first, then rest
             const sorted = [
-                ...unique.filter(r =>  r.order_ref),
-                ...unique.filter(r => !r.order_ref),
+                ...unique.filter(r =>  r.is_verified),
+                ...unique.filter(r => !r.is_verified),
             ];
 
             track.innerHTML = sorted.map(r => {
@@ -328,7 +320,7 @@
                 ).join('');
                 const name = r.reviewer_name || (isAr ? 'عميلة مجهولة' : 'Anonymous');
                 const date = new Date(r.created_at).toLocaleDateString(isAr?'ar-EG':'en-US',{month:'short',year:'numeric'});
-                const verifiedBadge = r.order_ref
+                const verifiedBadge = r.is_verified
                     ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.65rem;font-weight:600;color:#4caf7d;background:rgba(76,175,125,0.1);border:1px solid rgba(76,175,125,0.25);border-radius:20px;padding:0.1rem 0.5rem;white-space:nowrap;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
                         ${isAr ? 'مشتري موثق' : 'Verified Buyer'}

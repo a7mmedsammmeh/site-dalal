@@ -178,6 +178,21 @@
         }
     }
 
+    /* ── Input Sanitization ── */
+    function sanitize(str, maxLen) {
+        if (!str) return '';
+        return str
+            .replace(/<[^>]*>/g, '')   // strip HTML tags
+            .replace(/[<>]/g, '')      // strip any remaining angle brackets
+            .replace(/\s+/g, ' ')      // normalize whitespace
+            .trim()
+            .slice(0, maxLen || 200);
+    }
+    function sanitizePhone(str) {
+        if (!str) return '';
+        return str.replace(/[^0-9+]/g, '').slice(0, 20);
+    }
+
     /* ── Open ── */
     function openOrderModal(product) {
         const wasInjected = _injected;
@@ -278,12 +293,12 @@
         const lang = localStorage.getItem('dalal-lang') || 'ar';
         const t    = T[lang] || T.ar;
 
-        const name     = document.getElementById('orderInputName').value.trim();
-        const phone    = document.getElementById('orderInputPhone').value.trim();
-        const email    = document.getElementById('orderInputEmail').value.trim();
-        const address  = document.getElementById('orderInputAddress').value.trim();
-        const sizeVal  = document.getElementById('orderSelectSize').value;
-        const colorVal = document.getElementById('orderInputColor').value.trim();
+        const name     = sanitize(document.getElementById('orderInputName').value, 100);
+        const phone    = sanitizePhone(document.getElementById('orderInputPhone').value);
+        const email    = (document.getElementById('orderInputEmail').value || '').trim().slice(0, 254);
+        const address  = sanitize(document.getElementById('orderInputAddress').value, 300);
+        const sizeVal  = sanitize(document.getElementById('orderSelectSize').value, 20);
+        const colorVal = sanitize(document.getElementById('orderInputColor').value, 50);
         const offerIdx = document.getElementById('orderSelectOffer').value;
 
         if (!name || !phone || !address || !sizeVal || offerIdx === '') {

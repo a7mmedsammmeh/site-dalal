@@ -6,20 +6,15 @@ let currentProduct   = null;
 let selectedQtyOption  = null;
 let selectedSize       = null;
 
-/* ─── Load product reviews ─── */
+/* ─── Load product reviews via SECURE RPC ─── */
 async function loadProductReviews(product, lang) {
     const isAr = lang === 'ar';
     const PER_PAGE = 3;
 
     try {
         const db = await getSupabase();
-        const { data: reviews } = await db
-            .from('reviews')
-            .select('*')
-            .eq('is_visible', true)
-            .eq('product_id', product.id)
-            .order('created_at', { ascending: false })
-            .limit(50);
+        // Use RPC — returns only safe fields: rating, comment, reviewer_name, created_at, is_pinned, is_verified
+        const { data: reviews, error } = await db.rpc('get_product_reviews', { p_product_id: product.id });
 
         const section  = document.getElementById('productReviewsSection');
         const grid     = document.getElementById('productReviewsGrid');
@@ -34,7 +29,7 @@ async function loadProductReviews(product, lang) {
         }
         if (section) section.style.display = '';
 
-        if (!reviews || !reviews.length) {
+        if (error || !reviews || !reviews.length) {
             if (grid) grid.innerHTML = `<p style="font-size:0.85rem;color:var(--text-dim);padding:0.5rem 0">${isAr ? 'لا توجد تقييمات بعد — كوني أول من يقيّم!' : 'No reviews yet — be the first!'}</p>`;
             return;
         }
@@ -69,7 +64,7 @@ async function loadProductReviews(product, lang) {
         // Sort: pinned first, then verified buyers, then rest
         const sorted = [...reviews].sort((a, b) => {
             if (b.is_pinned !== a.is_pinned) return (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
-            if (!!b.order_ref !== !!a.order_ref) return !!b.order_ref ? 1 : -1;
+            if (b.is_verified !== a.is_verified) return b.is_verified ? 1 : -1;
             return 0;
         });
 
@@ -79,7 +74,7 @@ async function loadProductReviews(product, lang) {
             ).join('');
             const name = r.reviewer_name || (isAr ? 'عميلة مجهولة' : 'Anonymous');
             const date = new Date(r.created_at).toLocaleDateString(isAr?'ar-EG':'en-US',{month:'short',year:'numeric'});
-            const verifiedBadge = r.order_ref
+            const verifiedBadge = r.is_verified
                 ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.65rem;font-weight:600;color:#4caf7d;background:rgba(76,175,125,0.1);border:1px solid rgba(76,175,125,0.25);border-radius:20px;padding:0.1rem 0.5rem;white-space:nowrap;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
                     ${isAr ? 'مشتري موثق' : 'Verified Buyer'}
