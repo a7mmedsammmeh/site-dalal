@@ -115,7 +115,7 @@ async function fetchAllReviews() {
     const db = await _requireAdmin();
     const { data, error } = await db
         .from('reviews')
-        .select('id, name, rating, comment, is_visible, is_pinned, created_at')
+        .select('id, reviewer_name, rating, comment, order_ref, product_id, client_ip, is_visible, is_pinned, created_at')
         .order('created_at', { ascending: false });
     if (error) throw error;
     return data;
