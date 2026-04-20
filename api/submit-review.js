@@ -152,18 +152,18 @@ export default async function handler(req, res) {
         const body = req.body;
         if (!body) return res.status(400).json({ error: 'Missing body' });
 
-        /* ── Honeypot ── */
+        /* ── Honeypot (log only for now) ── */
         if (body.dalal_website && body.dalal_website.trim() !== '') {
             logSuspicious(ip, null, 'review_honeypot', 'Honeypot triggered');
-            return res.status(200).json({ success: true }); // silent reject
+            // Don't block — just log for monitoring
         }
 
-        /* ── Timing check ── */
+        /* ── Timing check (log only — don't block) ── */
         if (body.form_opened_at) {
             const elapsed = Date.now() - parseInt(body.form_opened_at);
             if (elapsed < MIN_FILL_TIME_MS) {
                 logSuspicious(ip, null, 'review_too_fast', `Filled in ${elapsed}ms`);
-                return res.status(200).json({ success: true }); // silent reject
+                // Don't block — just log for monitoring
             }
         }
 
