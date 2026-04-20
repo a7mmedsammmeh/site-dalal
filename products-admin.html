@@ -1041,7 +1041,7 @@ async function saveProduct() {
     }
 }
 
-// Initialize page — check auth first
+// Initialize page — check auth + admin role first
 document.addEventListener('DOMContentLoaded', async () => {
     // Wait for supabase.js to be ready
     let attempts = 0;
@@ -1052,22 +1052,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const db = await getSupabase();
-        const { data: { session } } = await db.auth.getSession();
-        if (session) {
-            loadProductsManagement();
+        let { data: { session } } = await db.auth.getSession();
+
+        // Try refreshing session if no active session
+        if (!session) {
+            const { data: refreshed } = await db.auth.refreshSession();
+            session = refreshed?.session;
+        }
+
+        if (!session) {
+            window.location.href = 'admin.html';
             return;
         }
 
-        // Try refreshing session once before redirecting
-        const { data: refreshed } = await db.auth.refreshSession();
-        if (refreshed?.session) {
-            loadProductsManagement();
-        } else {
+        // ── Verify admin role via DB ──
+        const { data: isAdmin, error } = await db.rpc('is_admin');
+        if (error || !isAdmin) {
+            await db.auth.signOut();
             window.location.href = 'admin.html';
+            return;
         }
+
+        loadProductsManagement();
     } catch(e) {
         console.error('Auth check error:', e);
-        loadProductsManagement(); // fallback — let Supabase RLS handle security
+        window.location.href = 'admin.html';
     }
 });
 </script>

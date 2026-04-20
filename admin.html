@@ -699,16 +699,24 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     async function initAdmin() {
         const db = await getSupabase();
         const { data: { session } } = await db.auth.getSession();
-        if (session) {
-            loadOrders();
-            subscribeToNewOrders();
-        } else {
+        if (!session) {
             document.body.style.overflow = 'hidden';
             showLoginUI(db);
+            return;
         }
+        // Verify admin role via DB
+        const { data: isAdmin, error } = await db.rpc('is_admin');
+        if (error || !isAdmin) {
+            await db.auth.signOut();
+            document.body.style.overflow = 'hidden';
+            showLoginUI(db, '⛔ ليس لديك صلاحية الوصول لهذه الصفحة');
+            return;
+        }
+        loadOrders();
+        subscribeToNewOrders();
     }
 
-    function showLoginUI(db) {
+    function showLoginUI(db, initialError) {
         document.body.insertAdjacentHTML('beforeend', `
         <div id="loginOverlay" style="position:fixed;inset:0;z-index:99999;background:#0D0D0D;display:flex;align-items:center;justify-content:center;font-family:'Tajawal','Poppins',sans-serif;animation:loginFadeIn 0.4s ease;">
             <style>
@@ -736,6 +744,13 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             </div>
         </div>`);
 
+        // Show initial error (e.g. "not an admin" after redirect)
+        if (initialError) {
+            const err = document.getElementById('loginError');
+            err.textContent = initialError;
+            err.style.display = 'block';
+        }
+
         async function tryLogin() {
             const email = document.getElementById('loginEmail').value.trim();
             const pass  = document.getElementById('loginPass').value;
@@ -747,10 +762,24 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             if (error) {
                 btn.disabled = false; btn.textContent = 'دخول';
                 const err = document.getElementById('loginError');
+                err.textContent = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
                 err.style.display = 'block';
                 document.getElementById('loginPass').value = '';
                 setTimeout(() => err.style.display = 'none', 3000);
             } else {
+                // ── Verify admin role after successful login ──
+                btn.innerHTML = 'جاري التحقق من الصلاحية <span class="ls"></span>';
+                const { data: isAdmin, error: roleErr } = await db.rpc('is_admin');
+                if (roleErr || !isAdmin) {
+                    // Not an admin — sign out immediately
+                    await db.auth.signOut();
+                    btn.disabled = false; btn.textContent = 'دخول';
+                    const err = document.getElementById('loginError');
+                    err.textContent = '⛔ هذا الحساب ليس لديه صلاحية الوصول';
+                    err.style.display = 'block';
+                    document.getElementById('loginPass').value = '';
+                    return;
+                }
                 const ov = document.getElementById('loginOverlay');
                 ov.style.transition = 'opacity 0.3s'; ov.style.opacity = '0';
                 setTimeout(() => { ov.remove(); document.body.style.overflow = ''; loadOrders(); subscribeToNewOrders(); }, 300);
@@ -764,6 +793,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.adminLogout = async function() {
         const db = await getSupabase();
         await db.auth.signOut();
+        if (typeof _adminVerified !== 'undefined') _adminVerified = false;
         location.reload();
     };
 
