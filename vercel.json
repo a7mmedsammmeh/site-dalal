@@ -22,13 +22,13 @@
     {
       "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "dalal-lin.vercel.app" }],
-      "destination": "https://dalalwear.shop/:path",
+      "destination": "https://www.dalalwear.shop/:path",
       "permanent": true
     },
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.dalalwear.shop" }],
-      "destination": "https://dalalwear.shop/:path",
+      "has": [{ "type": "host", "value": "dalalwear.shop" }],
+      "destination": "https://www.dalalwear.shop/:path",
       "permanent": true
     }
   ],
