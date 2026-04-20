@@ -41,27 +41,31 @@ async function syncLocalOrders() {
         const db = await getSupabase();
         const synced = [];
 
-        // Check each order individually to distinguish between "no access" vs "deleted"
         for (const o of orders) {
             if (!o.ref) {
                 synced.push(o);
                 continue;
             }
 
-            const { data, error } = await db
-                .from('orders')
-                .select('order_ref, status, cancel_reason')
-                .eq('order_ref', o.ref)
-                .maybeSingle();
+            try {
+                // Use RPC function (anon has no direct SELECT on orders)
+                const { data, error } = await db.rpc('get_order_by_ref', { p_ref: o.ref });
 
-            // If error or explicitly null → order was deleted, skip it
-            if (error || data === null) continue;
+                if (error) {
+                    // RPC error → keep order as-is (don't delete it)
+                    synced.push(o);
+                    continue;
+                }
 
-            // If data exists → update status
-            if (data) {
-                synced.push({ ...o, status: data.status, cancel_reason: data.cancel_reason });
-            } else {
-                // No data but no error → keep as-is (RLS might be blocking)
+                if (!data || data.length === 0) {
+                    // Order truly doesn't exist → was deleted by admin
+                    continue;
+                }
+
+                // Update local status from server
+                synced.push({ ...o, status: data[0].status, cancel_reason: data[0].cancel_reason });
+            } catch {
+                // Network error → keep order as-is
                 synced.push(o);
             }
         }
