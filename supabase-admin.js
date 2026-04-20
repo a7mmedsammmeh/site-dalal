@@ -17,15 +17,26 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Auth Guard ──────────────────────────────────────────────
-   Verifies an active Supabase auth session exists.
+   Verifies an active Supabase auth session exists AND the user
+   is in the admins table. Uses is_admin() RPC (SECURITY DEFINER).
    Unlike a simple IS_ADMIN flag, this CANNOT be faked from
-   the console — it requires real credentials.
+   the console — it requires real credentials + DB-level role.
    ──────────────────────────────────────────────────────────── */
+let _adminVerified = false; // Cache per page load
+
 async function _requireAdmin() {
     const db = await getSupabase();
     const { data: { session } } = await db.auth.getSession();
     if (!session) {
         throw new Error('⛔ Unauthorized: Admin session required');
+    }
+    // Verify admin role (cached after first check per page load)
+    if (!_adminVerified) {
+        const { data: isAdmin, error } = await db.rpc('is_admin');
+        if (error || !isAdmin) {
+            throw new Error('⛔ Unauthorized: Not an admin');
+        }
+        _adminVerified = true;
     }
     return db;
 }
