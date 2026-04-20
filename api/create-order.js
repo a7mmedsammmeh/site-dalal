@@ -173,6 +173,18 @@ function sanitize(val, maxLen) {
     return val.substring(0, maxLen).trim();
 }
 
+/* ── Normalize Egyptian phone number ── */
+/* Strips country codes & leading zeros so blocking works for ALL formats:
+   01221808060 / +201221808060 / 201221808060 / 00201221808060 → 1221808060 */
+function normalizePhone(phone) {
+    if (!phone) return '';
+    let cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0020') && cleaned.length >= 14) cleaned = cleaned.slice(4);
+    else if (cleaned.startsWith('20') && cleaned.length >= 12) cleaned = cleaned.slice(2);
+    if (cleaned.startsWith('0') && cleaned.length >= 11) cleaned = cleaned.slice(1);
+    return cleaned;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN HANDLER
@@ -316,11 +328,13 @@ export default async function handler(req, res) {
         }
 
         try {
-            const phoneCheck = await supabaseGet(
+            const normalizedInput = normalizePhone(phone);
+            const blockedPhones = await supabaseGet(
                 'blocked_phones',
-                `phone=eq.${encodeURIComponent(phone)}&select=phone,reason&limit=1`
+                `select=phone,reason`
             );
-            if (phoneCheck.length > 0) {
+            const matchedBlock = blockedPhones.find(bp => normalizePhone(bp.phone) === normalizedInput);
+            if (matchedBlock) {
                 return res.status(403).json({
                     error: 'phone_blocked',
                     message: 'This phone number is blocked from placing orders.'

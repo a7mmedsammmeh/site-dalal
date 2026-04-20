@@ -231,9 +231,12 @@ async function blockPhone(phone, reason = null) {
     if (!_PHONE_RE.test(phone)) throw new Error(`Invalid phone format: ${phone}`);
     if (reason !== null) _validStr(reason, 'reason', 500);
 
+    // Normalize phone: strip country codes & leading zeros so blocking works for all formats
+    const normalized = (typeof normalizePhone === 'function') ? normalizePhone(phone) : phone;
+
     const db = await _requireAdmin();
     const { error } = await db.from('blocked_phones').insert([{
-        phone,
+        phone: normalized,
         reason,
         blocked_at: new Date().toISOString()
     }]);

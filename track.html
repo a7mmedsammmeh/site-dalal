@@ -328,7 +328,7 @@
     <div class="track-header">
         <div class="track-logo">DALAL</div>
         <h1 class="track-title" id="trackPageTitle">تتبع طلبك</h1>
-        <p class="track-subtitle" id="trackPageSub">أدخلي رقم الطلب (مثال: DL-ABCD1234EFGH)</p>
+        <p class="track-subtitle" id="trackPageSub">أدخلي رقم الطلب — يبدأ بـ DL- ويتبعه حروف وأرقام (مثال: DL-ABCD1234EFGH)</p>
         <div style="display:flex;align-items:center;justify-content:center;gap:0.4rem;margin-top:0.4rem;">
             <span id="trackHelpLabel" style="font-size:0.78rem;color:var(--text-dim)">كيف أجد رقم طلبي؟</span>
             <button class="help-btn" id="trackHelpBtn" onclick="showTrackHelp(this)" aria-label="مساعدة">?</button>
@@ -470,7 +470,7 @@
         /* Accepts old refs (DL-XXXXXX, 6 chars) and new refs (DL-XXXXXXXXXXXX, 12 chars) */
         if (!/^DL-[A-Z2-9]{5,12}$/.test(raw)) {
             document.getElementById('trackResults').innerHTML =
-                `<div class="track-empty">${lang === 'ar' ? 'رقم الطلب غير صحيح. يجب أن يبدأ بـ DL-' : 'Invalid order ID. Must start with DL-'}</div>`;
+                `<div class="track-empty">${lang === 'ar' ? 'هذا الرقم غير صحيح' : 'Invalid order number'}</div>`;
             return;
         }
 

@@ -97,11 +97,25 @@ async function isIPBlockedWithReason(ip) {
     } catch { return { blocked: false, reason: null }; }
 }
 
+/**
+ * Normalize Egyptian phone number — strips country codes & leading zeros.
+ * 01221808060 / +201221808060 / 201221808060 / 00201221808060 → 1221808060
+ */
+function normalizePhone(phone) {
+    if (!phone) return '';
+    let cleaned = phone.replace(/[^0-9]/g, '');      // digits only
+    if (cleaned.startsWith('0020') && cleaned.length >= 14) cleaned = cleaned.slice(4);
+    else if (cleaned.startsWith('20') && cleaned.length >= 12) cleaned = cleaned.slice(2);
+    if (cleaned.startsWith('0') && cleaned.length >= 11) cleaned = cleaned.slice(1);
+    return cleaned;
+}
+
 async function isPhoneBlocked(phone) {
     if (!phone) return { blocked: false, reason: null };
     try {
         const db = await getSupabase();
-        const { data, error } = await db.rpc('is_phone_blocked', { p_phone: phone });
+        const normalized = normalizePhone(phone);
+        const { data, error } = await db.rpc('is_phone_blocked', { p_phone: normalized });
         if (error || !data || !data.length) return { blocked: false, reason: null };
         return { blocked: true, reason: data[0].reason || null };
     } catch { return { blocked: false, reason: null }; }
