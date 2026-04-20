@@ -136,6 +136,18 @@ async function getProductStock(productId) {
     } catch { return { in_stock: true, visibility_status: 'visible' }; }
 }
 
+/* ─── Fetch ALL product stock (Public — for products-data.js) ─── */
+async function fetchAllProductStock() {
+    try {
+        const db = await getSupabase();
+        const { data, error } = await db
+            .from('product_stock')
+            .select('product_id, in_stock, visibility_status');
+        if (error) return [];
+        return data || [];
+    } catch { return []; }
+}
+
 /* ─── Products (Public — read-only for product catalog) ─── */
 
 async function fetchAllProducts() {

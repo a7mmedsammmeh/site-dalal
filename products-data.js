@@ -58,10 +58,10 @@ async function loadProductsData() {
             if (p.slug) DALAL_PRODUCTS_SLUG_MAP[p.slug] = p;
         });
 
-        // Load stock status from Supabase
-        if (typeof fetchProductStock === 'function') {
+        // Load stock status from Supabase (public function — works for visitors)
+        if (typeof fetchAllProductStock === 'function') {
             try {
-                const stockData = await fetchProductStock();
+                const stockData = await fetchAllProductStock();
                 DALAL_PRODUCTS_STOCK = {};
                 stockData.forEach(s => {
                     DALAL_PRODUCTS_STOCK[s.product_id] = {

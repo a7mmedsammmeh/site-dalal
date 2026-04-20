@@ -314,6 +314,51 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 }
 .pm-move-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
 .pm-move-btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+/* ── Filter & Search Bar ── */
+.pm-toolbar {
+    display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;
+}
+.pm-search {
+    flex:1; min-width:200px; background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--r); padding:0.55rem 0.85rem 0.55rem 2.2rem; color:var(--text);
+    font-family:inherit; font-size:0.82rem; outline:none; transition:border-color 0.2s;
+    direction:rtl;
+}
+.pm-search:focus { border-color:var(--gold-dim); }
+.pm-search::placeholder { color:var(--text-dim); }
+.pm-search-wrap { position:relative; flex:1; min-width:200px; }
+.pm-search-wrap svg {
+    position:absolute; top:50%; right:0.7rem; transform:translateY(-50%);
+    color:var(--text-dim); pointer-events:none;
+}
+.pm-filters {
+    display:flex; gap:0.35rem; flex-wrap:wrap;
+}
+.pm-filter-btn {
+    padding:0.45rem 0.85rem; border-radius:20px; font-size:0.75rem; font-weight:600;
+    border:1px solid var(--border); background:var(--bg-card); color:var(--text-muted);
+    cursor:pointer; font-family:inherit; transition:all 0.2s; white-space:nowrap;
+}
+.pm-filter-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
+.pm-filter-btn.active { background:rgba(224,192,151,0.12); border-color:var(--gold-dim); color:var(--gold); }
+.pm-filter-btn .pm-filter-count {
+    display:inline-block; min-width:16px; height:16px; line-height:16px;
+    text-align:center; border-radius:8px; font-size:0.65rem; font-weight:700;
+    margin-inline-start:0.35rem; background:rgba(224,192,151,0.15); color:var(--gold-dim);
+}
+.pm-filter-btn.active .pm-filter-count {
+    background:var(--gold); color:var(--bg);
+}
+.pm-no-results {
+    grid-column:1/-1; text-align:center; padding:3rem 1rem; color:var(--text-dim);
+    font-size:0.9rem;
+}
+@media(max-width:640px) {
+    .pm-toolbar { flex-direction:column; }
+    .pm-search-wrap { width:100%; }
+    .pm-filters { width:100%; }
+}
 </style>
 </head>
 <body>
@@ -366,6 +411,20 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 </nav>
 
 <main class="admin-main">
+    <!-- Filter & Search Toolbar -->
+    <div class="pm-toolbar">
+        <div class="pm-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="pm-search" id="pmSearch" placeholder="ابحث بالاسم أو الكود..." oninput="applyFilters()">
+        </div>
+        <div class="pm-filters" id="pmFilters">
+            <button class="pm-filter-btn active" data-filter="all" onclick="setFilter('all')">الكل <span class="pm-filter-count" id="countAll">0</span></button>
+            <button class="pm-filter-btn" data-filter="visible" onclick="setFilter('visible')">✓ متوفر <span class="pm-filter-count" id="countVisible">0</span></button>
+            <button class="pm-filter-btn" data-filter="out_of_stock" onclick="setFilter('out_of_stock')">⚠ غير متوفر <span class="pm-filter-count" id="countOos">0</span></button>
+            <button class="pm-filter-btn" data-filter="hidden" onclick="setFilter('hidden')">✕ مخفي <span class="pm-filter-count" id="countHidden">0</span></button>
+        </div>
+    </div>
+
     <div class="pm-reorder-hint">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         اسحب المنتجات لتغيير ترتيبها — ثم اضغط "حفظ الترتيب"
@@ -500,6 +559,9 @@ let _pmProducts = [];
 let _editingProductId = null;
 let _orderChanged = false;
 let _dragSrcId = null;
+let _activeFilter = 'all';
+let _searchQuery = '';
+let _stockStatuses = {}; // { productId: 'visible' | 'out_of_stock' | 'hidden' }
 
 // Toast function
 function showAdminToast(message) {
@@ -507,6 +569,54 @@ function showAdminToast(message) {
     toast.textContent = message;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Filter & Search
+function setFilter(filter) {
+    _activeFilter = filter;
+    document.querySelectorAll('.pm-filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.filter === filter);
+    });
+    applyFilters();
+}
+
+function applyFilters() {
+    _searchQuery = (document.getElementById('pmSearch')?.value || '').trim().toLowerCase();
+    renderProductsManagement();
+}
+
+function getFilteredProducts() {
+    return _pmProducts.filter(p => {
+        // Filter by stock status
+        const status = _stockStatuses[p.id] || 'visible';
+        if (_activeFilter !== 'all' && status !== _activeFilter) return false;
+
+        // Filter by search
+        if (_searchQuery) {
+            const nameAr = (p.name?.ar || '').toLowerCase();
+            const nameEn = (p.name?.en || '').toLowerCase();
+            const code = (p.code || '').toLowerCase();
+            if (!nameAr.includes(_searchQuery) && !nameEn.includes(_searchQuery) && !code.includes(_searchQuery)) {
+                return false;
+            }
+        }
+        return true;
+    });
+}
+
+function updateFilterCounts() {
+    let visible = 0, oos = 0, hidden = 0;
+    _pmProducts.forEach(p => {
+        const s = _stockStatuses[p.id] || 'visible';
+        if (s === 'visible') visible++;
+        else if (s === 'out_of_stock') oos++;
+        else if (s === 'hidden') hidden++;
+    });
+    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    el('countAll', _pmProducts.length);
+    el('countVisible', visible);
+    el('countOos', oos);
+    el('countHidden', hidden);
 }
 
 // Load products management
@@ -523,6 +633,7 @@ async function loadProductsManagement() {
 // Render products grid
 function renderProductsManagement() {
     const grid = document.getElementById('pmGrid');
+    const filtered = getFilteredProducts();
     
     if (!_pmProducts.length) {
         grid.innerHTML = `
@@ -535,7 +646,15 @@ function renderProductsManagement() {
         return;
     }
 
-    grid.innerHTML = _pmProducts.map(p => {
+    if (!filtered.length) {
+        grid.innerHTML = `<div class="pm-no-results">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40" style="opacity:0.3;margin-bottom:0.75rem;display:block;margin-inline:auto;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            لا توجد منتجات مطابقة
+        </div>`;
+        return;
+    }
+
+    grid.innerHTML = filtered.map(p => {
         const imgSrc = p.main_image_url || 'images/dalal-logo.png';
         
         return `<div class="pm-card" data-id="${p.id}">
@@ -720,7 +839,10 @@ async function loadProductStockStatuses() {
             if (select) {
                 select.value = s.visibility_status || 'visible';
             }
+            // Track for filters
+            _stockStatuses[s.product_id] = s.visibility_status || 'visible';
         });
+        updateFilterCounts();
     } catch(e) {
         console.warn('Could not load stock statuses:', e);
     }
@@ -731,6 +853,10 @@ async function updateProductStockStatus(productId, visibilityStatus) {
     try {
         const inStock = visibilityStatus === 'visible';
         await updateProductStock(productId, inStock, visibilityStatus);
+        
+        // Update local stock status for filters
+        _stockStatuses[productId] = visibilityStatus;
+        updateFilterCounts();
         
         const statusText = visibilityStatus === 'visible' ? 'متوفر' : 
                          visibilityStatus === 'out_of_stock' ? 'غير متوفر' : 'مخفي';
