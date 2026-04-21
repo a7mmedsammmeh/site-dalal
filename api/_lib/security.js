@@ -218,14 +218,14 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
 }
 
 /**
- * Vercel KV rate limiter — FAIL CLOSED when KV is configured.
+ * Vercel KV rate limiter — FAIL OPEN when KV errors.
  *
  * Returns:
  *   true  = rate limited (block)
  *   false = within limits (allow)
- *   null  = KV not configured at all (caller should use DB fallback)
+ *   null  = KV not configured or unavailable (caller should use DB fallback)
  *
- * CRITICAL: If KV IS configured but fails/times out → returns true (BLOCK).
+ * If KV IS configured but fails/times out → returns null (fall through to DB).
  */
 async function kvRateLimit(key, windowMs, maxHits) {
     if (!KV_CONFIGURED) return null; // KV not configured — caller uses DB fallback
@@ -248,20 +248,21 @@ async function kvRateLimit(key, windowMs, maxHits) {
         });
 
         if (!incrRes.ok) {
-            // KV configured but HTTP error → FAIL CLOSED
+            // KV configured but HTTP error → fall through to DB
             logSecurityEvent('critical', 'kv:http_error', { detail: `status:${incrRes.status}` });
-            return true;
+            return null;
         }
 
         const results = await incrRes.json();
         const count = results?.[0]?.result || 0;
         return count > maxHits;
     } catch (err) {
-        // KV configured but error/timeout → FAIL CLOSED
+        // KV configured but error/timeout → fall through to DB
         logSecurityEvent('critical', 'kv:failure', { detail: err?.message || 'timeout' });
-        return true;
+        return null;
     }
 }
+
 
 /**
  * DB-backed rate limiting — counts recent records by field.
