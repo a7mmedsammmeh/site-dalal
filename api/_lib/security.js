@@ -1,17 +1,34 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Shared Security Utilities
+   DALAL — Shared Security Utilities (v4 — Production Hardened)
    ─────────────────────────────────────────────────────────────
    Centralized security primitives used by all API endpoints.
    Import once, use everywhere — no duplication.
+
+   v4 Changes:
+   - KV rate limit: FAIL CLOSED when KV configured but unavailable
+   - Composite client ID: hash(IP + UA + fingerprint + headers)
+   - HMAC anti-replay validation for sensitive endpoints
+   - Anomaly detection with auto-blocking
+   - Logging with severity levels + async batching
+   - Strict timeout enforcement
+   - Security headers helper
+   - Global rate limiting
    ═══════════════════════════════════════════════════════════════ */
 
-import { createHash, randomBytes } from 'crypto';
-/* ── Environment (fail-fast if missing) ── */
+import { createHash, randomBytes, timingSafeEqual as _timingSafeEqual, createHmac } from 'crypto';
+
+/* ══════════════════════════════════════════════════════════════════
+   ENVIRONMENT
+   ══════════════════════════════════════════════════════════════════ */
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const KV_REST_API_URL = process.env.KV_REST_API_URL || null;
 const KV_REST_API_TOKEN = process.env.KV_REST_API_TOKEN || null;
+const HMAC_SECRET = process.env.HMAC_SECRET || null;
+
+const KV_CONFIGURED = !!(KV_REST_API_URL && KV_REST_API_TOKEN);
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !SUPABASE_ANON_KEY) {
     console.error(
@@ -26,9 +43,39 @@ const SERVICE_HEADERS = {
     'Content-Type': 'application/json'
 };
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
+   TIMEOUT CONSTANTS
+   ─────────────────────────────────────────────────────────────────
+   Strict timeouts for ALL external calls.
+   Security checks: 3s (fail closed on timeout)
+   Non-critical: 4s (fail safe on timeout)
+   ══════════════════════════════════════════════════════════════════ */
+
+const TIMEOUT = {
+    SECURITY: 3000,   // security-critical: block checks, rate limits
+    DB_WRITE: 5000,   // database writes (orders, reviews)
+    DB_READ: 4000,    // database reads (pricing, products)
+    GEO: 2000,        // geo-ip (non-critical)
+    KV: 2000,         // Vercel KV operations
+    ADMIN: 4000       // admin verification
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   SECURITY HEADERS
+   ══════════════════════════════════════════════════════════════════ */
+
+function setSecurityHeaders(res) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-XSS-Protection', '0');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CORS & ORIGIN VALIDATION
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 const ALLOWED_ORIGINS = [
     'https://dalalwear.shop',
@@ -36,10 +83,6 @@ const ALLOWED_ORIGINS = [
     'https://dalal-lin.vercel.app'
 ];
 
-/**
- * Sets CORS headers using strict origin allowlist.
- * Never uses wildcard (*).
- */
 function setCorsHeaders(req, res, methods = 'POST, OPTIONS') {
     const origin = req.headers.origin || '';
     if (ALLOWED_ORIGINS.includes(origin)) {
@@ -47,13 +90,11 @@ function setCorsHeaders(req, res, methods = 'POST, OPTIONS') {
         res.setHeader('Vary', 'Origin');
     }
     res.setHeader('Access-Control-Allow-Methods', methods);
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Timestamp, X-Request-Signature');
+    // Always set security headers
+    setSecurityHeaders(res);
 }
 
-/**
- * Validates both Origin and Referer headers against allowlist.
- * Returns true if at least one is valid.
- */
 function validateOrigin(req) {
     const origin = req.headers.origin || '';
     const referer = req.headers.referer || req.headers.referrer || '';
@@ -62,45 +103,62 @@ function validateOrigin(req) {
     return isValidOrigin || isValidReferer;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    IP EXTRACTION (Trusted Headers Only)
-   ─────────────────────────────────────────────────────────────
-   Priority order:
-   1. x-vercel-forwarded-for (set by Vercel — CANNOT be spoofed)
-   2. x-real-ip (set by infrastructure)
-   3. x-forwarded-for (LAST — can be spoofed by clients)
-   4. socket remoteAddress (direct connection)
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 function getServerIP(req) {
-    // Vercel sets this — most trusted
     const vercelIP = req.headers['x-vercel-forwarded-for'];
     if (vercelIP) return vercelIP.split(',')[0].trim();
-
-    // Infrastructure proxy header
     const realIP = req.headers['x-real-ip'];
     if (realIP) return realIP.trim();
-
-    // Least trusted — only use as last resort
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) return forwarded.split(',')[0].trim();
-
     return req.socket?.remoteAddress || null;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
+   COMPOSITE CLIENT ID (Strengthened Fingerprint)
+   ─────────────────────────────────────────────────────────────────
+   Combines multiple signals into a single identifier:
+   IP + User-Agent hash + Accept headers + client fingerprint
+   Much harder to spoof than fingerprint alone.
+   ══════════════════════════════════════════════════════════════════ */
+
+function getCompositeId(ip, req, fingerprint) {
+    const ua = req.headers['user-agent'] || '';
+    const accept = req.headers['accept'] || '';
+    const acceptLang = req.headers['accept-language'] || '';
+    const acceptEnc = req.headers['accept-encoding'] || '';
+    const raw = `${ip || 'no-ip'}|${ua}|${accept}|${acceptLang}|${acceptEnc}|${fingerprint || 'no-fp'}`;
+    return createHash('sha256').update(raw).digest('hex').slice(0, 24);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GLOBAL RATE LIMITING (per-instance, all endpoints)
+   ─────────────────────────────────────────────────────────────────
+   First line of defense: blocks excessive traffic per IP
+   before hitting any endpoint-specific logic.
+   100 requests / minute per IP across all endpoints.
+   ══════════════════════════════════════════════════════════════════ */
+
+const globalRateLimiter = createMemoryRateLimiter({ maxEntries: 5000, windowMs: 60000, maxHits: 100 });
+
+function checkGlobalRateLimit(ip) {
+    if (!ip) return false;
+    return globalRateLimiter.check(ip);
+}
+
+/* ══════════════════════════════════════════════════════════════════
    RATE LIMITING
-   ─────────────────────────────────────────────────────────────
+   ─────────────────────────────────────────────────────────────────
    Hybrid approach:
    1. Vercel KV (Redis) — primary, cross-instance
-   2. Supabase DB — fallback if KV not configured
+      → FAIL CLOSED if KV configured but unavailable
+   2. Supabase DB — fallback ONLY if KV not configured
    3. In-memory Map — fast first-line defense (per instance)
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
-/**
- * Creates an in-memory rate limiter with max-size eviction.
- * Prevents memory DoS by capping Map size.
- */
 function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits = 3 } = {}) {
     const map = new Map();
 
@@ -113,7 +171,6 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
 
     function evictOldest() {
         if (map.size <= maxEntries) return;
-        // Delete oldest entries (first inserted)
         const excess = map.size - maxEntries;
         let deleted = 0;
         for (const key of map.keys()) {
@@ -128,7 +185,6 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
             if (!key) return false;
             const now = Date.now();
 
-            // Periodic cleanup
             if (map.size > maxEntries * 0.8) {
                 cleanup();
                 evictOldest();
@@ -137,11 +193,19 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
             const record = map.get(key);
             if (!record || now - record.windowStart > windowMs) {
                 map.set(key, { count: 1, windowStart: now });
-                return false; // not limited
+                return false;
             }
 
             record.count++;
-            return record.count > maxHits; // true = rate limited
+            return record.count > maxHits;
+        },
+
+        getCount(key) {
+            if (!key) return 0;
+            const record = map.get(key);
+            if (!record) return 0;
+            if (Date.now() - record.windowStart > windowMs) return 0;
+            return record.count;
         },
 
         updateConfig(newWindowMs, newMaxHits) {
@@ -154,17 +218,22 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
 }
 
 /**
- * Vercel KV rate limiter (Redis-backed, cross-instance).
- * Falls back to Supabase DB if KV is not configured.
+ * Vercel KV rate limiter — FAIL CLOSED when KV is configured.
+ *
+ * Returns:
+ *   true  = rate limited (block)
+ *   false = within limits (allow)
+ *   null  = KV not configured at all (caller should use DB fallback)
+ *
+ * CRITICAL: If KV IS configured but fails/times out → returns true (BLOCK).
  */
 async function kvRateLimit(key, windowMs, maxHits) {
-    if (!KV_REST_API_URL || !KV_REST_API_TOKEN) return null; // KV not configured
+    if (!KV_CONFIGURED) return null; // KV not configured — caller uses DB fallback
 
     try {
         const kvKey = `rl:${key}`;
         const windowSec = Math.ceil(windowMs / 1000);
 
-        // INCR + EXPIRE pattern
         const incrRes = await fetch(`${KV_REST_API_URL}/pipeline`, {
             method: 'POST',
             headers: {
@@ -175,28 +244,36 @@ async function kvRateLimit(key, windowMs, maxHits) {
                 ['INCR', kvKey],
                 ['EXPIRE', kvKey, windowSec, 'NX']
             ]),
-            signal: AbortSignal.timeout(2000)
+            signal: AbortSignal.timeout(TIMEOUT.KV)
         });
 
-        if (!incrRes.ok) return null;
+        if (!incrRes.ok) {
+            // KV configured but HTTP error → FAIL CLOSED
+            logSecurityEvent('critical', 'kv:http_error', { detail: `status:${incrRes.status}` });
+            return true;
+        }
 
         const results = await incrRes.json();
         const count = results?.[0]?.result || 0;
         return count > maxHits;
-    } catch {
-        return null; // KV error — fall through to other methods
+    } catch (err) {
+        // KV configured but error/timeout → FAIL CLOSED
+        logSecurityEvent('critical', 'kv:failure', { detail: err?.message || 'timeout' });
+        return true;
     }
 }
 
 /**
  * DB-backed rate limiting — counts recent records by field.
+ * Used ONLY when KV is not configured.
  */
 async function dbRateLimit(table, filterField, filterValue, windowMs) {
     try {
         const windowTime = new Date(Date.now() - windowMs).toISOString();
         const data = await supabaseGet(
             table,
-            `${filterField}=eq.${encodeURIComponent(filterValue)}&created_at=gte.${windowTime}&select=id`
+            `${filterField}=eq.${encodeURIComponent(filterValue)}&created_at=gte.${windowTime}&select=id`,
+            TIMEOUT.SECURITY
         );
         return data.length;
     } catch {
@@ -204,14 +281,9 @@ async function dbRateLimit(table, filterField, filterValue, windowMs) {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    BOT DETECTION
-   ─────────────────────────────────────────────────────────────
-   Multi-signal approach:
-   1. User-Agent pattern matching (secondary — easily spoofed)
-   2. Header integrity checks (harder to fake)
-   3. Behavioral signals (accept headers, etc.)
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 const BOT_PATTERNS = [
     /bot/i, /crawl/i, /spider/i, /scrape/i, /curl/i, /wget/i,
@@ -223,37 +295,28 @@ const BOT_PATTERNS = [
 
 function isBot(req) {
     const ua = req.headers['user-agent'] || '';
-
-    // No User-Agent at all
     if (!ua) return true;
-
-    // Suspiciously short UA
     if (ua.length < 20) return true;
-
-    // Known bot patterns
     if (BOT_PATTERNS.some(p => p.test(ua))) return true;
 
-    // Missing typical browser headers (harder to fake)
     const accept = req.headers['accept'] || '';
     const acceptLang = req.headers['accept-language'] || '';
     const acceptEnc = req.headers['accept-encoding'] || '';
-
-    // Real browsers always send these — scripts often don't
     if (!accept && !acceptLang && !acceptEnc) return true;
 
     return false;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    INPUT SANITIZATION
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 function sanitize(val, maxLen = 200) {
     if (typeof val !== 'string') return '';
     return val
-        .replace(/<[^>]*>/g, '')       // strip HTML tags
-        .replace(/[<>]/g, '')          // strip remaining angle brackets
-        .replace(/\s+/g, ' ')          // normalize whitespace
+        .replace(/<[^>]*>/g, '')
+        .replace(/[<>]/g, '')
+        .replace(/\s+/g, ' ')
         .trim()
         .slice(0, maxLen);
 }
@@ -264,14 +327,9 @@ function sanitizeOrNull(val, maxLen = 200) {
     return cleaned || null;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    PHONE NORMALIZATION
-   ─────────────────────────────────────────────────────────────
-   Strips country codes & leading zeros so blocking works for
-   ALL formats of Egyptian phone numbers:
-   01221808060 / +201221808060 / 201221808060 / 00201221808060
-   → 1221808060
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 function normalizePhone(phone) {
     if (!phone) return '';
@@ -282,55 +340,50 @@ function normalizePhone(phone) {
     return cleaned;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    HASHING (SHA-256)
-   ─────────────────────────────────────────────────────────────
-   Replaces weak DJB2 hash with cryptographic SHA-256.
-   Used for duplicate payload detection and log sanitization.
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 async function hashSHA256(str) {
     return createHash('sha256').update(str).digest('hex');
 }
 
-/**
- * Hash sensitive data for safe logging.
- * Returns first 8 chars of SHA-256 — enough for correlation, not for reversal.
- */
 async function hashForLog(value) {
     if (!value) return 'none';
     const hash = await hashSHA256(String(value));
     return hash.slice(0, 8);
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    GEO-IP CACHING
-   ─────────────────────────────────────────────────────────────
-   In-memory cache for ip-api.com results.
-   TTL: 1 hour. Max entries: 500.
-   Prevents hitting ip-api free tier limit (45 req/min).
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 const geoCache = new Map();
-const GEO_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const GEO_CACHE_TTL = 60 * 60 * 1000;
 const GEO_CACHE_MAX = 500;
+
+const IP_V4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
+const IP_V6_RE = /^[0-9a-fA-F:]+$/;
+function isValidIP(ip) {
+    if (!ip || typeof ip !== 'string') return false;
+    if (ip.length > 45) return false;
+    return IP_V4_RE.test(ip) || IP_V6_RE.test(ip);
+}
 
 async function getGeoLocation(ip) {
     if (!ip) return { country: null, city: null };
+    if (!isValidIP(ip)) return { country: null, city: null };
 
-    // Check cache first
     const cached = geoCache.get(ip);
     if (cached && Date.now() < cached.expiresAt) {
         return { country: cached.country, city: cached.city };
     }
 
-    // Evict if too large
     if (geoCache.size >= GEO_CACHE_MAX) {
         const now = Date.now();
         for (const [key, val] of geoCache) {
             if (now >= val.expiresAt) geoCache.delete(key);
         }
-        // If still too large, delete oldest
         if (geoCache.size >= GEO_CACHE_MAX) {
             const firstKey = geoCache.keys().next().value;
             if (firstKey) geoCache.delete(firstKey);
@@ -340,7 +393,7 @@ async function getGeoLocation(ip) {
     try {
         const geoRes = await fetch(
             `http://ip-api.com/json/${ip}?fields=status,country,city`,
-            { signal: AbortSignal.timeout(3000) }
+            { signal: AbortSignal.timeout(TIMEOUT.GEO) }
         );
         if (geoRes.ok) {
             const g = await geoRes.json();
@@ -350,30 +403,30 @@ async function getGeoLocation(ip) {
                 return result;
             }
         }
-    } catch { /* geo is optional */ }
+    } catch { /* geo is non-critical — fail safe */ }
 
     return { country: null, city: null };
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SUPABASE HELPERS
-   ═══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   SUPABASE HELPERS (with configurable timeout)
+   ══════════════════════════════════════════════════════════════════ */
 
-async function supabaseGet(table, filter) {
+async function supabaseGet(table, filter, timeout = TIMEOUT.DB_READ) {
     const res = await fetch(
         `${SUPABASE_URL}/rest/v1/${table}?${filter}`,
-        { headers: SERVICE_HEADERS, signal: AbortSignal.timeout(5000) }
+        { headers: SERVICE_HEADERS, signal: AbortSignal.timeout(timeout) }
     );
     if (!res.ok) return [];
     return await res.json();
 }
 
-async function supabaseInsert(table, body) {
+async function supabaseInsert(table, body, timeout = TIMEOUT.DB_WRITE) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
         method: 'POST',
         headers: { ...SERVICE_HEADERS, 'Prefer': 'return=representation' },
         body: JSON.stringify(Array.isArray(body) ? body : [body]),
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(timeout)
     });
     if (!res.ok) {
         const err = await res.text();
@@ -382,52 +435,87 @@ async function supabaseInsert(table, body) {
     return await res.json();
 }
 
-async function supabaseInsertMinimal(table, body) {
+async function supabaseInsertMinimal(table, body, timeout = TIMEOUT.DB_WRITE) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
         method: 'POST',
         headers: { ...SERVICE_HEADERS, 'Prefer': 'return=minimal' },
         body: JSON.stringify(Array.isArray(body) ? body : [body]),
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(timeout)
     });
     return res.ok;
 }
 
-async function supabasePatch(table, filter, body) {
+async function supabasePatch(table, filter, body, timeout = TIMEOUT.DB_WRITE) {
     const res = await fetch(
         `${SUPABASE_URL}/rest/v1/${table}?${filter}`,
         {
             method: 'PATCH',
             headers: { ...SERVICE_HEADERS, 'Prefer': 'return=minimal' },
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(5000)
+            signal: AbortSignal.timeout(timeout)
         }
     );
     return res.ok;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SECURITY EVENT LOGGING
-   ─────────────────────────────────────────────────────────────
-   Logs security events WITHOUT sensitive data.
-   IP and phone are hashed before logging.
-   Dedup: identical events within 60s are suppressed.
-   ═══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   SECURITY EVENT LOGGING (v2 — Severity + Async Batch)
+   ─────────────────────────────────────────────────────────────────
+   Severity levels: info, warning, critical
+   Async batching: accumulates events, flushes periodically
+   Dedup: identical events within 60s are suppressed
+   Never blocks the request flow.
+   ══════════════════════════════════════════════════════════════════ */
 
 const _logDedup = new Map();
-const _LOG_DEDUP_WINDOW = 60000; // 60 seconds
+const _LOG_DEDUP_WINDOW = 60000;
 const _LOG_DEDUP_MAX = 500;
 
-async function logSecurityEvent(type, metadata = {}) {
+// Async log queue — batches writes to avoid DB overload
+const _logQueue = [];
+const _LOG_BATCH_SIZE = 10;
+const _LOG_FLUSH_INTERVAL = 5000; // 5 seconds
+let _logFlushTimer = null;
+
+async function _flushLogQueue() {
+    if (_logQueue.length === 0) return;
+    const batch = _logQueue.splice(0, _LOG_BATCH_SIZE);
     try {
-        // Hash sensitive fields before logging
+        await supabaseInsertMinimal('activity_logs', batch, TIMEOUT.DB_WRITE);
+    } catch { /* logging must never break anything */ }
+
+    // If more remain, schedule another flush
+    if (_logQueue.length > 0 && !_logFlushTimer) {
+        _logFlushTimer = setTimeout(() => {
+            _logFlushTimer = null;
+            _flushLogQueue();
+        }, _LOG_FLUSH_INTERVAL);
+    }
+}
+
+/**
+ * Log a security event with severity level.
+ * @param {'info'|'warning'|'critical'} severity
+ * @param {string} type - Event type (e.g. 'order:rate_limited')
+ * @param {object} metadata - { ip, phone, detail }
+ */
+async function logSecurityEvent(severity, type, metadata = {}) {
+    // Handle legacy calls: logSecurityEvent('type', { metadata })
+    if (typeof severity === 'string' && typeof type === 'object') {
+        metadata = type;
+        type = severity;
+        severity = 'warning';
+    }
+
+    try {
         const safeIP = metadata.ip ? await hashForLog(metadata.ip) : 'none';
         const safePhone = metadata.phone ? await hashForLog(metadata.phone) : null;
 
-        // Dedup: skip identical events within window
+        // Dedup
         const dedupKey = `${type}:${safeIP}`;
         const now = Date.now();
         if (_logDedup.has(dedupKey) && now - _logDedup.get(dedupKey) < _LOG_DEDUP_WINDOW) {
-            return; // suppress duplicate
+            return;
         }
         _logDedup.set(dedupKey, now);
 
@@ -443,27 +531,123 @@ async function logSecurityEvent(type, metadata = {}) {
         }
 
         const description = [
+            `[${severity.toUpperCase()}]`,
             `[${type}]`,
             `ip_hash:${safeIP}`,
             safePhone ? `phone_hash:${safePhone}` : null,
             metadata.detail || null,
         ].filter(Boolean).join(' | ');
 
-        await supabaseInsertMinimal('activity_logs', {
-            action_type: 'block',
+        const logEntry = {
+            action_type: severity === 'critical' ? 'critical' : 'block',
             action_description: description,
             entity_type: 'security',
             entity_id: safeIP
-        });
+        };
+
+        // Critical events: write immediately
+        if (severity === 'critical') {
+            try {
+                await supabaseInsertMinimal('activity_logs', logEntry, TIMEOUT.DB_WRITE);
+            } catch { /* never break flow */ }
+            return;
+        }
+
+        // Non-critical: queue for batch write
+        _logQueue.push(logEntry);
+        if (_logQueue.length >= _LOG_BATCH_SIZE) {
+            _flushLogQueue();
+        } else if (!_logFlushTimer) {
+            _logFlushTimer = setTimeout(() => {
+                _logFlushTimer = null;
+                _flushLogQueue();
+            }, _LOG_FLUSH_INTERVAL);
+        }
     } catch { /* logging must never break the flow */ }
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
+   ANOMALY DETECTION & AUTO-BLOCKING
+   ─────────────────────────────────────────────────────────────────
+   Tracks behavioral anomalies per IP:
+   - Too many different phones from same IP
+   - Too many failed/blocked requests
+   Auto-blocks IPs that exceed thresholds.
+   ══════════════════════════════════════════════════════════════════ */
+
+const _anomalyTracker = new Map();
+const _ANOMALY_MAX_ENTRIES = 2000;
+const _ANOMALY_WINDOW = 600000; // 10 minutes
+
+const ANOMALY_THRESHOLDS = {
+    uniquePhones: 5,      // max different phones per IP in window
+    failedAttempts: 15,    // max failed/blocked requests per IP in window
+    autoBlockDuration: 30  // minutes
+};
+
+function trackAnomaly(ip, signal, value = null) {
+    if (!ip) return;
+    const now = Date.now();
+
+    // Evict old entries
+    if (_anomalyTracker.size > _ANOMALY_MAX_ENTRIES * 0.8) {
+        for (const [k, v] of _anomalyTracker) {
+            if (now - v.windowStart > _ANOMALY_WINDOW) _anomalyTracker.delete(k);
+        }
+        if (_anomalyTracker.size >= _ANOMALY_MAX_ENTRIES) {
+            const firstKey = _anomalyTracker.keys().next().value;
+            if (firstKey) _anomalyTracker.delete(firstKey);
+        }
+    }
+
+    let record = _anomalyTracker.get(ip);
+    if (!record || now - record.windowStart > _ANOMALY_WINDOW) {
+        record = { windowStart: now, phones: new Set(), failures: 0, blocked: false };
+        _anomalyTracker.set(ip, record);
+    }
+
+    if (signal === 'phone' && value) {
+        record.phones.add(value);
+    } else if (signal === 'failure') {
+        record.failures++;
+    }
+
+    return record;
+}
+
+async function checkAndAutoBlock(ip) {
+    if (!ip) return false;
+    const record = _anomalyTracker.get(ip);
+    if (!record || record.blocked) return record?.blocked || false;
+
+    const shouldBlock = record.phones.size > ANOMALY_THRESHOLDS.uniquePhones
+        || record.failures > ANOMALY_THRESHOLDS.failedAttempts;
+
+    if (shouldBlock) {
+        record.blocked = true;
+        logSecurityEvent('critical', 'anomaly:auto_block', {
+            ip,
+            detail: `phones:${record.phones.size} failures:${record.failures}`
+        });
+
+        // Insert temporary block into blocked_ips
+        try {
+            await supabaseInsertMinimal('blocked_ips', {
+                ip,
+                reason: `Auto-blocked: anomaly detection (${record.phones.size} phones, ${record.failures} failures)`,
+                created_at: new Date().toISOString()
+            }, TIMEOUT.DB_WRITE);
+        } catch { /* best effort */ }
+
+        return true;
+    }
+
+    return false;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    ADMIN VERIFICATION
-   ─────────────────────────────────────────────────────────────
-   Verifies admin status via the is_admin() RPC.
-   Uses the user's JWT token — RPC is SECURITY DEFINER.
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 async function verifyAdmin(req) {
     const authHeader = req.headers.authorization;
@@ -471,9 +655,7 @@ async function verifyAdmin(req) {
         return { valid: false, status: 401, error: 'Unauthorized' };
     }
 
-    const token = authHeader.slice(7); // 'Bearer '.length = 7
-
-    // Reject obviously invalid tokens
+    const token = authHeader.slice(7);
     if (!token || token.length < 20) {
         return { valid: false, status: 401, error: 'Unauthorized' };
     }
@@ -491,7 +673,7 @@ async function verifyAdmin(req) {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            signal: AbortSignal.timeout(5000)
+            signal: AbortSignal.timeout(TIMEOUT.ADMIN)
         });
 
         if (!rpcRes.ok) {
@@ -505,13 +687,76 @@ async function verifyAdmin(req) {
 
         return { valid: true, token };
     } catch {
+        // FAIL CLOSED for admin verification
         return { valid: false, status: 500, error: 'Admin verification failed' };
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
+   HMAC REQUEST SIGNATURE (Anti-Replay)
+   ─────────────────────────────────────────────────────────────────
+   Client sends:
+     X-Request-Timestamp: <epoch ms>
+     X-Request-Signature: HMAC-SHA256(body + timestamp, secret)
+   Server validates:
+     - Signature matches
+     - Timestamp within REPLAY_WINDOW_MS (60 seconds)
+     - Nonce not reused (in-memory + eviction)
+
+   Only enforced when HMAC_SECRET env var is set.
+   ══════════════════════════════════════════════════════════════════ */
+
+const REPLAY_WINDOW_MS = 60000;
+const _usedNonces = new Map();
+const _NONCE_MAX = 5000;
+
+function validateRequestSignature(req) {
+    // Skip if HMAC_SECRET not configured (graceful rollout)
+    if (!HMAC_SECRET) return true;
+
+    const timestamp = req.headers['x-request-timestamp'];
+    const signature = req.headers['x-request-signature'];
+
+    if (!timestamp || !signature) return false;
+
+    const ts = parseInt(timestamp);
+    if (isNaN(ts)) return false;
+
+    // Reject if timestamp too old or too far in future
+    const now = Date.now();
+    if (Math.abs(now - ts) > REPLAY_WINDOW_MS) return false;
+
+    // Anti-replay: check nonce (signature acts as nonce)
+    const nonceKey = signature.slice(0, 32);
+    if (_usedNonces.has(nonceKey)) return false;
+
+    // Evict old nonces
+    if (_usedNonces.size > _NONCE_MAX * 0.8) {
+        const cutoff = now - REPLAY_WINDOW_MS;
+        for (const [k, t] of _usedNonces) {
+            if (t < cutoff) _usedNonces.delete(k);
+        }
+        if (_usedNonces.size >= _NONCE_MAX) {
+            const firstKey = _usedNonces.keys().next().value;
+            if (firstKey) _usedNonces.delete(firstKey);
+        }
+    }
+
+    // Compute expected signature
+    const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    const payload = bodyStr + ':' + timestamp;
+    const expected = createHmac('sha256', HMAC_SECRET).update(payload).digest('hex');
+
+    if (!secureCompare(expected, signature)) return false;
+
+    // Mark nonce as used
+    _usedNonces.set(nonceKey, now);
+    return true;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    FETCH DYNAMIC SECURITY LIMITS
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 const DEFAULT_LIMITS = {
     order_max_per_ip: 3,
@@ -539,7 +784,8 @@ async function fetchSecurityLimits() {
     try {
         const data = await supabaseGet(
             'site_settings',
-            'key=eq.security_limits&select=value'
+            'key=eq.security_limits&select=value',
+            TIMEOUT.SECURITY
         );
         if (data && data.length > 0) {
             limits = { ...limits, ...(data[0].value || {}) };
@@ -554,9 +800,23 @@ function getWindowMs(limits, timeKey, unitKey, fallbackMin = 10) {
     return t * (TIME_MULTIPLIERS[u] || TIME_MULTIPLIERS.minutes);
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
+   TIMING-SAFE STRING COMPARISON
+   ══════════════════════════════════════════════════════════════════ */
+
+function secureCompare(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    if (a.length !== b.length) return false;
+    try {
+        return _timingSafeEqual(Buffer.from(a), Buffer.from(b));
+    } catch {
+        return false;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
    GENERATE ORDER REFERENCE
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 function generateOrderRef() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -566,30 +826,36 @@ function generateOrderRef() {
         const bytes = randomBytes(len);
         for (let i = 0; i < len; i++) ref += chars[bytes[i] % chars.length];
     } catch {
-        // Fallback if crypto unavailable
         for (let i = 0; i < len; i++) ref += chars[Math.floor(Math.random() * chars.length)];
     }
     return `DL-${ref}`;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
    EXPORTS
-   ═══════════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════════════ */
 
 export {
-    // Environment
+    // Environment (public values only)
     SUPABASE_URL,
-    SUPABASE_SERVICE_KEY,
     SUPABASE_ANON_KEY,
-    SERVICE_HEADERS,
     ALLOWED_ORIGINS,
+    KV_CONFIGURED,
+    TIMEOUT,
 
-    // CORS & Origin
+    // CORS & Origin & Security Headers
     setCorsHeaders,
+    setSecurityHeaders,
     validateOrigin,
 
     // IP
     getServerIP,
+
+    // Composite Client ID
+    getCompositeId,
+
+    // Global Rate Limiting
+    checkGlobalRateLimit,
 
     // Rate Limiting
     createMemoryRateLimiter,
@@ -613,7 +879,7 @@ export {
     // Geo-IP
     getGeoLocation,
 
-    // Supabase
+    // Supabase (uses service key internally)
     supabaseGet,
     supabaseInsert,
     supabaseInsertMinimal,
@@ -625,11 +891,21 @@ export {
     // Admin
     verifyAdmin,
 
+    // HMAC Anti-Replay
+    validateRequestSignature,
+
+    // Anomaly Detection
+    trackAnomaly,
+    checkAndAutoBlock,
+
     // Security Limits
     DEFAULT_LIMITS,
     TIME_MULTIPLIERS,
     fetchSecurityLimits,
     getWindowMs,
+
+    // Crypto
+    secureCompare,
 
     // Order Ref
     generateOrderRef

@@ -1,31 +1,26 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Combined Block Check + Geo (Hardened)
+   DALAL — Combined Block Check + Geo (v4 — Production Hardened)
    ─────────────────────────────────────────────────────────────
    GET /api/check-blocked?fp=xxx
-   
-   Replaces /api/get-ip entirely.
-   
+
    PRIVACY: Never returns the user's raw IP address.
-   Returns only: { blocked, country, city }
-   
-   Checks:
-   1. IP block (from server headers — NOT client)
-   2. Fingerprint block (optional, via ?fp= query param)
-   3. Geo-IP lookup (cached)
-   
-   Rate limited + bot detection.
+   Returns only: { blocked, reason, country, city }
+
+   Security-critical endpoint — FAIL CLOSED on errors.
+   If block status cannot be determined, assume blocked.
    ═══════════════════════════════════════════════════════════════ */
 
 import {
     setCorsHeaders, validateOrigin, getServerIP, isBot,
-    sanitize, supabaseGet, getGeoLocation, createMemoryRateLimiter
+    sanitize, supabaseGet, getGeoLocation, createMemoryRateLimiter,
+    checkGlobalRateLimit, logSecurityEvent, TIMEOUT
 } from './_lib/security.js';
 
 /* ── Rate limiter: max 10 checks per IP per minute ── */
 const rateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 60000, maxHits: 10 });
 
 export default async function handler(req, res) {
-    /* ── CORS (strict) ── */
+    /* ── CORS + Security Headers ── */
     setCorsHeaders(req, res, 'GET, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -35,21 +30,28 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
-    /* ── Extract IP from SERVER headers (never from client) ── */
+    /* ── Extract IP ── */
     const ip = getServerIP(req);
 
-    /* ── Bot detection — consistent response ── */
-    if (isBot(req)) {
-        return res.status(200).json({ blocked: false, country: null, city: null });
+    /* ── Global rate limiting ── */
+    if (checkGlobalRateLimit(ip)) {
+        return res.status(429).json({ error: 'Too many requests' });
     }
 
-    /* ── Rate limiting ── */
+    /* ── Bot detection — FAIL CLOSED (block check is security-critical) ── */
+    if (isBot(req)) {
+        return res.status(403).json({ error: 'Request blocked' });
+    }
+
+    /* ── Per-endpoint rate limiting ── */
     if (rateLimiter.check(ip)) {
-        return res.status(200).json({ blocked: false, country: null, city: null });
+        // Rate limited — FAIL CLOSED for security check
+        return res.status(429).json({ error: 'Too many requests' });
     }
 
     if (!ip) {
-        return res.status(200).json({ blocked: false, country: null, city: null });
+        // No IP — FAIL CLOSED (cannot determine block status)
+        return res.status(403).json({ error: 'Cannot verify client' });
     }
 
     const fingerprint = req.query.fp ? sanitize(req.query.fp, 64) : null;
@@ -57,9 +59,9 @@ export default async function handler(req, res) {
     try {
         /* ── Check IP and fingerprint blocks in parallel ── */
         const [ipCheck, fpCheck] = await Promise.all([
-            supabaseGet('blocked_ips', `ip=eq.${encodeURIComponent(ip)}&select=ip,reason&limit=1`),
+            supabaseGet('blocked_ips', `ip=eq.${encodeURIComponent(ip)}&select=ip,reason&limit=1`, TIMEOUT.SECURITY),
             fingerprint
-                ? supabaseGet('blocked_fingerprints', `fingerprint=eq.${encodeURIComponent(fingerprint)}&select=fingerprint,reason&limit=1`)
+                ? supabaseGet('blocked_fingerprints', `fingerprint=eq.${encodeURIComponent(fingerprint)}&select=fingerprint,reason&limit=1`, TIMEOUT.SECURITY)
                 : Promise.resolve([])
         ]);
 
@@ -77,12 +79,18 @@ export default async function handler(req, res) {
         }
 
     } catch {
-        // On error checking blocks, fail safe — don't block legitimate users
+        // FAIL CLOSED — if we can't check block status, assume blocked
+        logSecurityEvent('critical', 'check_blocked:db_error', { ip });
+        return res.status(200).json({
+            blocked: true,
+            reason: 'Unable to verify status. Please try again.',
+            country: null,
+            city: null
+        });
     }
 
-    /* ── Geo-IP lookup (cached — prevents ip-api.com exhaustion) ── */
+    /* ── Geo-IP lookup (non-critical — fail safe) ── */
     const { country, city } = await getGeoLocation(ip);
 
-    /* ── Response: NEVER include raw IP ── */
     return res.status(200).json({ blocked: false, country, city });
 }

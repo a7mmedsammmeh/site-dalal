@@ -1,49 +1,54 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Secure Order Creation API (v3 — Hardened)
+   DALAL — Secure Order Creation API (v4 — Production Hardened)
    ─────────────────────────────────────────────────────────────
    POST /api/create-order
-   
+
    Security layers (in order):
-     1. Method + CORS (strict origin allowlist)
-     2. Origin + Referer validation
-     3. Multi-signal bot detection
-     4. Content-Type validation
-     5. Honeypot check (server-side)
-     6. IP extraction (Vercel-trusted headers only)
-     7. In-memory rate limiting (fast, per-instance)
-     8. KV/DB-backed rate limiting (persistent, cross-instance)
-     9. IP blocking check (indexed DB query)
-    10. Fingerprint blocking check (indexed DB query)
-    11. Phone blocking check (normalized, indexed DB query)
-    12. Phone cooldown (in-memory + cross-instance)
-    13. Duplicate payload detection (SHA-256 + in-memory)
-    14. Field validation + sanitization
-    15. Stock check
-    16. Server-side price calculation (from DB)
-    17. Geo-IP enrichment (cached)
+     1. Security headers (all responses)
+     2. Method + CORS (strict origin allowlist)
+     3. Origin + Referer validation
+     4. Global rate limiting (100 req/min per IP)
+     5. Multi-signal bot detection
+     6. Content-Type validation
+     7. HMAC anti-replay validation
+     8. Honeypot check (server-side)
+     9. IP extraction (Vercel-trusted headers only)
+    10. Composite client ID (IP + UA + fingerprint)
+    11. In-memory rate limiting (fast, per-instance)
+    12. KV rate limiting (FAIL CLOSED if KV configured)
+    13. DB rate limiting (fallback only if KV not configured)
+    14. IP blocking check (FAIL CLOSED)
+    15. Fingerprint blocking check (FAIL CLOSED)
+    16. Anomaly tracking + auto-block
+    17. Phone blocking check (FAIL CLOSED)
+    18. Phone cooldown
+    19. Duplicate payload detection (SHA-256)
+    20. Field validation + sanitization
+    21. Stock check
+    22. Server-side price calculation (from DB)
+    23. Geo-IP enrichment (cached, fail safe)
    ═══════════════════════════════════════════════════════════════ */
 
 import {
     setCorsHeaders, validateOrigin, getServerIP, isBot,
-    sanitize, normalizePhone, hashSHA256, hashForLog,
+    sanitize, normalizePhone, hashSHA256,
     getGeoLocation, supabaseGet, supabaseInsert,
     logSecurityEvent, createMemoryRateLimiter, kvRateLimit,
-    fetchSecurityLimits, getWindowMs, generateOrderRef
+    fetchSecurityLimits, getWindowMs, generateOrderRef,
+    checkGlobalRateLimit, getCompositeId, validateRequestSignature,
+    trackAnomaly, checkAndAutoBlock, KV_CONFIGURED, TIMEOUT
 } from './_lib/security.js';
 
 /* ── In-memory rate limiters ── */
 const orderRateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 600000, maxHits: 3 });
 const phoneCooldownLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 120000, maxHits: 1 });
-const duplicateMap = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 120000, maxHits: 1 });
 
-/* ── Duplicate payload tracking (separate from rate limiter) ── */
+/* ── Duplicate payload tracking ── */
 const recentPayloads = new Map();
 const PAYLOAD_MAX_ENTRIES = 1000;
 
 function isDuplicatePayload(key, hash, windowMs) {
     const now = Date.now();
-
-    // Evict expired + enforce max size
     if (recentPayloads.size > PAYLOAD_MAX_ENTRIES * 0.8) {
         for (const [k, ts] of recentPayloads) {
             if (now - ts > windowMs) recentPayloads.delete(k);
@@ -53,7 +58,6 @@ function isDuplicatePayload(key, hash, windowMs) {
             if (firstKey) recentPayloads.delete(firstKey);
         }
     }
-
     const fullKey = `${key}:${hash}`;
     if (recentPayloads.has(fullKey) && now - recentPayloads.get(fullKey) < windowMs) {
         return true;
@@ -62,13 +66,12 @@ function isDuplicatePayload(key, hash, windowMs) {
     return false;
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
    MAIN HANDLER
    ═══════════════════════════════════════════════════════════════ */
 export default async function handler(req, res) {
 
-    /* ── LAYER 1: Method + CORS ── */
+    /* ── LAYER 1: Method + CORS + Security Headers ── */
     setCorsHeaders(req, res, 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -78,116 +81,130 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
-    /* ── LAYER 3: Bot Detection ── */
+    /* ── LAYER 3: Global Rate Limiting ── */
+    const serverIP = getServerIP(req);
+    if (checkGlobalRateLimit(serverIP)) {
+        return res.status(429).json({ error: 'Too many requests' });
+    }
+
+    /* ── LAYER 4: Bot Detection ── */
     if (isBot(req)) {
+        trackAnomaly(serverIP, 'failure');
         return res.status(403).json({ error: 'Request blocked' });
     }
 
-    /* ── LAYER 4: Content-Type validation ── */
+    /* ── LAYER 5: Content-Type validation ── */
     const contentType = req.headers['content-type'] || '';
     if (!contentType.includes('application/json')) {
         return res.status(400).json({ error: 'Invalid content type' });
+    }
+
+    /* ── LAYER 6: HMAC Anti-Replay ── */
+    if (!validateRequestSignature(req)) {
+        logSecurityEvent('warning', 'order:hmac_failed', { ip: serverIP });
+        trackAnomaly(serverIP, 'failure');
+        return res.status(403).json({ error: 'Invalid request signature' });
     }
 
     /* ── Fetch dynamic security limits ── */
     const LIMITS = await fetchSecurityLimits();
     const rateWindowMs = getWindowMs(LIMITS, 'order_window_time', 'order_window_unit', 10);
     const dedupWindowMs = getWindowMs(LIMITS, 'duplicate_window_time', 'duplicate_window_unit', 2);
-    const phoneCooldownMs = getWindowMs(LIMITS, 'phone_cooldown_time', 'phone_cooldown_unit', 2);
 
-    // Update in-memory limiter configs
     orderRateLimiter.updateConfig(rateWindowMs, LIMITS.order_max_per_ip);
 
     try {
         const body = req.body;
         if (!body) return res.status(400).json({ error: 'Missing request body' });
 
-        /* ── LAYER 5: Honeypot Check ── */
+        /* ── LAYER 7: Honeypot Check ── */
         if (body.dalal_website && body.dalal_website.trim() !== '') {
-            // Silently reject — return fake success to not reveal detection
+            trackAnomaly(serverIP, 'failure');
             return res.status(200).json({
                 success: true,
                 order_ref: generateOrderRef(),
-                id: null,
-                total: 0,
-                products: []
+                id: null, total: 0, products: []
             });
         }
 
-        /* ── LAYER 6: Extract REAL IP from server headers ── */
-        const serverIP = getServerIP(req);
+        /* ── LAYER 8: Composite Client ID ── */
+        const { fingerprint } = body;
+        const compositeId = getCompositeId(serverIP, req, fingerprint);
 
-        /* ── LAYER 7: In-Memory Rate Limiting (fast) ── */
-        if (orderRateLimiter.check(serverIP)) {
-            logSecurityEvent('order:mem_rate_limited', { ip: serverIP });
-            return res.status(429).json({
-                error: 'rate_limited',
-                message: 'Too many orders. Please wait.'
-            });
+        /* ── LAYER 9: In-Memory Rate Limiting (fast) ── */
+        if (orderRateLimiter.check(compositeId)) {
+            logSecurityEvent('warning', 'order:mem_rate_limited', { ip: serverIP });
+            trackAnomaly(serverIP, 'failure');
+            return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
         }
 
-        /* ── LAYER 8: KV/DB-Backed Rate Limiting (cross-instance) ── */
-        try {
-            // Try Vercel KV first
-            const kvResult = await kvRateLimit(`order:${serverIP}`, rateWindowMs, LIMITS.order_max_per_ip);
-            if (kvResult === true) {
-                logSecurityEvent('order:kv_rate_limited', { ip: serverIP });
-                return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
-            }
+        /* ── LAYER 10: KV Rate Limiting (FAIL CLOSED) ── */
+        const kvResult = await kvRateLimit(`order:${compositeId}`, rateWindowMs, LIMITS.order_max_per_ip);
+        if (kvResult === true) {
+            logSecurityEvent('warning', 'order:kv_rate_limited', { ip: serverIP });
+            return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
+        }
 
-            // If KV not available, use DB fallback
-            if (kvResult === null && serverIP) {
+        /* ── LAYER 11: DB Rate Limiting (only if KV not configured) ── */
+        if (kvResult === null && serverIP) {
+            try {
                 const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
                 const ipOrders = await supabaseGet(
                     'orders',
-                    `client_ip=eq.${encodeURIComponent(serverIP)}&created_at=gte.${windowTime}&select=id`
+                    `client_ip=eq.${encodeURIComponent(serverIP)}&created_at=gte.${windowTime}&select=id`,
+                    TIMEOUT.SECURITY
                 );
                 if (ipOrders.length >= LIMITS.order_max_per_ip) {
-                    logSecurityEvent('order:db_rate_limited', { ip: serverIP });
+                    logSecurityEvent('warning', 'order:db_rate_limited', { ip: serverIP });
                     return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
                 }
-            }
-        } catch { /* don't fail the order if rate check errors */ }
-
-        const { name, phone, email, address, lang, items, fingerprint } = body;
-
-        /* ── LAYER 9: IP Blocking Check ── */
-        if (serverIP) {
-            try {
-                const ipCheck = await supabaseGet(
-                    'blocked_ips',
-                    `ip=eq.${encodeURIComponent(serverIP)}&select=ip&limit=1`
-                );
-                if (ipCheck.length > 0) {
-                    return res.status(403).json({
-                        error: 'access_restricted',
-                        message: 'Your access has been restricted.'
-                    });
-                }
             } catch {
-                // FAIL CLOSED: if we can't verify, reject
+                // DB fallback failed — FAIL CLOSED (KV not configured, DB also failed)
+                logSecurityEvent('critical', 'order:rate_check_failed', { ip: serverIP });
                 return res.status(503).json({ error: 'Service temporarily unavailable' });
             }
         }
 
-        /* ── LAYER 10: Fingerprint Blocking Check ── */
-        if (fingerprint) {
-            const fpClean = sanitize(fingerprint, 64);
+        const { name, phone, email, address, lang, items } = body;
+
+        /* ── LAYER 12: IP Blocking Check (FAIL CLOSED) ── */
+        if (serverIP) {
             try {
-                const fpCheck = await supabaseGet(
-                    'blocked_fingerprints',
-                    `fingerprint=eq.${encodeURIComponent(fpClean)}&select=fingerprint&limit=1`
+                const ipCheck = await supabaseGet(
+                    'blocked_ips',
+                    `ip=eq.${encodeURIComponent(serverIP)}&select=ip&limit=1`,
+                    TIMEOUT.SECURITY
                 );
-                if (fpCheck.length > 0) {
-                    return res.status(403).json({
-                        error: 'access_restricted',
-                        message: 'Your access has been restricted.'
-                    });
+                if (ipCheck.length > 0) {
+                    return res.status(403).json({ error: 'access_restricted', message: 'Your access has been restricted.' });
                 }
             } catch {
                 // FAIL CLOSED
                 return res.status(503).json({ error: 'Service temporarily unavailable' });
             }
+        }
+
+        /* ── LAYER 13: Fingerprint Blocking Check (FAIL CLOSED) ── */
+        if (fingerprint) {
+            const fpClean = sanitize(fingerprint, 64);
+            try {
+                const fpCheck = await supabaseGet(
+                    'blocked_fingerprints',
+                    `fingerprint=eq.${encodeURIComponent(fpClean)}&select=fingerprint&limit=1`,
+                    TIMEOUT.SECURITY
+                );
+                if (fpCheck.length > 0) {
+                    return res.status(403).json({ error: 'access_restricted', message: 'Your access has been restricted.' });
+                }
+            } catch {
+                // FAIL CLOSED
+                return res.status(503).json({ error: 'Service temporarily unavailable' });
+            }
+        }
+
+        /* ── LAYER 14: Anomaly check ── */
+        if (await checkAndAutoBlock(serverIP)) {
+            return res.status(403).json({ error: 'access_restricted', message: 'Your access has been restricted.' });
         }
 
         /* ── Field Validation ── */
@@ -201,77 +218,71 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Too many items in order' });
         }
 
-        /* ── LAYER 11: Phone Blocking Check (normalized, direct query) ── */
+        /* ── LAYER 15: Phone Blocking Check (FAIL CLOSED) ── */
         const normalizedPhone = normalizePhone(phone);
         if (!normalizedPhone || normalizedPhone.length < 9) {
             return res.status(400).json({ error: 'Invalid phone number format' });
         }
 
+        // Track phone for anomaly detection
+        trackAnomaly(serverIP, 'phone', normalizedPhone);
+
         try {
-            // Indexed query on normalized_phone (NO full-table scan)
             const phoneCheck = await supabaseGet(
                 'blocked_phones',
-                `normalized_phone=eq.${encodeURIComponent(normalizedPhone)}&select=id&limit=1`
+                `normalized_phone=eq.${encodeURIComponent(normalizedPhone)}&select=id&limit=1`,
+                TIMEOUT.SECURITY
             );
             if (phoneCheck.length > 0) {
-                return res.status(403).json({
-                    error: 'access_restricted',
-                    message: 'This phone number has been restricted.'
-                });
+                return res.status(403).json({ error: 'access_restricted', message: 'This phone number has been restricted.' });
             }
         } catch {
-            // Fail safe: if query errors, don't block the order
-            // (normalized_phone column must exist — run migration)
+            // FAIL CLOSED for phone block check
+            return res.status(503).json({ error: 'Service temporarily unavailable' });
         }
 
-        /* ── Fingerprint rate limiting (catches VPN/IP changers) ── */
+        /* ── Fingerprint rate limiting via composite ID ── */
         if (fingerprint) {
-            try {
-                const fpClean = sanitize(fingerprint, 64);
-                const kvFp = await kvRateLimit(`order:fp:${fpClean}`, rateWindowMs, LIMITS.order_max_per_ip);
-                if (kvFp === true) {
-                    return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
-                }
-                if (kvFp === null) {
+            const fpClean = sanitize(fingerprint, 64);
+            const kvFp = await kvRateLimit(`order:cid:${compositeId}`, rateWindowMs, LIMITS.order_max_per_ip);
+            if (kvFp === true) {
+                return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
+            }
+            if (kvFp === null && serverIP) {
+                try {
                     const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
                     const fpOrders = await supabaseGet(
                         'orders',
-                        `fingerprint=eq.${encodeURIComponent(fpClean)}&created_at=gte.${windowTime}&select=id`
+                        `fingerprint=eq.${encodeURIComponent(fpClean)}&created_at=gte.${windowTime}&select=id`,
+                        TIMEOUT.SECURITY
                     );
                     if (fpOrders.length >= LIMITS.order_max_per_ip) {
                         return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
                     }
-                }
-            } catch { /* don't fail order */ }
+                } catch { /* fingerprint rate check is secondary */ }
+            }
         }
 
-        /* ── LAYER 12: Duplicate Payload Detection (SHA-256) ── */
+        /* ── LAYER 16: Duplicate Payload Detection (SHA-256) ── */
         const payloadHash = await hashSHA256(JSON.stringify({ phone: normalizedPhone, address, items }));
-        if (isDuplicatePayload(serverIP, payloadHash, dedupWindowMs)) {
-            logSecurityEvent('order:duplicate', { ip: serverIP, detail: `hash:${payloadHash.slice(0, 8)}` });
-            return res.status(429).json({
-                error: 'duplicate',
-                message: 'This order was already submitted. Please wait.'
-            });
+        if (isDuplicatePayload(compositeId, payloadHash, dedupWindowMs)) {
+            logSecurityEvent('warning', 'order:duplicate', { ip: serverIP, detail: `hash:${payloadHash.slice(0, 8)}` });
+            return res.status(429).json({ error: 'duplicate', message: 'This order was already submitted. Please wait.' });
         }
 
-        /* ── LAYER 12b: Phone Cooldown ── */
+        /* ── LAYER 17: Phone Cooldown ── */
         if (phoneCooldownLimiter.check(normalizedPhone)) {
-            logSecurityEvent('order:phone_cooldown', { ip: serverIP, phone: normalizedPhone });
-            return res.status(429).json({
-                error: 'rate_limited',
-                message: 'Please wait before placing another order.'
-            });
+            logSecurityEvent('info', 'order:phone_cooldown', { ip: serverIP, phone: normalizedPhone });
+            return res.status(429).json({ error: 'rate_limited', message: 'Please wait before placing another order.' });
         }
 
-        /* ── LAYER 13: Geo-IP (cached) ── */
+        /* ── Geo-IP (cached, non-critical — fail safe) ── */
         const { country: serverCountry, city: serverCity } = await getGeoLocation(serverIP);
 
         /* ══════════════════════════════════════════════════════
            BUSINESS LOGIC — Stock + Price Validation
            ══════════════════════════════════════════════════════ */
 
-        /* ── Validate and collect product IDs ── */
         const productIds = [];
         for (const item of items) {
             const pid = parseInt(item.product_id);
@@ -299,13 +310,9 @@ export default async function handler(req, res) {
                 }
             }
             if (outOfStock.length > 0) {
-                return res.status(400).json({
-                    error: 'out_of_stock',
-                    product_ids: outOfStock,
-                    message: 'Some products are out of stock.'
-                });
+                return res.status(400).json({ error: 'out_of_stock', product_ids: outOfStock, message: 'Some products are out of stock.' });
             }
-        } catch { /* don't block order if stock check fails */ }
+        } catch { /* don't block order if stock check fails — non-critical */ }
 
         /* ── Fetch REAL prices from database ── */
         const pricingData = await supabaseGet(
@@ -344,17 +351,11 @@ export default async function handler(req, res) {
             productPricing.sort((a, b) => a.offer_order - b.offer_order);
 
             if (productPricing.length === 0) {
-                return res.status(400).json({
-                    error: 'invalid_product',
-                    message: 'Product not available'
-                });
+                return res.status(400).json({ error: 'invalid_product', message: 'Product not available' });
             }
 
             if (isNaN(offerIndex) || offerIndex < 0 || offerIndex >= productPricing.length) {
-                return res.status(400).json({
-                    error: 'invalid_offer',
-                    message: 'Invalid product option selected'
-                });
+                return res.status(400).json({ error: 'invalid_offer', message: 'Invalid product option selected' });
             }
 
             const realOffer = productPricing[offerIndex];
@@ -395,6 +396,7 @@ export default async function handler(req, res) {
             order_ref: orderRef,
             order_source: 'api',
             fingerprint: fpClean,
+            composite_id: compositeId,
             client_ip: serverIP,
             client_country: serverCountry,
             client_city: serverCity
@@ -411,9 +413,7 @@ export default async function handler(req, res) {
             products: validatedProducts
         });
 
-    } catch (err) {
-        console.error('create-order error:', err?.message || err);
-        // Never expose internal error details
+    } catch {
         return res.status(500).json({ error: 'Internal server error' });
     }
 }

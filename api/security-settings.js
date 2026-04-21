@@ -1,41 +1,35 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Security Settings API (Hardened)
+   DALAL — Security Settings API (v4 — Production Hardened)
    ─────────────────────────────────────────────────────────────
    GET  /api/security-settings  — Fetch current limits (admin only)
    POST /api/security-settings  — Update limits (admin only)
-   
-   Hardened:
-   - Strict CORS (no wildcard)
-   - No hardcoded keys
-   - Whitelist of allowed setting keys with type + range validation
-   - Uses service key for DB operations
+
+   Admin-only. FAIL CLOSED on all errors.
    ═══════════════════════════════════════════════════════════════ */
 
 import {
-    setCorsHeaders, verifyAdmin,
-    supabaseGet, supabasePatch, SERVICE_HEADERS, SUPABASE_URL
+    setCorsHeaders, verifyAdmin, getServerIP,
+    supabaseGet, supabasePatch,
+    checkGlobalRateLimit, logSecurityEvent
 } from './_lib/security.js';
 
 /* ── Allowed settings whitelist with validation rules ── */
 const SETTINGS_SCHEMA = {
-    // Numeric settings (integer): [min, max]
     order_max_per_ip:         { type: 'number', min: 1, max: 100 },
-    order_window_time:        { type: 'number', min: 1, max: 10080 }, // max 1 week in minutes
-    phone_cooldown_time:      { type: 'number', min: 1, max: 1440 },  // max 1 day in minutes
+    order_window_time:        { type: 'number', min: 1, max: 10080 },
+    phone_cooldown_time:      { type: 'number', min: 1, max: 1440 },
     duplicate_window_time:    { type: 'number', min: 1, max: 1440 },
     max_items_per_order:      { type: 'number', min: 1, max: 100 },
     review_window_time:       { type: 'number', min: 1, max: 10080 },
     review_max_per_ip:        { type: 'number', min: 1, max: 100 },
     pwa_cooldown_time:        { type: 'number', min: 1, max: 10080 },
 
-    // Unit settings (string enum)
     order_window_unit:        { type: 'unit' },
     phone_cooldown_unit:      { type: 'unit' },
     duplicate_window_unit:    { type: 'unit' },
     review_window_unit:       { type: 'unit' },
     pwa_cooldown_unit:        { type: 'unit' },
 
-    // Boolean settings
     pwa_cooldown_enabled:     { type: 'boolean' }
 };
 
@@ -49,7 +43,7 @@ function validateSettings(input) {
 
     for (const [key, value] of Object.entries(input)) {
         const schema = SETTINGS_SCHEMA[key];
-        if (!schema) continue; // Silently ignore unknown keys
+        if (!schema) continue;
 
         if (schema.type === 'number') {
             const num = Number(value);
@@ -78,15 +72,21 @@ function validateSettings(input) {
 }
 
 export default async function handler(req, res) {
-    /* ── CORS (strict — no wildcard) ── */
+    /* ── CORS + Security Headers ── */
     setCorsHeaders(req, res, 'GET, POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    /* ── Global rate limiting ── */
+    const ip = getServerIP(req);
+    if (checkGlobalRateLimit(ip)) {
+        return res.status(429).json({ error: 'Too many requests' });
+    }
+
     try {
-        /* ── Admin verification (required for ALL methods) ── */
+        /* ── Admin verification (FAIL CLOSED) ── */
         const admin = await verifyAdmin(req);
         if (!admin.valid) {
             return res.status(admin.status).json({ error: admin.error });
@@ -110,13 +110,11 @@ export default async function handler(req, res) {
         if (req.method === 'POST') {
             const newLimits = req.body;
 
-            // Validate against whitelist + type + range
             const validation = validateSettings(newLimits);
             if (!validation.valid) {
                 return res.status(400).json({ error: validation.error });
             }
 
-            // Merge with existing (don't overwrite unrelated settings)
             let existing = {};
             try {
                 const current = await supabaseGet(
@@ -130,7 +128,6 @@ export default async function handler(req, res) {
 
             const merged = { ...existing, ...validation.data };
 
-            // Update using service key
             const success = await supabasePatch(
                 'site_settings',
                 'key=eq.security_limits',
@@ -140,6 +137,8 @@ export default async function handler(req, res) {
             if (!success) {
                 return res.status(500).json({ error: 'Failed to update settings' });
             }
+
+            logSecurityEvent('info', 'settings:updated', { ip, detail: JSON.stringify(validation.data).slice(0, 200) });
 
             return res.status(200).json({ success: true, limits: merged });
         }

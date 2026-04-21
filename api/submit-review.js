@@ -1,38 +1,40 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Secure Review Submission API (v2 — Hardened)
+   DALAL — Secure Review Submission API (v4 — Production Hardened)
    ─────────────────────────────────────────────────────────────
    POST /api/submit-review
-   
+
    Security layers:
-     1. Method + CORS (strict origin allowlist)
-     2. Origin + Referer validation
-     3. Multi-signal bot detection
-     4. Honeypot check (BLOCKS — not just logging)
-     5. Timing check (server-side validation)
-     6. IP extraction (server-side, Vercel-trusted)
-     7. In-memory rate limiting (fast, per-instance)
-     8. KV/DB-backed rate limiting (persistent)
-     9. Duplicate order review check
+     1. Security headers + CORS
+     2. Global rate limiting
+     3. Origin + Referer validation
+     4. Bot detection
+     5. Honeypot check
+     6. Timing check
+     7. Composite client ID rate limiting
+     8. KV rate limiting (FAIL CLOSED)
+     9. Anomaly tracking
     10. Input validation + sanitization
-    11. Products array size limit
-    12. Auto-set is_visible = false (admin approval required)
+    11. Duplicate order review check
+    12. Auto-set is_visible = false
    ═══════════════════════════════════════════════════════════════ */
 
 import {
     setCorsHeaders, validateOrigin, getServerIP, isBot,
     sanitize, sanitizeOrNull, supabaseGet, supabaseInsert,
     logSecurityEvent, createMemoryRateLimiter, kvRateLimit,
-    fetchSecurityLimits, getWindowMs, hashForLog
+    fetchSecurityLimits, getWindowMs,
+    checkGlobalRateLimit, getCompositeId,
+    trackAnomaly, KV_CONFIGURED, TIMEOUT
 } from './_lib/security.js';
 
 /* ── In-memory rate limiter ── */
 const rateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 86400000, maxHits: 10 });
 
-const MIN_FILL_TIME_MS = 3000; // 3 seconds minimum to fill form
+const MIN_FILL_TIME_MS = 3000;
 
 export default async function handler(req, res) {
 
-    /* ── CORS ── */
+    /* ── CORS + Security Headers ── */
     setCorsHeaders(req, res, 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -42,13 +44,17 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
-    /* ── Bot detection ── */
-    if (isBot(req)) {
-        return res.status(403).json({ error: 'Request blocked' });
+    /* ── Global rate limiting ── */
+    const ip = getServerIP(req);
+    if (checkGlobalRateLimit(ip)) {
+        return res.status(429).json({ error: 'Too many requests' });
     }
 
-    /* ── Extract IP ── */
-    const ip = getServerIP(req);
+    /* ── Bot detection ── */
+    if (isBot(req)) {
+        trackAnomaly(ip, 'failure');
+        return res.status(403).json({ error: 'Request blocked' });
+    }
 
     /* ── Fetch dynamic limits ── */
     const LIMITS = await fetchSecurityLimits();
@@ -56,33 +62,34 @@ export default async function handler(req, res) {
     const maxPerIp = LIMITS.review_max_per_ip || 10;
     rateLimiter.updateConfig(rateWindowMs, maxPerIp);
 
-    /* ── In-memory rate limiting ── */
-    if (rateLimiter.check(ip)) {
-        logSecurityEvent('review:rate_limited', { ip });
+    /* ── In-memory rate limiting via composite ID ── */
+    const body = req.body;
+    const fpRaw = body && body.fingerprint ? sanitize(body.fingerprint, 64) : null;
+    const compositeId = getCompositeId(ip, req, fpRaw);
+
+    if (rateLimiter.check(compositeId)) {
+        logSecurityEvent('warning', 'review:rate_limited', { ip });
         return res.status(429).json({ error: 'rate_limited', message: 'Too many reviews. Please try again later.' });
     }
 
     try {
-        const body = req.body;
         if (!body) return res.status(400).json({ error: 'Missing body' });
 
-        /* ── Honeypot: BLOCK (not just log) ── */
+        /* ── Honeypot ── */
         if (body.dalal_website && body.dalal_website.trim() !== '') {
-            logSecurityEvent('review:honeypot', { ip });
-            // Return fake success to not reveal detection
+            logSecurityEvent('warning', 'review:honeypot', { ip });
+            trackAnomaly(ip, 'failure');
             return res.status(200).json({ success: true });
         }
 
-        /* ── Timing check: server-side delta ── */
+        /* ── Timing check ── */
         if (body.form_opened_at) {
             const clientTimestamp = parseInt(body.form_opened_at);
             if (!isNaN(clientTimestamp)) {
                 const elapsed = Date.now() - clientTimestamp;
-                console.log('submit-review: timing elapsed:', elapsed, 'ms');
-                // Only block truly impossible speeds (< 1 second, ignoring clock skew)
-                // Allow negative elapsed (clock skew where client is ahead)
                 if (elapsed > 1000 && elapsed < MIN_FILL_TIME_MS) {
-                    logSecurityEvent('review:timing_suspect', { ip, detail: `elapsed:${elapsed}ms` });
+                    logSecurityEvent('warning', 'review:timing_suspect', { ip, detail: `elapsed:${elapsed}ms` });
+                    trackAnomaly(ip, 'failure');
                     return res.status(200).json({ success: true });
                 }
             }
@@ -91,47 +98,49 @@ export default async function handler(req, res) {
         /* ── Extract & validate fields ── */
         const { product_id, order_ref, rating, comment, reviewer_name, fingerprint, products } = body;
 
-        // Rating: required, 1-5
         const ratingNum = parseInt(rating);
         if (!ratingNum || ratingNum < 1 || ratingNum > 5) {
             return res.status(400).json({ error: 'Invalid rating (must be 1-5)' });
         }
 
-        // Product ID: optional but must be valid if present
         const productIdNum = product_id ? parseInt(product_id) : null;
         if (product_id && (isNaN(productIdNum) || productIdNum < 1)) {
             return res.status(400).json({ error: 'Invalid product_id' });
         }
 
-        // Order ref: format validation
         const orderRefClean = order_ref ? sanitize(order_ref, 50) : null;
         if (orderRefClean && !/^DL-[A-Z0-9]{12}$/.test(orderRefClean)) {
             return res.status(400).json({ error: 'Invalid order reference' });
         }
 
-        // Sanitize text fields
         const commentClean = sanitize(comment || '', 1000);
         const nameClean = sanitizeOrNull(reviewer_name, 100);
         const fpClean = fingerprint ? sanitize(fingerprint, 64) : null;
 
-        /* ── KV/DB rate limiting (persistent, cross-instance) ── */
+        /* ── KV rate limiting (FAIL CLOSED) ── */
         if (ip) {
-            try {
-                const kvResult = await kvRateLimit(`review:${ip}`, rateWindowMs, maxPerIp);
-                if (kvResult === true) {
-                    return res.status(429).json({ error: 'rate_limited', message: 'Review limit reached.' });
-                }
-                if (kvResult === null) {
+            const kvResult = await kvRateLimit(`review:${compositeId}`, rateWindowMs, maxPerIp);
+            if (kvResult === true) {
+                return res.status(429).json({ error: 'rate_limited', message: 'Review limit reached.' });
+            }
+            // DB fallback only if KV not configured
+            if (kvResult === null) {
+                try {
                     const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
                     const ipReviews = await supabaseGet(
                         'reviews',
-                        `client_ip=eq.${encodeURIComponent(ip)}&created_at=gte.${windowTime}&select=id`
+                        `client_ip=eq.${encodeURIComponent(ip)}&created_at=gte.${windowTime}&select=id`,
+                        TIMEOUT.SECURITY
                     );
                     if (ipReviews.length >= maxPerIp) {
                         return res.status(429).json({ error: 'rate_limited', message: 'Review limit reached.' });
                     }
+                } catch {
+                    // DB fallback failed — FAIL CLOSED
+                    logSecurityEvent('critical', 'review:rate_check_failed', { ip });
+                    return res.status(503).json({ error: 'Service temporarily unavailable' });
                 }
-            } catch { /* don't block if check fails */ }
+            }
         }
 
         /* ── Duplicate order review check ── */
@@ -139,19 +148,22 @@ export default async function handler(req, res) {
             try {
                 const existing = await supabaseGet(
                     'reviews',
-                    `order_ref=eq.${encodeURIComponent(orderRefClean)}&select=id&limit=1`
+                    `order_ref=eq.${encodeURIComponent(orderRefClean)}&select=id&limit=1`,
+                    TIMEOUT.SECURITY
                 );
                 if (existing.length > 0) {
                     return res.status(400).json({ error: 'already_reviewed', message: 'This order has already been reviewed.' });
                 }
-            } catch { /* don't block if check fails */ }
+            } catch {
+                // Duplicate check is security-relevant — FAIL CLOSED
+                return res.status(503).json({ error: 'Service temporarily unavailable' });
+            }
         }
 
         /* ── Build review(s) — cap at 10 per request ── */
         let reviewsToInsert = [];
 
         if (products && Array.isArray(products) && products.length > 0) {
-            // Limit products array to prevent abuse
             const cappedProducts = products.slice(0, 10);
             const seenIds = new Set();
             for (const p of cappedProducts) {
@@ -165,13 +177,12 @@ export default async function handler(req, res) {
                     rating: ratingNum,
                     comment: commentClean,
                     client_ip: ip,
-                    is_visible: false // ALWAYS false — admin must approve
+                    composite_id: compositeId,
+                    is_visible: false
                 });
             }
-            console.log('submit-review: products loop result:', reviewsToInsert.length, 'reviews from', products.length, 'products');
         }
 
-        // Fallback: single review
         if (reviewsToInsert.length === 0) {
             reviewsToInsert = [{
                 order_ref: orderRefClean,
@@ -180,20 +191,15 @@ export default async function handler(req, res) {
                 rating: ratingNum,
                 comment: commentClean,
                 client_ip: ip,
+                composite_id: compositeId,
                 is_visible: false
             }];
-            console.log('submit-review: using fallback single review, product_id:', productIdNum, 'order_ref:', orderRefClean);
         }
 
-        /* ── Insert via service key ── */
-        console.log('submit-review: inserting', reviewsToInsert.length, 'reviews');
         await supabaseInsert('reviews', reviewsToInsert);
-
         return res.status(200).json({ success: true });
 
-    } catch (err) {
-        console.error('submit-review error:', err?.message || err);
-        // Never expose internal error details
+    } catch {
         return res.status(500).json({ error: 'Internal server error' });
     }
 }

@@ -1,29 +1,31 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Toggle Maintenance Mode (Hardened)
+   DALAL — Toggle Maintenance Mode (v4 — Production Hardened)
    ─────────────────────────────────────────────────────────────
    POST /api/toggle-maintenance  { enabled: true/false }
-   
-   Admin-only endpoint.
-   Hardened:
-   - Strict CORS (no wildcard)
-   - No hardcoded keys
-   - Uses service key for DB operations
-   - Consistent admin verification
+
+   Admin-only endpoint. FAIL CLOSED on all errors.
    ═══════════════════════════════════════════════════════════════ */
 
 import {
-    setCorsHeaders, verifyAdmin,
-    supabaseGet, supabasePatch
+    setCorsHeaders, verifyAdmin, getServerIP,
+    supabaseGet, supabasePatch,
+    checkGlobalRateLimit, logSecurityEvent
 } from './_lib/security.js';
 
 export default async function handler(req, res) {
-    /* ── CORS (strict — no wildcard) ── */
+    /* ── CORS + Security Headers ── */
     setCorsHeaders(req, res, 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+    /* ── Global rate limiting ── */
+    const ip = getServerIP(req);
+    if (checkGlobalRateLimit(ip)) {
+        return res.status(429).json({ error: 'Too many requests' });
+    }
+
     try {
-        /* ── Admin verification ── */
+        /* ── Admin verification (FAIL CLOSED) ── */
         const admin = await verifyAdmin(req);
         if (!admin.valid) {
             return res.status(admin.status).json({ error: admin.error });
@@ -52,7 +54,6 @@ export default async function handler(req, res) {
             enabled: enabled,
         };
 
-        /* ── Update using service key ── */
         const success = await supabasePatch(
             'site_settings',
             'key=eq.maintenance_mode',
@@ -62,6 +63,8 @@ export default async function handler(req, res) {
         if (!success) {
             return res.status(500).json({ error: 'Failed to update maintenance mode' });
         }
+
+        logSecurityEvent('info', 'maintenance:toggled', { ip, detail: `enabled:${enabled}` });
 
         return res.status(200).json({
             success: true,
