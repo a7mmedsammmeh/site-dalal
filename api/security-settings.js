@@ -15,14 +15,14 @@ import {
 
 /* ── Allowed settings whitelist with validation rules ── */
 const SETTINGS_SCHEMA = {
-    order_max_per_ip:         { type: 'number', min: 1, max: 999999 },
-    order_window_time:        { type: 'number', min: 1, max: 999999 },
-    phone_cooldown_time:      { type: 'number', min: 1, max: 999999 },
-    duplicate_window_time:    { type: 'number', min: 1, max: 999999 },
+    order_max_per_ip:         { type: 'number', min: 0, max: 999999 },
+    order_window_time:        { type: 'number', min: 0, max: 999999 },
+    phone_cooldown_time:      { type: 'number', min: 0, max: 999999 },
+    duplicate_window_time:    { type: 'number', min: 0, max: 999999 },
     max_items_per_order:      { type: 'number', min: 1, max: 999999 },
-    review_window_time:       { type: 'number', min: 1, max: 999999 },
-    review_max_per_ip:        { type: 'number', min: 1, max: 999999 },
-    pwa_cooldown_time:        { type: 'number', min: 1, max: 999999 },
+    review_window_time:       { type: 'number', min: 0, max: 999999 },
+    review_max_per_ip:        { type: 'number', min: 0, max: 999999 },
+    pwa_cooldown_time:        { type: 'number', min: 0, max: 999999 },
 
     order_window_unit:        { type: 'unit' },
     phone_cooldown_unit:      { type: 'unit' },

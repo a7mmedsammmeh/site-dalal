@@ -131,14 +131,14 @@ export default async function handler(req, res) {
         const compositeId = getCompositeId(serverIP, req, fingerprint);
 
         /* ── LAYER 9: In-Memory Rate Limiting (fast) ── */
-        if (orderRateLimiter.check(compositeId, false)) {
+        if (LIMITS.order_max_per_ip > 0 && orderRateLimiter.check(compositeId, false)) {
             logSecurityEvent('warning', 'order:mem_rate_limited', { ip: serverIP });
             trackAnomaly(serverIP, 'failure');
             return res.status(429).json({ error: 'rate_limited', reason: 'MEMORY_RATE_LIMIT', message: 'Too many orders. Please wait.' });
         }
 
         /* ── LAYER 10: DB Rate Limiting (source of truth — counts real orders) ── */
-        if (serverIP) {
+        if (LIMITS.order_max_per_ip > 0 && serverIP) {
             try {
                 const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
                 const ipOrders = await supabaseGet(
@@ -233,7 +233,7 @@ export default async function handler(req, res) {
         }
 
         /* ── Fingerprint rate limiting via DB (counts real orders only) ── */
-        if (fingerprint && serverIP) {
+        if (LIMITS.order_max_per_ip > 0 && fingerprint && serverIP) {
             try {
                 const fpClean = sanitize(fingerprint, 64);
                 const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
@@ -258,7 +258,7 @@ export default async function handler(req, res) {
         }
 
         /* ── LAYER 17: Phone Cooldown ── */
-        if (phoneCooldownLimiter.check(normalizedPhone, false)) {
+        if (phoneCooldownMs > 0 && phoneCooldownLimiter.check(normalizedPhone, false)) {
             logSecurityEvent('info', 'order:phone_cooldown', { ip: serverIP, phone: normalizedPhone });
             return res.status(429).json({ error: 'rate_limited', reason: 'PHONE_COOLDOWN', message: 'Please wait before placing another order.' });
         }
