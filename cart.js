@@ -1110,7 +1110,7 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             const savedId = result.id;
             const serverTotal = result.total;
 
-            if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
+
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
@@ -1447,7 +1447,7 @@ function checkoutViaSite() {
             const savedId = result.id;
             const serverTotal = result.total;
 
-            if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
+
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({

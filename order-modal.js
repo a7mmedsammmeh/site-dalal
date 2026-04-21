@@ -420,7 +420,7 @@
             const savedId = result.id;
             const serverTotal = result.total;
 
-            if (typeof SpamGuard !== 'undefined') SpamGuard.recordOrder();
+
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
