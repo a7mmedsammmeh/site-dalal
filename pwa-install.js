@@ -29,12 +29,20 @@
 
     /**
      * Show install prompt popup.
-     * Call this after a successful order.
+     * Call this after a successful order, or manually.
      */
-    function showInstallPrompt() {
-        // Don't show if already installed or dismissed
+    function showInstallPrompt(force = false) {
+        // Don't show if already installed
         if (isStandalone()) return;
-        if (localStorage.getItem(INSTALL_DISMISSED_KEY)) return;
+        
+        // If not forced, check dismissal cooldown (7 days)
+        if (!force) {
+            const dismissedAt = localStorage.getItem(INSTALL_DISMISSED_KEY);
+            if (dismissedAt) {
+                const daysPassed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+                if (daysPassed < 7) return;
+            }
+        }
 
         const lang = localStorage.getItem('dalal-lang') || 'ar';
         const isAr = lang === 'ar';
@@ -44,19 +52,34 @@
         if (existing) existing.remove();
 
         let instructionsHTML = '';
+        let popupTitle = '';
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         if (_deferredPrompt) {
-            // Chrome/Android — native prompt available
+            // Chrome/Edge/Android — native prompt available (Supports both Desktop and Mobile)
+            popupTitle = isMobile 
+                ? (isAr ? 'أضيفي دلال لموبايلك!' : 'Add DALAL to your phone!')
+                : (isAr ? 'نزّلي برنامج دلال للكمبيوتر!' : 'Install DALAL Desktop App!');
+                
+            const desc = isMobile 
+                ? (isAr ? 'أضيفي دلال للشاشة الرئيسية عشان توصلي لينا بسهولة وبدون متفتحي المتصفح!' : 'Add DALAL to your home screen for quick and easy access!')
+                : (isAr ? 'ثبتي تطبيق دلال على جهازك لتجربة تسوق أسرع وأسهل!' : 'Install DALAL on your computer for a faster shopping experience!');
+
+            const btnText = isMobile 
+                ? (isAr ? 'أضيفي للشاشة الرئيسية' : 'Add to Home Screen')
+                : (isAr ? 'تثبيت التطبيق الآن' : 'Install App Now');
+
             instructionsHTML = `
                 <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.7;margin-bottom:1.25rem;">
-                    ${isAr ? 'أضيفي دلال للشاشة الرئيسية عشان توصلي لينا بسهولة وبدون متفتحي المتصفح!' : 'Add DALAL to your home screen for quick and easy access!'}
+                    ${desc}
                 </p>
                 <button class="pwa-install-btn" id="pwaInstallNow">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    ${isAr ? 'أضيفي للشاشة الرئيسية' : 'Add to Home Screen'}
+                    ${btnText}
                 </button>`;
         } else if (isIOS()) {
             // iOS Safari — show manual instructions
+            popupTitle = isAr ? 'أضيفي دلال للآيفون!' : 'Add DALAL to iPhone!';
             instructionsHTML = `
                 <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.7;margin-bottom:1rem;">
                     ${isAr ? 'أضيفي دلال للشاشة الرئيسية عشان توصلي لينا بسرعة!' : 'Add DALAL to your home screen for quick access!'}
@@ -64,7 +87,7 @@
                 <div class="pwa-ios-steps">
                     <div class="pwa-step">
                         <span class="pwa-step-num">1</span>
-                        <span>${isAr ? 'اضغطي على زرار المشاركة' : 'Tap the Share button'} 
+                        <span>${isAr ? 'اضغطي على زرار المشاركة تحت' : 'Tap the Share button below'} 
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:middle;color:var(--gold);"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                         </span>
                     </div>
@@ -74,13 +97,25 @@
                     </div>
                     <div class="pwa-step">
                         <span class="pwa-step-num">3</span>
-                        <span>${isAr ? 'اضغطي "إضافة" وخلاص!' : 'Tap "Add" and you\'re done!'}</span>
+                        <span>${isAr ? 'اضغطي "إضافة" من فوق وخلاص!' : 'Tap "Add" at the top and you\'re done!'}</span>
                     </div>
                 </div>`;
         } else {
-            // Desktop or unsupported — don't show
-            return;
+            // Unsupported Desktop/Browser that has no native prompt
+            popupTitle = isMobile 
+                ? (isAr ? 'أضيفي دلال لموبايلك!' : 'Add DALAL to your phone!')
+                : (isAr ? 'تطبيق دلال للكمبيوتر' : 'DALAL Desktop App');
+                
+            const desc = isMobile
+                ? (isAr ? 'لو المتصفح بتاعك بيدعم التثبيت، هتلاقي اختيار (إضافة للشاشة الرئيسية) في القائمة الجانبية.' : 'If supported, select "Add to Home Screen" from your browser menu.')
+                : (isAr ? 'يمكنك التمتع بتجربة تسوق أفضل عن طريق تحميل التطبيق. ابحثي عن علامة التثبيت (Install) في شريط المتصفح فوق.' : 'Enjoy a better shopping experience. Look for the Install icon in your browser URL bar.');
+                
+            instructionsHTML = `
+                <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.7;margin-bottom:1.25rem;">
+                    ${desc}
+                </p>`;
         }
+
 
         const html = `
         <div class="pwa-overlay" id="dalalInstallPrompt">
@@ -95,7 +130,7 @@
                     <img src="images/dalal-logo.png" alt="DALAL" class="pwa-logo">
                 </div>
 
-                <h3 class="pwa-title">${isAr ? 'أضيفي دلال لموبايلك!' : 'Add DALAL to your phone!'}</h3>
+                <h3 class="pwa-title" id="pwaCustomTitle">${popupTitle}</h3>
                 <div class="pwa-divider"></div>
 
                 ${instructionsHTML}
@@ -231,7 +266,7 @@
         }
 
         function dismiss() {
-            localStorage.setItem(INSTALL_DISMISSED_KEY, '1');
+            localStorage.setItem(INSTALL_DISMISSED_KEY, Date.now().toString());
             closePrompt();
         }
 
@@ -247,7 +282,11 @@
                 _deferredPrompt.prompt();
                 const { outcome } = await _deferredPrompt.userChoice;
                 if (outcome === 'accepted') {
-                    localStorage.setItem(INSTALL_DISMISSED_KEY, '1');
+                    // App successfully installed, no need to ask again
+                    localStorage.setItem(INSTALL_DISMISSED_KEY, '2000000000000'); // distant future
+                } else {
+                    // Refused, reset timer
+                    localStorage.setItem(INSTALL_DISMISSED_KEY, Date.now().toString());
                 }
                 _deferredPrompt = null;
                 closePrompt();
@@ -260,6 +299,34 @@
             DalalModal.setupDrag(card, dismiss);
         }
     }
+
+    // Inject Permanent Install Link into Footer
+    window.addEventListener('DOMContentLoaded', () => {
+        if (isStandalone()) return;
+        setTimeout(() => {
+            const lang = localStorage.getItem('dalal-lang') || 'ar';
+            const quickLinksHeading = document.getElementById('footerQuickLinks');
+            if (quickLinksHeading) {
+                const ul = quickLinksHeading.nextElementSibling;
+                if (ul && ul.tagName === 'UL') {
+                    const li = document.createElement('li');
+                    li.style.marginTop = '0.5rem';
+                    const a = document.createElement('a');
+                    a.href = '#';
+                    a.id = 'footerLinkInstallApp';
+                    a.style.color = 'var(--gold)';
+                    a.style.fontWeight = 'bold';
+                    a.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:middle;margin-left:4px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${lang === 'ar' ? 'تثبيت تطبيق دلال 📱' : 'Install DALAL App 📱'}`;
+                    a.onclick = (e) => {
+                        e.preventDefault();
+                        showInstallPrompt(true); // force display
+                    };
+                    li.appendChild(a);
+                    ul.appendChild(li);
+                }
+            }
+        }, 1000);
+    });
 
     // Expose globally
     window.showInstallPrompt = showInstallPrompt;
