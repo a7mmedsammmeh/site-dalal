@@ -396,7 +396,6 @@ export default async function handler(req, res) {
             order_ref: orderRef,
             order_source: 'api',
             fingerprint: fpClean,
-            composite_id: compositeId,
             client_ip: serverIP,
             client_country: serverCountry,
             client_city: serverCity

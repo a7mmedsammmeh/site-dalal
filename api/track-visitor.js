@@ -58,7 +58,7 @@ export default async function handler(req, res) {
             country:      country,
             city:         city,
             fingerprint:  sanitizeOrNull(body.fingerprint, 64),
-            composite_id: compositeId,
+
             device_type:  sanitizeOrNull(body.device_type, 10),
             os:           sanitizeOrNull(body.os, 20),
             browser:      sanitizeOrNull(body.browser, 20),

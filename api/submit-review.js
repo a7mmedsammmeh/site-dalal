@@ -177,7 +177,7 @@ export default async function handler(req, res) {
                     rating: ratingNum,
                     comment: commentClean,
                     client_ip: ip,
-                    composite_id: compositeId,
+
                     is_visible: false
                 });
             }
@@ -191,7 +191,6 @@ export default async function handler(req, res) {
                 rating: ratingNum,
                 comment: commentClean,
                 client_ip: ip,
-                composite_id: compositeId,
                 is_visible: false
             }];
         }
