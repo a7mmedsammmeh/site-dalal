@@ -330,9 +330,11 @@ body {
                 if (res.status === 429) {
                     showError('تم تجاوز الحد المسموح — حاول بعد قليل');
                 } else if (res.status === 403) {
-                    showError('⛔ هذا الحساب ليس لديه صلاحية الوصول');
+                    showError(data.error || '⛔ هذا الحساب ليس لديه صلاحية الوصول');
+                } else if (res.status === 401) {
+                    showError(data.error || 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
                 } else {
-                    showError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+                    showError(data.error || 'حدث خطأ غير متوقع');
                 }
                 return;
             }

@@ -86,7 +86,14 @@ export default function middleware(request) {
        🔒 ADMIN PAGE PROTECTION (Cookie-Based Auth Guard)
        ──────────────────────────────────────────────────────────
        Runs BEFORE Vercel serves the static HTML file.
-       If the cookie is missing or expired → redirect to login.
+       If the cookie is missing or invalid → redirect to login.
+
+       SECURITY LAYERS:
+       1. Cookie must exist
+       2. JWT must decode to valid JSON
+       3. JWT must have correct Supabase claims (role, aud, sub)
+       4. JWT must not be older than GRACE_WINDOW
+       5. Full admin verification happens client-side via _requireAdmin()
        ══════════════════════════════════════════════════════════ */
     if (ADMIN_PATHS.includes(pathname)) {
         const token = getCookie(request, COOKIE_NAME);
@@ -96,21 +103,39 @@ export default function middleware(request) {
             return redirectToLogin(request.url);
         }
 
-        // Decode JWT and check expiry
+        // Decode JWT and validate
         const payload = decodeJwtPayload(token);
         if (!payload || !payload.exp) {
             // Invalid/malformed token → clear cookie and redirect
             return redirectToLogin(request.url, true);
         }
 
-        const now = Math.floor(Date.now() / 1000);
-        if (payload.exp < now) {
-            // Expired token → clear cookie and redirect
+        // ── Validate Supabase JWT claims ──
+        // Real Supabase JWTs always contain these.
+        // A forged JWT missing these will be rejected.
+        if (
+            payload.role !== 'authenticated' ||
+            payload.aud !== 'authenticated' ||
+            !payload.sub  // user UUID must exist
+        ) {
             return redirectToLogin(request.url, true);
         }
 
-        // Token is structurally valid and not expired → allow through
-        // Full admin verification happens client-side via _requireAdmin()
+        // ── Expiry check with grace window ──
+        // Supabase access tokens expire in ~1hr.
+        // The middleware allows recently-expired tokens because:
+        //   - The Supabase client auto-refreshes via refresh_token
+        //   - The REAL auth check happens in _requireAdmin() (server-side RPC)
+        //   - The middleware's purpose is to block unauthenticated visitors
+        // Tokens expired for more than GRACE_WINDOW are rejected.
+        const now = Math.floor(Date.now() / 1000);
+        const GRACE_WINDOW = 7 * 24 * 60 * 60; // 7 days in seconds
+        if (payload.exp + GRACE_WINDOW < now) {
+            // Token expired more than 7 days ago → definitely stale
+            return redirectToLogin(request.url, true);
+        }
+
+        // Token is valid and within grace window → allow through
         return undefined;
     }
 

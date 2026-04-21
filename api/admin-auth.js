@@ -94,10 +94,7 @@ export default async function handler(req, res) {
                 'apikey': SUPABASE_ANON_KEY,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                email: sanitize(email, 100),
-                password
-            }),
+            body: JSON.stringify({ email, password }),
             signal: AbortSignal.timeout(5000)
         });
 
@@ -112,7 +109,7 @@ export default async function handler(req, res) {
         const accessToken = authData.access_token;
 
         if (!accessToken) {
-            return res.status(401).json({ error: 'Authentication failed' });
+            return res.status(401).json({ error: 'Authentication failed — no token returned' });
         }
 
         /* ── Step 2: Verify admin role via is_admin() RPC ── */
@@ -123,12 +120,18 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
+            body: '{}',
             signal: AbortSignal.timeout(4000)
         });
 
         if (!adminCheckRes.ok) {
-            logSecurityEvent('warning', 'admin_auth:rpc_failed', { ip });
-            return res.status(403).json({ error: 'Access denied' });
+            const errText = await adminCheckRes.text().catch(() => 'unknown');
+            logSecurityEvent('warning', 'admin_auth:rpc_failed', {
+                ip, detail: `status:${adminCheckRes.status} body:${errText.slice(0, 100)}`
+            });
+            return res.status(403).json({
+                error: 'Access denied — admin verification failed'
+            });
         }
 
         const isAdmin = await adminCheckRes.json();
