@@ -1,18 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Spam Guard (Hardened)
+   DALAL — Spam Guard (Hardened v2)
    • Honeypot field check
    • Timing check (form filled too fast = bot)
-   • Rate limiting (max 3 orders per 10 min per browser)
    • Block status check (via /api/check-blocked — no raw IP exposed)
+   ─────────────────────────────────────────────────────────────
+   NOTE: Rate limiting is 100% server-side. The server reads the
+   current limit from the dashboard DB on every request, so when
+   admin changes limits they take effect immediately — no stale
+   client-side values, no localStorage bypass.
    ═══════════════════════════════════════════════════════════════ */
 
 const SpamGuard = (() => {
     'use strict';
 
-    const RATE_KEY      = 'dalal-order-times';
-    const MAX_ORDERS    = 3;
-    const WINDOW_MS     = 10 * 60 * 1000;
-    const MIN_FILL_MS   = 3000;
+    const MIN_FILL_MS = 3000;
 
     /* ── Block status cache (no raw IP stored) ── */
     let _statusCache = null;
@@ -48,25 +49,6 @@ const SpamGuard = (() => {
         window.addEventListener('load', () => checkBlockStatus(), { once: true });
     }
 
-    /* ── Rate limit ── */
-    function getRateTimes() {
-        try { return JSON.parse(localStorage.getItem(RATE_KEY)) || []; }
-        catch { return []; }
-    }
-
-    function recordOrder() {
-        const now   = Date.now();
-        const times = getRateTimes().filter(t => now - t < WINDOW_MS);
-        times.push(now);
-        localStorage.setItem(RATE_KEY, JSON.stringify(times));
-    }
-
-    function isRateLimited() {
-        const now   = Date.now();
-        const times = getRateTimes().filter(t => now - t < WINDOW_MS);
-        return times.length >= MAX_ORDERS;
-    }
-
     /* ── Timing ── */
     function markFormOpen() {
         return Date.now();
@@ -92,6 +74,7 @@ const SpamGuard = (() => {
 
     /* ── Main check — call before submitting ── */
     // Returns { blocked: true, reason: '...' } or { blocked: false }
+    // NOTE: No client-side rate_limit check. Server handles it with live dashboard limits.
     function check(openedAt) {
         if (isHoneypotFilled()) {
             return { blocked: true, reason: 'honeypot' };
@@ -99,24 +82,20 @@ const SpamGuard = (() => {
         if (isTooFast(openedAt)) {
             return { blocked: true, reason: 'too_fast' };
         }
-        if (isRateLimited()) {
-            return { blocked: true, reason: 'rate_limit' };
-        }
         return { blocked: false };
     }
 
     /* ── Error message ── */
     function errorMsg(reason, lang) {
         const isAr = lang === 'ar';
-        if (reason === 'rate_limit') {
-            return isAr
-                ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار قليلاً أو <a href="contact.html" style="color:var(--gold);text-decoration:underline;">تواصل معنا</a>'
-                : 'Too many orders in a short time. Please wait or <a href="contact.html" style="color:var(--gold);text-decoration:underline;">contact us</a>';
-        }
         return isAr
             ? 'حدث خطأ في التحقق. يرجى المحاولة مرة أخرى أو <a href="contact.html" style="color:var(--gold);text-decoration:underline;">تواصل معنا</a>'
             : 'Verification failed. Please try again or <a href="contact.html" style="color:var(--gold);text-decoration:underline;">contact us</a>';
     }
 
+    /* recordOrder is now a no-op — kept for backward compatibility so callers don't break */
+    function recordOrder() { /* no-op: rate limiting is server-side only */ }
+
     return { check, recordOrder, markFormOpen, honeypotHTML, errorMsg, checkBlockStatus };
 })();
+
