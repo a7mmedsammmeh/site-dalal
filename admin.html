@@ -521,6 +521,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             سجل النشاطات
         </button>
+        <button class="admin-refresh-btn hide-mobile" onclick="showSecurityPanel()" style="color:#1abc9c;border-color:rgba(26,188,156,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            الأمان والحماية
+        </button>
         <button class="admin-refresh-btn hide-mobile" onclick="window.location.href='products-admin.html'" style="color:#f39c12;border-color:rgba(243,156,18,0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             المنتجات
@@ -564,6 +568,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     <button class="admin-menu-item" onclick="showActivityLogPanel();toggleAdminMenu()" style="color:#9b59b6;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         سجل النشاطات
+    </button>
+    <button class="admin-menu-item" onclick="showSecurityPanel();toggleAdminMenu()" style="color:#1abc9c;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        الأمان والحماية
     </button>
     <button class="admin-menu-item" onclick="window.location.href='products-admin.html';toggleAdminMenu()" style="color:#f39c12;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
@@ -661,6 +669,74 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     </div>
     <div class="admin-cards" id="adminCards"></div>
 </main>
+
+<!-- Security Panel -->
+<div id="securityPanel" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;overflow-x:hidden;padding:1.25rem 0.75rem 4rem;">
+    <div style="max-width:600px;margin:0 auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#1abc9c" stroke-width="2" width="24" height="24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <h2 style="font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--text);margin:0;">إعدادات الأمان والحماية</h2>
+            </div>
+            <button onclick="hideSecurityPanel()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;padding:0.5rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.5rem;margin-bottom:1rem;">
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6;">
+                يمكنك هنا تعديل قواعد الأمان (الليميت) لحماية الموقع من الطلبات والتقييمات الوهمية (سبام).
+            </p>
+
+            <form id="securityForm" onsubmit="saveSecuritySettings(event)" style="display:flex;flex-direction:column;gap:1.25rem;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:1.25rem;">
+                    <div>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">أقصى عدد طلبات للـ IP الواحد</label>
+                        <input type="number" id="sec_order_max" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">فترة سماح الطلبات (بالدقائق)</label>
+                        <input type="number" id="sec_order_win" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:1.25rem;">
+                    <div>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">حظر تكرار رقم الموبايل (بالدقائق)</label>
+                        <input type="number" id="sec_phone_cool" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">حظر تكرار محتوى الطلب (بالدقائق)</label>
+                        <input type="number" id="sec_dup_win" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:1.25rem;">
+                    <div>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">أقصى عدد تقييمات للـ IP</label>
+                        <input type="number" id="sec_rev_max" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">فترة سماح التقييمات (بالساعات)</label>
+                        <input type="number" id="sec_rev_win" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">الحد الأقصى لعدد المنتجات في الطلب الواحد</label>
+                    <input type="number" id="sec_max_items" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                </div>
+
+                <div id="secError" style="color:#e05c5c;font-size:0.85rem;display:none;"></div>
+                <div id="secSuccess" style="color:#4caf7d;font-size:0.85rem;display:none;">تم الحفظ بنجاح ✓</div>
+
+                <button type="submit" id="secSaveBtn" style="background:#1abc9c;color:#fff;border:none;padding:0.85rem;border-radius:var(--r);font-family:inherit;font-weight:600;cursor:pointer;margin-top:1rem;transition:opacity var(--tr);">
+                    حفظ التعديلات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div class="admin-toast" id="adminToast"></div>
 
@@ -2098,6 +2174,98 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             if (stack.length > 0 && stack[stack.length - 1]?.id === 'visitorsPanel') {
                 DalalModal.popState();
             }
+        }
+    };
+
+    window.showSecurityPanel = async function() {
+        document.getElementById('securityPanel').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') DalalModal.pushState('securityPanel', hideSecurityPanel);
+        
+        // Fetch current settings
+        const token = localStorage.getItem('dalal_admin_token');
+        if (!token) return;
+        try {
+            document.getElementById('secSaveBtn').textContent = 'جاري التحميل...';
+            document.getElementById('secSaveBtn').disabled = true;
+            
+            const res = await fetch('/api/security-settings', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const limits = data.limits || {};
+                document.getElementById('sec_order_max').value = limits.order_max_per_ip || 3;
+                document.getElementById('sec_order_win').value = limits.order_window_min || 10;
+                document.getElementById('sec_phone_cool').value = limits.phone_cooldown_min || 2;
+                document.getElementById('sec_dup_win').value = limits.duplicate_window_min || 2;
+                document.getElementById('sec_rev_max').value = limits.review_max_per_ip || 10;
+                document.getElementById('sec_rev_win').value = limits.review_window_hours || 24;
+                document.getElementById('sec_max_items').value = limits.max_items_per_order || 20;
+            }
+        } catch(e) {
+            console.error('Failed to load security limits', e);
+        } finally {
+            document.getElementById('secSaveBtn').textContent = 'حفظ التعديلات';
+            document.getElementById('secSaveBtn').disabled = false;
+        }
+    };
+
+    window.hideSecurityPanel = function() {
+        document.getElementById('securityPanel').style.display = 'none';
+        document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'securityPanel') {
+                DalalModal.popState();
+            }
+        }
+    };
+
+    window.saveSecuritySettings = async function(e) {
+        e.preventDefault();
+        const token = localStorage.getItem('dalal_admin_token');
+        if (!token) return;
+
+        const btn = document.getElementById('secSaveBtn');
+        const err = document.getElementById('secError');
+        const suc = document.getElementById('secSuccess');
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        err.style.display = 'none';
+        suc.style.display = 'none';
+
+        const payload = {
+            order_max_per_ip: parseInt(document.getElementById('sec_order_max').value) || 3,
+            order_window_min: parseInt(document.getElementById('sec_order_win').value) || 10,
+            phone_cooldown_min: parseInt(document.getElementById('sec_phone_cool').value) || 2,
+            duplicate_window_min: parseInt(document.getElementById('sec_dup_win').value) || 2,
+            review_max_per_ip: parseInt(document.getElementById('sec_rev_max').value) || 10,
+            review_window_hours: parseInt(document.getElementById('sec_rev_win').value) || 24,
+            max_items_per_order: parseInt(document.getElementById('sec_max_items').value) || 20
+        };
+
+        try {
+            const res = await fetch('/api/security-settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.error || 'Failed to save');
+            
+            suc.style.display = 'block';
+            setTimeout(() => suc.style.display = 'none', 3000);
+        } catch(ex) {
+            err.textContent = ex.message;
+            err.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.style.opacity = '1';
         }
     };
 

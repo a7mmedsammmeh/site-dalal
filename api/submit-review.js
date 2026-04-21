@@ -62,12 +62,12 @@ const BOT_PATTERNS = [
     /headless/i, /phantom/i, /selenium/i, /puppeteer/i
 ];
 
-/* ── In-memory rate limiter (per IP) ── */
+/* ── In-memory rate limiting map */
 const rateLimitMap = new Map();
-const RATE_WINDOW_MS = 24 * 60 * 60 * 1000;  // 24 hours
-const MAX_REVIEWS_PER_IP = 10;
+let RATE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours default
+let MAX_REVIEWS_PER_IP = 10; // max 10 reviews per IP per 24 hours default
 
-function isRateLimited(ip) {
+function checkRateLimit(ip) {
     if (!ip) return false;
     const now = Date.now();
     const record = rateLimitMap.get(ip);
@@ -142,7 +142,31 @@ export default async function handler(req, res) {
 
     /* ── IP + rate limit ── */
     const ip = getIP(req);
-    if (isRateLimited(ip)) {
+    /* ──────────────────────────────────────────────────────────
+       LAYER 2.5: Fetch Dynamic Security Limits
+       ────────────────────────────────────────────────────────── */
+    let LIMITS = {
+        review_window_hours: 24,
+        review_max_per_ip: 10
+    };
+    try {
+        const fetchRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/site_settings?key=eq.security_limits&select=value`,
+            { headers: HEADERS, signal: AbortSignal.timeout(4000) }
+        );
+        if (fetchRes.ok) {
+            const data = await fetchRes.json();
+            if (data && data.length > 0) {
+                LIMITS = { ...LIMITS, ...(data[0].value || {}) };
+            }
+        }
+    } catch { /* proceed with defaults */ }
+
+    // Update in-memory constants
+    RATE_WINDOW_MS = LIMITS.review_window_hours * 60 * 60 * 1000;
+    MAX_REVIEWS_PER_IP = LIMITS.review_max_per_ip;
+
+    if (checkRateLimit(ip)) {
         // Log spam attempt
         logSuspicious(ip, null, 'review_rate_limited', 'Too many reviews');
         return res.status(429).json({ error: 'rate_limited', message: 'Too many reviews. Please try again tomorrow.' });

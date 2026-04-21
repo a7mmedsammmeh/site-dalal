@@ -80,8 +80,8 @@ const ALLOWED_ORIGINS = [
    DB-backed rate limiting (below) provides persistent checks.
    ═══════════════════════════════════════════════════════════════ */
 const rateLimitMap = new Map();
-const RATE_WINDOW_MS  = 10 * 60 * 1000;  // 10 minutes
-const MAX_PER_IP_MEM  = 3;               // max 3 orders per IP per window
+let RATE_WINDOW_MS  = 10 * 60 * 1000;  // 10 minutes default
+let MAX_PER_IP_MEM  = 3;               // max 3 orders per IP per window
 
 function checkMemoryRateLimit(ip) {
     if (!ip) return false;
@@ -114,7 +114,7 @@ function cleanupRateLimitMap() {
    Prevents accidental double-clicks AND scripted replay attacks.
    ═══════════════════════════════════════════════════════════════ */
 const recentPayloads = new Map();
-const DEDUP_WINDOW_MS = 2 * 60 * 1000;  // 2 minutes
+let DEDUP_WINDOW_MS = 2 * 60 * 1000;  // 2 minutes default
 
 function isDuplicatePayload(ip, payloadHash) {
     if (!ip) return false;
@@ -147,7 +147,7 @@ function simpleHash(str) {
    Prevents phone-number-based spam even with IP/device changes.
    ═══════════════════════════════════════════════════════════════ */
 const phoneCooldownMap = new Map();
-const PHONE_COOLDOWN_MS = 2 * 60 * 1000;  // 2 minutes
+let PHONE_COOLDOWN_MS = 2 * 60 * 1000;  // 2 minutes default
 
 function isPhoneOnCooldown(normalizedPhone) {
     if (!normalizedPhone) return false;
@@ -245,6 +245,35 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    /* ──────────────────────────────────────────────────────────
+       LAYER 2.5: Fetch Dynamic Security Limits
+       ────────────────────────────────────────────────────────── */
+    let LIMITS = {
+        order_max_per_ip: 3,
+        order_window_min: 10,
+        phone_cooldown_min: 2,
+        duplicate_window_min: 2,
+        max_items_per_order: 20
+    };
+    try {
+        const fetchRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/site_settings?key=eq.security_limits&select=value`,
+            { headers: HEADERS, signal: AbortSignal.timeout(4000) }
+        );
+        if (fetchRes.ok) {
+            const data = await fetchRes.json();
+            if (data && data.length > 0) {
+                LIMITS = { ...LIMITS, ...(data[0].value || {}) };
+            }
+        }
+    } catch { /* proceed with defaults */ }
+
+    // Update in-memory constants using dynamic limits
+    RATE_WINDOW_MS = LIMITS.order_window_min * 60 * 1000;
+    MAX_PER_IP_MEM = LIMITS.order_max_per_ip;
+    DEDUP_WINDOW_MS = LIMITS.duplicate_window_min * 60 * 1000;
+    PHONE_COOLDOWN_MS = LIMITS.phone_cooldown_min * 60 * 1000;
 
     /* ──────────────────────────────────────────────────────────
        LAYER 2: Origin Validation
@@ -363,7 +392,7 @@ export default async function handler(req, res) {
         }
 
         // Limit items count to prevent abuse
-        if (items.length > 20) {
+        if (items.length > LIMITS.max_items_per_order) {
             return res.status(400).json({ error: 'Too many items in order' });
         }
 
@@ -386,9 +415,9 @@ export default async function handler(req, res) {
            LAYER 11: DB-Backed Rate Limiting (persistent)
            Uses server-extracted IP — NOT client-provided.
            ────────────────────────────────────────────────────── */
-        const RATE_WINDOW_MIN = 10;
-        const MAX_PER_IP = 3;
-        const MAX_PER_FP = 3;
+        const RATE_WINDOW_MIN = LIMITS.order_window_min;
+        const MAX_PER_IP = LIMITS.order_max_per_ip;
+        const MAX_PER_FP = LIMITS.order_max_per_ip; // usually same as IP max
         const windowTime = new Date(Date.now() - RATE_WINDOW_MIN * 60 * 1000).toISOString();
 
         try {
