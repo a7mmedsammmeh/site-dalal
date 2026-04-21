@@ -644,7 +644,6 @@
                 form_opened_at: _formOpenedAt,
                 dalal_website: document.getElementById('dalal_website')?.value || ''
             };
-            console.log('[review] submitting:', JSON.stringify(payload, null, 2));
 
             const response = await fetch('/api/submit-review', {
                 method: 'POST',
@@ -653,9 +652,7 @@
                 signal: AbortSignal.timeout(10000)
             });
 
-            console.log('[review] response status:', response.status);
             const result = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : {};
-            console.log('[review] response body:', result);
 
             if (!response.ok) {
                 if (result.error === 'rate_limited') {
@@ -667,7 +664,6 @@
                 throw new Error(result.message || result.error || 'Review failed');
             }
 
-            console.log('[review] ✅ success!');
 
             // Back link — return to product page if came from direct review, else home
             const backEl = document.getElementById('backLink');
@@ -691,7 +687,6 @@
             document.getElementById('reviewForm').style.display    = 'none';
             document.getElementById('successScreen').style.display = 'block';
         } catch (submitErr) {
-            console.error('[review] ❌ error:', submitErr);
             btn.disabled = false;
             lbl.textContent = t.submitBtn;
             errEl.textContent = submitErr.message || t.errorFail;
