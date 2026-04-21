@@ -120,7 +120,6 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: '{}',
             signal: AbortSignal.timeout(4000)
         });
 
@@ -130,7 +129,7 @@ export default async function handler(req, res) {
                 ip, detail: `status:${adminCheckRes.status} body:${errText.slice(0, 100)}`
             });
             return res.status(403).json({
-                error: 'Access denied — admin verification failed'
+                error: `خطأ في التحقق من الصلاحية (RPC Status: ${adminCheckRes.status}). ${errText.slice(0, 50)}`
             });
         }
 
