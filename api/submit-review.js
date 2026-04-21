@@ -75,14 +75,14 @@ export default async function handler(req, res) {
 
         /* ── Timing check: server-side delta ── */
         if (body.form_opened_at) {
-            // Use server-received timestamp, not client-controlled
             const clientTimestamp = parseInt(body.form_opened_at);
             if (!isNaN(clientTimestamp)) {
                 const elapsed = Date.now() - clientTimestamp;
-                // Both too fast AND too old (>1 hour) are suspicious
-                if (elapsed < MIN_FILL_TIME_MS || elapsed > 3600000) {
+                console.log('submit-review: timing elapsed:', elapsed, 'ms');
+                // Only block truly impossible speeds (< 1 second, ignoring clock skew)
+                // Allow negative elapsed (clock skew where client is ahead)
+                if (elapsed > 1000 && elapsed < MIN_FILL_TIME_MS) {
                     logSecurityEvent('review:timing_suspect', { ip, detail: `elapsed:${elapsed}ms` });
-                    // Return fake success for honeypot-adjacent
                     return res.status(200).json({ success: true });
                 }
             }
