@@ -1,227 +1,65 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Secure Order Creation API
+   DALAL — Secure Order Creation API (v3 — Hardened)
    ─────────────────────────────────────────────────────────────
    POST /api/create-order
    
-   Server-side security layers (in order):
-     1. Method + CORS
-     2. Origin validation (strict — rejects unknown origins)
-     3. Bot detection (user-agent analysis)
-     4. Honeypot check (server-side)
-     5. IP extraction from headers (NOT from client body)
-     6. IP blocking check (against blocked_ips table)
-     7. Fingerprint blocking check (against blocked_fingerprints)
-     8. Phone blocking check (against blocked_phones)
-     9. In-memory rate limiting (fast, per IP — 3/10min)
-    10. DB-backed rate limiting (persistent, per IP + fingerprint)
-    11. Duplicate payload detection (per IP — 2min window)
-    12. Field validation + sanitization
-    13. Stock check
-    14. Server-side price calculation (from DB)
+   Security layers (in order):
+     1. Method + CORS (strict origin allowlist)
+     2. Origin + Referer validation
+     3. Multi-signal bot detection
+     4. Content-Type validation
+     5. Honeypot check (server-side)
+     6. IP extraction (Vercel-trusted headers only)
+     7. In-memory rate limiting (fast, per-instance)
+     8. KV/DB-backed rate limiting (persistent, cross-instance)
+     9. IP blocking check (indexed DB query)
+    10. Fingerprint blocking check (indexed DB query)
+    11. Phone blocking check (normalized, indexed DB query)
+    12. Phone cooldown (in-memory + cross-instance)
+    13. Duplicate payload detection (SHA-256 + in-memory)
+    14. Field validation + sanitization
+    15. Stock check
+    16. Server-side price calculation (from DB)
+    17. Geo-IP enrichment (cached)
    ═══════════════════════════════════════════════════════════════ */
 
-const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+import {
+    setCorsHeaders, validateOrigin, getServerIP, isBot,
+    sanitize, normalizePhone, hashSHA256, hashForLog,
+    getGeoLocation, supabaseGet, supabaseInsert,
+    logSecurityEvent, createMemoryRateLimiter, kvRateLimit,
+    fetchSecurityLimits, getWindowMs, generateOrderRef
+} from './_lib/security.js';
 
-const HEADERS = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': `Bearer ${SUPABASE_KEY}`,
-    'Content-Type': 'application/json'
-};
+/* ── In-memory rate limiters ── */
+const orderRateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 600000, maxHits: 3 });
+const phoneCooldownLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 120000, maxHits: 1 });
+const duplicateMap = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 120000, maxHits: 1 });
 
-/* ── Supabase helpers ── */
-async function supabaseGet(table, filter) {
-    const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/${table}?${filter}`,
-        { headers: HEADERS, signal: AbortSignal.timeout(5000) }
-    );
-    if (!res.ok) return [];
-    return await res.json();
-}
-
-async function supabaseInsert(table, body) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-        method: 'POST',
-        headers: { ...HEADERS, 'Prefer': 'return=representation' },
-        body: JSON.stringify(Array.isArray(body) ? body : [body]),
-        signal: AbortSignal.timeout(5000)
-    });
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Supabase insert failed: ${err}`);
-    }
-    return await res.json();
-}
-
-/* ── Generate order ref ── */
-function generateOrderRef() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const len = 12;
-    const arr = new Uint8Array(len);
-    crypto.getRandomValues(arr);
-    let ref = '';
-    for (let i = 0; i < len; i++) ref += chars[arr[i] % chars.length];
-    return `DL-${ref}`;
-}
-
-/* ── Trusted origins allowlist ── */
-const ALLOWED_ORIGINS = [
-    'https://dalalwear.shop',
-    'https://www.dalalwear.shop',
-    'https://dalal-lin.vercel.app'
-];
-
-/* ═══════════════════════════════════════════════════════════════
-   SECURITY LAYER: In-Memory Rate Limiting
-   ─────────────────────────────────────────────────────────────
-   Fast first-line defense. Vercel serverless functions share
-   memory within a warm instance, so this blocks rapid-fire
-   spam within the same instance lifecycle.
-   DB-backed rate limiting (below) provides persistent checks.
-   ═══════════════════════════════════════════════════════════════ */
-const rateLimitMap = new Map();
-let RATE_WINDOW_MS  = 10 * 60 * 1000;  // 10 minutes default
-let MAX_PER_IP_MEM  = 3;               // max 3 orders per IP per window
-
-function checkMemoryRateLimit(ip) {
-    if (!ip) return false;
-    const now = Date.now();
-    const record = rateLimitMap.get(ip);
-
-    if (!record || now - record.windowStart > RATE_WINDOW_MS) {
-        rateLimitMap.set(ip, { count: 1, windowStart: now });
-        return false;
-    }
-
-    record.count++;
-    return record.count > MAX_PER_IP_MEM;
-}
-
-// Clean up old entries periodically to prevent memory leaks
-function cleanupRateLimitMap() {
-    const now = Date.now();
-    for (const [ip, record] of rateLimitMap) {
-        if (now - record.windowStart > RATE_WINDOW_MS) {
-            rateLimitMap.delete(ip);
-        }
-    }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SECURITY LAYER: Duplicate Payload Detection
-   ─────────────────────────────────────────────────────────────
-   Blocks identical orders from the same IP within 2 minutes.
-   Prevents accidental double-clicks AND scripted replay attacks.
-   ═══════════════════════════════════════════════════════════════ */
+/* ── Duplicate payload tracking (separate from rate limiter) ── */
 const recentPayloads = new Map();
-let DEDUP_WINDOW_MS = 2 * 60 * 1000;  // 2 minutes default
+const PAYLOAD_MAX_ENTRIES = 1000;
 
-function isDuplicatePayload(ip, payloadHash) {
-    if (!ip) return false;
-    const key = `${ip}:${payloadHash}`;
+function isDuplicatePayload(key, hash, windowMs) {
     const now = Date.now();
 
-    // Clean old entries
-    for (const [k, ts] of recentPayloads) {
-        if (now - ts > DEDUP_WINDOW_MS) recentPayloads.delete(k);
-    }
-
-    if (recentPayloads.has(key)) return true;
-    recentPayloads.set(key, now);
-    return false;
-}
-
-function simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-    }
-    return Math.abs(hash).toString(36);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SECURITY LAYER: Phone Cooldown
-   ─────────────────────────────────────────────────────────────
-   Same phone number cannot place more than 1 order every 2 min.
-   Prevents phone-number-based spam even with IP/device changes.
-   ═══════════════════════════════════════════════════════════════ */
-const phoneCooldownMap = new Map();
-let PHONE_COOLDOWN_MS = 2 * 60 * 1000;  // 2 minutes default
-
-function isPhoneOnCooldown(normalizedPhone) {
-    if (!normalizedPhone) return false;
-    const now = Date.now();
-    const lastOrder = phoneCooldownMap.get(normalizedPhone);
-
-    // Cleanup old entries
-    if (phoneCooldownMap.size > 300) {
-        for (const [k, v] of phoneCooldownMap) {
-            if (now - v > PHONE_COOLDOWN_MS) phoneCooldownMap.delete(k);
+    // Evict expired + enforce max size
+    if (recentPayloads.size > PAYLOAD_MAX_ENTRIES * 0.8) {
+        for (const [k, ts] of recentPayloads) {
+            if (now - ts > windowMs) recentPayloads.delete(k);
+        }
+        if (recentPayloads.size >= PAYLOAD_MAX_ENTRIES) {
+            const firstKey = recentPayloads.keys().next().value;
+            if (firstKey) recentPayloads.delete(firstKey);
         }
     }
 
-    if (lastOrder && now - lastOrder < PHONE_COOLDOWN_MS) return true;
-    phoneCooldownMap.set(normalizedPhone, now);
+    const fullKey = `${key}:${hash}`;
+    if (recentPayloads.has(fullKey) && now - recentPayloads.get(fullKey) < windowMs) {
+        return true;
+    }
+    recentPayloads.set(fullKey, now);
     return false;
-}
-
-/* ── Log suspicious activity to activity_logs ── */
-async function logSuspicious(ip, type, description) {
-    try {
-        await supabaseInsert('activity_logs', {
-            action_type: 'block',
-            action_description: `[order:${type}] IP: ${ip || '?'} | ${description}`,
-            entity_type: 'security',
-            entity_id: ip || null
-        });
-    } catch { /* logging should never break the flow */ }
-}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   SECURITY LAYER: Bot Detection
-   ─────────────────────────────────────────────────────────────
-   Rejects requests from known bots, scripts, and headless
-   browsers based on user-agent analysis.
-   ═══════════════════════════════════════════════════════════════ */
-const BOT_PATTERNS = [
-    /bot/i, /crawl/i, /spider/i, /scrape/i, /curl/i, /wget/i,
-    /python-requests/i, /axios/i, /node-fetch/i, /postman/i,
-    /headless/i, /phantom/i, /selenium/i, /puppeteer/i,
-    /httpie/i, /insomnia/i, /go-http/i, /java\//i, /libwww/i
-];
-
-function isBot(userAgent) {
-    if (!userAgent) return true;
-    if (userAgent.length < 20) return true;  // Too short = suspicious
-    return BOT_PATTERNS.some(p => p.test(userAgent));
-}
-
-/* ── Extract real IP from request headers ── */
-function getServerIP(req) {
-    return req.headers['x-forwarded-for']?.split(',')[0].trim()
-        || req.headers['x-real-ip']
-        || req.socket?.remoteAddress
-        || null;
-}
-
-/* ── Sanitize string ── */
-function sanitize(val, maxLen) {
-    if (typeof val !== 'string') return '';
-    return val.substring(0, maxLen).trim();
-}
-
-/* ── Normalize Egyptian phone number ── */
-/* Strips country codes & leading zeros so blocking works for ALL formats:
-   01221808060 / +201221808060 / 201221808060 / 00201221808060 → 1221808060 */
-function normalizePhone(phone) {
-    if (!phone) return '';
-    let cleaned = phone.replace(/[^0-9]/g, '');
-    if (cleaned.startsWith('0020') && cleaned.length >= 14) cleaned = cleaned.slice(4);
-    else if (cleaned.startsWith('20') && cleaned.length >= 12) cleaned = cleaned.slice(2);
-    if (cleaned.startsWith('0') && cleaned.length >= 11) cleaned = cleaned.slice(1);
-    return cleaned;
 }
 
 
@@ -230,303 +68,234 @@ function normalizePhone(phone) {
    ═══════════════════════════════════════════════════════════════ */
 export default async function handler(req, res) {
 
-    // Periodic cleanup
-    cleanupRateLimitMap();
-
-    /* ──────────────────────────────────────────────────────────
-       LAYER 1: Method + CORS
-       ────────────────────────────────────────────────────────── */
-    const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Vary', 'Origin');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    /* ── LAYER 1: Method + CORS ── */
+    setCorsHeaders(req, res, 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    /* ──────────────────────────────────────────────────────────
-       LAYER 2.5: Fetch Dynamic Security Limits
-       ────────────────────────────────────────────────────────── */
-    let LIMITS = {
-        order_max_per_ip: 3,
-        order_window_time: 10,
-        order_window_unit: 'minutes',
-        phone_cooldown_time: 2,
-        phone_cooldown_unit: 'minutes',
-        duplicate_window_time: 2,
-        duplicate_window_unit: 'minutes',
-        max_items_per_order: 20
-    };
-    try {
-        const fetchRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/site_settings?key=eq.security_limits&select=value`,
-            { headers: HEADERS, signal: AbortSignal.timeout(4000) }
-        );
-        if (fetchRes.ok) {
-            const data = await fetchRes.json();
-            if (data && data.length > 0) {
-                LIMITS = { ...LIMITS, ...(data[0].value || {}) };
-            }
-        }
-    } catch { /* proceed with defaults */ }
-
-    const multipliers = { minutes: 60 * 1000, hours: 60 * 60 * 1000, days: 24 * 60 * 60 * 1000, weeks: 7 * 24 * 60 * 60 * 1000 };
-    
-    const getMs = (timeKey, unitKey, fallbackMin) => {
-        const t = LIMITS[timeKey] ?? fallbackMin;
-        const u = LIMITS[unitKey] ?? 'minutes';
-        return t * (multipliers[u] || multipliers.minutes);
-    };
-
-    // Update in-memory constants using dynamic limits
-    RATE_WINDOW_MS = getMs('order_window_time', 'order_window_unit', LIMITS.order_window_min ?? 10);
-    MAX_PER_IP_MEM = LIMITS.order_max_per_ip;
-    DEDUP_WINDOW_MS = getMs('duplicate_window_time', 'duplicate_window_unit', LIMITS.duplicate_window_min ?? 2);
-    PHONE_COOLDOWN_MS = getMs('phone_cooldown_time', 'phone_cooldown_unit', LIMITS.phone_cooldown_min ?? 2);
-
-    /* ──────────────────────────────────────────────────────────
-       LAYER 2: Origin Validation
-       Same-origin POST may not include Origin header, so we
-       only reject when Origin IS present and NOT in allowlist.
-       Referer header is checked as fallback.
-       ────────────────────────────────────────────────────────── */
-    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-        const referer = req.headers.referer || req.headers.referrer || '';
-        const refererAllowed = ALLOWED_ORIGINS.some(o => referer.startsWith(o));
-        if (!refererAllowed) {
-            return res.status(403).json({ error: 'Forbidden: origin not allowed' });
-        }
+    /* ── LAYER 2: Origin Validation ── */
+    if (!validateOrigin(req)) {
+        return res.status(403).json({ error: 'Forbidden' });
     }
 
-    /* ──────────────────────────────────────────────────────────
-       LAYER 3: Bot Detection
-       ────────────────────────────────────────────────────────── */
-    const userAgent = req.headers['user-agent'] || '';
-    if (isBot(userAgent)) {
+    /* ── LAYER 3: Bot Detection ── */
+    if (isBot(req)) {
         return res.status(403).json({ error: 'Request blocked' });
     }
 
-    /* ──────────────────────────────────────────────────────────
-       LAYER 4: Basic header validation
-       Real browsers always send these headers.
-       ────────────────────────────────────────────────────────── */
+    /* ── LAYER 4: Content-Type validation ── */
     const contentType = req.headers['content-type'] || '';
     if (!contentType.includes('application/json')) {
         return res.status(400).json({ error: 'Invalid content type' });
     }
 
+    /* ── Fetch dynamic security limits ── */
+    const LIMITS = await fetchSecurityLimits();
+    const rateWindowMs = getWindowMs(LIMITS, 'order_window_time', 'order_window_unit', 10);
+    const dedupWindowMs = getWindowMs(LIMITS, 'duplicate_window_time', 'duplicate_window_unit', 2);
+    const phoneCooldownMs = getWindowMs(LIMITS, 'phone_cooldown_time', 'phone_cooldown_unit', 2);
+
+    // Update in-memory limiter configs
+    orderRateLimiter.updateConfig(rateWindowMs, LIMITS.order_max_per_ip);
+
     try {
         const body = req.body;
-        if (!body) return res.status(400).json({ error: 'Missing body' });
+        if (!body) return res.status(400).json({ error: 'Missing request body' });
 
-        /* ──────────────────────────────────────────────────────
-           LAYER 5: Honeypot Check (SERVER-SIDE)
-           If the hidden "dalal_website" field is filled, it's a bot.
-           ────────────────────────────────────────────────────── */
+        /* ── LAYER 5: Honeypot Check ── */
         if (body.dalal_website && body.dalal_website.trim() !== '') {
-            // Silently reject — don't reveal detection
+            // Silently reject — return fake success to not reveal detection
             return res.status(200).json({
                 success: true,
-                order_ref: 'DL-' + Math.random().toString(36).substring(2, 14).toUpperCase(),
+                order_ref: generateOrderRef(),
                 id: null,
                 total: 0,
                 products: []
             });
         }
 
-        /* ──────────────────────────────────────────────────────
-           LAYER 6: Extract REAL IP from server headers
-           NEVER trust client-provided IP.
-           ────────────────────────────────────────────────────── */
+        /* ── LAYER 6: Extract REAL IP from server headers ── */
         const serverIP = getServerIP(req);
 
-        const { name, phone, email, address, lang, items, fingerprint } = body;
-
-        /* ──────────────────────────────────────────────────────
-           LAYER 7: In-Memory Rate Limiting (fast)
-           ────────────────────────────────────────────────────── */
-        if (checkMemoryRateLimit(serverIP)) {
-            logSuspicious(serverIP, 'rate_limited', 'In-memory rate limit exceeded');
+        /* ── LAYER 7: In-Memory Rate Limiting (fast) ── */
+        if (orderRateLimiter.check(serverIP)) {
+            logSecurityEvent('order:mem_rate_limited', { ip: serverIP });
             return res.status(429).json({
                 error: 'rate_limited',
                 message: 'Too many orders. Please wait.'
             });
         }
 
-        /* ──────────────────────────────────────────────────────
-           LAYER 8: IP Blocking Check (against blocked_ips table)
-           ────────────────────────────────────────────────────── */
-        if (serverIP) {
-            try {
-                const ipCheck = await supabaseGet(
-                    'blocked_ips',
-                    `ip=eq.${encodeURIComponent(serverIP)}&select=ip,reason&limit=1`
-                );
-                if (ipCheck.length > 0) {
-                    return res.status(403).json({
-                        error: 'ip_blocked',
-                        message: 'Your access has been restricted.'
-                    });
-                }
-            } catch (e) { /* don't block order if check fails */ }
-        }
-
-        /* ──────────────────────────────────────────────────────
-           LAYER 9: Fingerprint Blocking Check
-           ────────────────────────────────────────────────────── */
-        if (fingerprint) {
-            try {
-                const fpCheck = await supabaseGet(
-                    'blocked_fingerprints',
-                    `fingerprint=eq.${encodeURIComponent(fingerprint)}&select=fingerprint,reason&limit=1`
-                );
-                if (fpCheck.length > 0) {
-                    return res.status(403).json({
-                        error: 'device_blocked',
-                        message: 'Your device has been restricted.'
-                    });
-                }
-            } catch (e) { /* don't block order if check fails */ }
-        }
-
-        /* ──────────────────────────────────────────────────────
-           LAYER 10: Phone Blocking Check
-           ────────────────────────────────────────────────────── */
-        if (!name || !phone || !address) {
-            return res.status(400).json({ error: 'Missing required fields: name, phone, address' });
-        }
-
-        if (!items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ error: 'Missing or empty items array' });
-        }
-
-        // Limit items count to prevent abuse
-        if (items.length > LIMITS.max_items_per_order) {
-            return res.status(400).json({ error: 'Too many items in order' });
-        }
-
+        /* ── LAYER 8: KV/DB-Backed Rate Limiting (cross-instance) ── */
         try {
-            const normalizedInput = normalizePhone(phone);
-            const blockedPhones = await supabaseGet(
-                'blocked_phones',
-                `select=phone,reason`
-            );
-            const matchedBlock = blockedPhones.find(bp => normalizePhone(bp.phone) === normalizedInput);
-            if (matchedBlock) {
-                return res.status(403).json({
-                    error: 'phone_blocked',
-                    message: 'This phone number is blocked from placing orders.'
-                });
+            // Try Vercel KV first
+            const kvResult = await kvRateLimit(`order:${serverIP}`, rateWindowMs, LIMITS.order_max_per_ip);
+            if (kvResult === true) {
+                logSecurityEvent('order:kv_rate_limited', { ip: serverIP });
+                return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
             }
-        } catch (e) { /* don't block order if check fails */ }
 
-        /* ──────────────────────────────────────────────────────
-           LAYER 11: DB-Backed Rate Limiting (persistent)
-           Uses server-extracted IP — NOT client-provided.
-           ────────────────────────────────────────────────────── */
-        const MAX_PER_IP = LIMITS.order_max_per_ip;
-        const MAX_PER_FP = LIMITS.order_max_per_ip; // usually same as IP max
-        const windowTime = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
-
-        try {
-            // Rate limit by server-side IP
-            if (serverIP) {
+            // If KV not available, use DB fallback
+            if (kvResult === null && serverIP) {
+                const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
                 const ipOrders = await supabaseGet(
                     'orders',
                     `client_ip=eq.${encodeURIComponent(serverIP)}&created_at=gte.${windowTime}&select=id`
                 );
-                if (ipOrders.length >= MAX_PER_IP) {
-                    return res.status(429).json({
-                        error: 'rate_limited',
-                        message: 'Too many orders. Please wait.'
-                    });
+                if (ipOrders.length >= LIMITS.order_max_per_ip) {
+                    logSecurityEvent('order:db_rate_limited', { ip: serverIP });
+                    return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
                 }
             }
+        } catch { /* don't fail the order if rate check errors */ }
 
-            // Rate limit by fingerprint (catches VPN / IP changers)
-            if (fingerprint) {
-                const fpOrders = await supabaseGet(
-                    'orders',
-                    `fingerprint=eq.${encodeURIComponent(fingerprint)}&created_at=gte.${windowTime}&select=id`
+        const { name, phone, email, address, lang, items, fingerprint } = body;
+
+        /* ── LAYER 9: IP Blocking Check ── */
+        if (serverIP) {
+            try {
+                const ipCheck = await supabaseGet(
+                    'blocked_ips',
+                    `ip=eq.${encodeURIComponent(serverIP)}&select=ip&limit=1`
                 );
-                if (fpOrders.length >= MAX_PER_FP) {
-                    return res.status(429).json({
-                        error: 'rate_limited',
-                        message: 'Too many orders from this device. Please wait.'
+                if (ipCheck.length > 0) {
+                    return res.status(403).json({
+                        error: 'access_restricted',
+                        message: 'Your access has been restricted.'
                     });
                 }
+            } catch {
+                // FAIL CLOSED: if we can't verify, reject
+                return res.status(503).json({ error: 'Service temporarily unavailable' });
             }
-        } catch (e) { /* don't block order if rate check fails */ }
+        }
 
-        /* ──────────────────────────────────────────────────────
-           LAYER 12: Duplicate Payload Detection
-           Blocks identical orders from same IP within 2 min.
-           ────────────────────────────────────────────────────── */
-        const payloadHash = simpleHash(JSON.stringify({ phone, address, items }));
-        if (isDuplicatePayload(serverIP, payloadHash)) {
-            logSuspicious(serverIP, 'duplicate', `Duplicate payload from phone: ${normalizePhone(phone)}`);
+        /* ── LAYER 10: Fingerprint Blocking Check ── */
+        if (fingerprint) {
+            const fpClean = sanitize(fingerprint, 64);
+            try {
+                const fpCheck = await supabaseGet(
+                    'blocked_fingerprints',
+                    `fingerprint=eq.${encodeURIComponent(fpClean)}&select=fingerprint&limit=1`
+                );
+                if (fpCheck.length > 0) {
+                    return res.status(403).json({
+                        error: 'access_restricted',
+                        message: 'Your access has been restricted.'
+                    });
+                }
+            } catch {
+                // FAIL CLOSED
+                return res.status(503).json({ error: 'Service temporarily unavailable' });
+            }
+        }
+
+        /* ── Field Validation ── */
+        if (!name || !phone || !address) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Missing or empty items' });
+        }
+        if (items.length > (LIMITS.max_items_per_order || 20)) {
+            return res.status(400).json({ error: 'Too many items in order' });
+        }
+
+        /* ── LAYER 11: Phone Blocking Check (normalized, direct query) ── */
+        const normalizedPhone = normalizePhone(phone);
+        if (!normalizedPhone || normalizedPhone.length < 9) {
+            return res.status(400).json({ error: 'Invalid phone number format' });
+        }
+
+        try {
+            // Indexed query on normalized_phone (NO full-table scan)
+            const phoneCheck = await supabaseGet(
+                'blocked_phones',
+                `normalized_phone=eq.${encodeURIComponent(normalizedPhone)}&select=id&limit=1`
+            );
+            if (phoneCheck.length > 0) {
+                return res.status(403).json({
+                    error: 'access_restricted',
+                    message: 'This phone number has been restricted.'
+                });
+            }
+        } catch {
+            // Fail safe: if query errors, don't block the order
+            // (normalized_phone column must exist — run migration)
+        }
+
+        /* ── Fingerprint rate limiting (catches VPN/IP changers) ── */
+        if (fingerprint) {
+            try {
+                const fpClean = sanitize(fingerprint, 64);
+                const kvFp = await kvRateLimit(`order:fp:${fpClean}`, rateWindowMs, LIMITS.order_max_per_ip);
+                if (kvFp === true) {
+                    return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
+                }
+                if (kvFp === null) {
+                    const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
+                    const fpOrders = await supabaseGet(
+                        'orders',
+                        `fingerprint=eq.${encodeURIComponent(fpClean)}&created_at=gte.${windowTime}&select=id`
+                    );
+                    if (fpOrders.length >= LIMITS.order_max_per_ip) {
+                        return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
+                    }
+                }
+            } catch { /* don't fail order */ }
+        }
+
+        /* ── LAYER 12: Duplicate Payload Detection (SHA-256) ── */
+        const payloadHash = await hashSHA256(JSON.stringify({ phone: normalizedPhone, address, items }));
+        if (isDuplicatePayload(serverIP, payloadHash, dedupWindowMs)) {
+            logSecurityEvent('order:duplicate', { ip: serverIP, detail: `hash:${payloadHash.slice(0, 8)}` });
             return res.status(429).json({
                 error: 'duplicate',
                 message: 'This order was already submitted. Please wait.'
             });
         }
 
-        /* ──────────────────────────────────────────────────────
-           LAYER 12b: Phone Cooldown
-           Same phone → max 1 order per 2 minutes.
-           ────────────────────────────────────────────────────── */
-        const normalizedPhone = normalizePhone(phone);
-        if (isPhoneOnCooldown(normalizedPhone)) {
-            logSuspicious(serverIP, 'phone_cooldown', `Phone cooldown: ${normalizedPhone}`);
+        /* ── LAYER 12b: Phone Cooldown ── */
+        if (phoneCooldownLimiter.check(normalizedPhone)) {
+            logSecurityEvent('order:phone_cooldown', { ip: serverIP, phone: normalizedPhone });
             return res.status(429).json({
                 error: 'rate_limited',
                 message: 'Please wait before placing another order.'
             });
         }
 
-        /* ──────────────────────────────────────────────────────
-           LAYER 13: Fetch geolocation server-side
-           ────────────────────────────────────────────────────── */
-        let serverCountry = null, serverCity = null;
-        if (serverIP) {
-            try {
-                const geoRes = await fetch(
-                    `http://ip-api.com/json/${serverIP}?fields=status,country,city`,
-                    { signal: AbortSignal.timeout(3000) }
-                );
-                if (geoRes.ok) {
-                    const g = await geoRes.json();
-                    if (g.status === 'success') {
-                        serverCountry = g.country || null;
-                        serverCity    = g.city    || null;
-                    }
-                }
-            } catch { /* geo is optional */ }
-        }
+        /* ── LAYER 13: Geo-IP (cached) ── */
+        const { country: serverCountry, city: serverCity } = await getGeoLocation(serverIP);
 
         /* ══════════════════════════════════════════════════════
-           BUSINESS LOGIC (unchanged — stock + price validation)
+           BUSINESS LOGIC — Stock + Price Validation
            ══════════════════════════════════════════════════════ */
 
-        /* ── Collect all unique product IDs ── */
-        const productIds = [...new Set(items.map(i => i.product_id))];
+        /* ── Validate and collect product IDs ── */
+        const productIds = [];
+        for (const item of items) {
+            const pid = parseInt(item.product_id);
+            if (!pid || pid < 1 || !Number.isInteger(pid)) {
+                return res.status(400).json({ error: 'Invalid product_id in items' });
+            }
+            if (!productIds.includes(pid)) productIds.push(pid);
+        }
 
         /* ── Fetch product stock status ── */
         try {
             const stockData = await supabaseGet(
                 'product_stock',
-                `product_id=in.(${productIds.join(',')})`
+                `product_id=in.(${productIds.join(',')})&select=product_id,visibility_status`
             );
             const stockMap = {};
             stockData.forEach(s => { stockMap[s.product_id] = s; });
 
             const outOfStock = [];
             for (const item of items) {
-                const stock = stockMap[item.product_id];
+                const pid = parseInt(item.product_id);
+                const stock = stockMap[pid];
                 if (stock && stock.visibility_status !== 'visible') {
-                    outOfStock.push(item.product_id);
+                    outOfStock.push(pid);
                 }
             }
             if (outOfStock.length > 0) {
@@ -536,7 +305,7 @@ export default async function handler(req, res) {
                     message: 'Some products are out of stock.'
                 });
             }
-        } catch (e) { /* don't block order if stock check fails */ }
+        } catch { /* don't block order if stock check fails */ }
 
         /* ── Fetch REAL prices from database ── */
         const pricingData = await supabaseGet(
@@ -544,7 +313,6 @@ export default async function handler(req, res) {
             `product_id=in.(${productIds.join(',')})&select=product_id,language,label,value,offer_order&order=offer_order`
         );
 
-        // Group pricing by product_id and language
         const pricingMap = {};
         pricingData.forEach(p => {
             const key = `${p.product_id}_${p.language}`;
@@ -565,32 +333,27 @@ export default async function handler(req, res) {
         let serverTotal = 0;
 
         for (const item of items) {
-            const pid = item.product_id;
+            const pid = parseInt(item.product_id);
             const offerIndex = parseInt(item.offer_index);
-            const qty = Math.max(1, Math.min(parseInt(item.qty) || 1, 99)); // Cap qty at 99
+            const qty = Math.max(1, Math.min(parseInt(item.qty) || 1, 99));
             const itemLang = lang || 'ar';
 
-            // Get pricing for this product in the requested language
             const key = `${pid}_${itemLang}`;
             const fallbackKey = `${pid}_ar`;
             let productPricing = pricingMap[key] || pricingMap[fallbackKey] || [];
-
-            // Sort by offer_order
             productPricing.sort((a, b) => a.offer_order - b.offer_order);
 
             if (productPricing.length === 0) {
                 return res.status(400).json({
                     error: 'invalid_product',
-                    product_id: pid,
-                    message: `No pricing found for product ${pid}`
+                    message: 'Product not available'
                 });
             }
 
-            if (offerIndex < 0 || offerIndex >= productPricing.length) {
+            if (isNaN(offerIndex) || offerIndex < 0 || offerIndex >= productPricing.length) {
                 return res.status(400).json({
                     error: 'invalid_offer',
-                    product_id: pid,
-                    message: `Invalid offer index ${offerIndex} for product ${pid}`
+                    message: 'Invalid product option selected'
                 });
             }
 
@@ -607,8 +370,8 @@ export default async function handler(req, res) {
                 size: sanitize(item.size, 50),
                 color: sanitize(item.color, 50),
                 notes: sanitize(item.notes, 200),
-                offer: realOffer.label,   // ← FROM DATABASE, not client
-                price: realOffer.value,   // ← FROM DATABASE, not client
+                offer: realOffer.label,
+                price: realOffer.value,
                 qty: qty
             });
 
@@ -619,6 +382,7 @@ export default async function handler(req, res) {
         const orderRef = generateOrderRef();
 
         /* ── Insert order with SERVER-VALIDATED data ── */
+        const fpClean = fingerprint ? sanitize(fingerprint, 64) : null;
         const orderData = {
             name: sanitize(name, 100),
             phone: sanitize(phone, 20),
@@ -626,14 +390,14 @@ export default async function handler(req, res) {
             address: sanitize(address, 300),
             lang: lang || 'ar',
             products: validatedProducts,
-            total: serverTotal,                // ← CALCULATED BY SERVER
+            total: serverTotal,
             status: 'pending',
             order_ref: orderRef,
-            order_source: 'api',               // ← marks as verified server-side order
-            fingerprint: fingerprint ? sanitize(fingerprint, 64) : null,
-            client_ip: serverIP,               // ← FROM SERVER HEADERS, not client
-            client_country: serverCountry,     // ← FROM SERVER GEO LOOKUP
-            client_city: serverCity            // ← FROM SERVER GEO LOOKUP
+            order_source: 'api',
+            fingerprint: fpClean,
+            client_ip: serverIP,
+            client_country: serverCountry,
+            client_city: serverCity
         };
 
         const result = await supabaseInsert('orders', orderData);
@@ -648,7 +412,7 @@ export default async function handler(req, res) {
         });
 
     } catch (err) {
-        console.error('create-order error:', err);
-        return res.status(500).json({ error: 'Internal server error', message: err.message });
+        // Never expose internal error details
+        return res.status(500).json({ error: 'Internal server error' });
     }
 }

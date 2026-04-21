@@ -1,21 +1,59 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wnzueymobiwecuikwcgx.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
+/* ═══════════════════════════════════════════════════════════════
+   DALAL — Check Maintenance Mode (Hardened)
+   ─────────────────────────────────────────────────────────────
+   GET /api/check-maintenance
+   
+   Hardened:
+   - Strict CORS (no wildcard)
+   - No hardcoded keys
+   - Rate limiting (prevents cache-busting DoS)
+   - Fail-open behavior preserved (site accessibility priority)
+   ═══════════════════════════════════════════════════════════════ */
+
+import {
+    setCorsHeaders, createMemoryRateLimiter,
+    SUPABASE_URL, SUPABASE_ANON_KEY
+} from './_lib/security.js';
+
+/* ── Rate limiter: max 20 checks per IP per minute ── */
+const rateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 60000, maxHits: 20 });
+
+/* ── Extract IP (inline — no import dependency for this simple endpoint) ── */
+function getIP(req) {
+    return req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()
+        || req.headers['x-real-ip']
+        || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+        || req.socket?.remoteAddress
+        || null;
+}
 
 export default async function handler(req, res) {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    /* ── CORS (strict — no wildcard) ── */
+    setCorsHeaders(req, res, 'GET, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+    /* ── Rate limiting ── */
+    const ip = getIP(req);
+    if (rateLimiter.check(ip)) {
+        // Rate limited — fail open (don't show maintenance)
+        return res.status(200).json({ maintenance: false });
+    }
+
     try {
+        const anonKey = SUPABASE_ANON_KEY;
+        if (!anonKey) {
+            // No key configured — fail open
+            return res.status(200).json({ maintenance: false });
+        }
+
         const fetchRes = await fetch(
             `${SUPABASE_URL}/rest/v1/site_settings?key=eq.maintenance_mode&select=value`,
             {
                 method: 'GET',
                 headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': anonKey,
+                    'Authorization': `Bearer ${anonKey}`,
                     'Content-Type': 'application/json'
                 },
                 signal: AbortSignal.timeout(4000)
@@ -36,8 +74,9 @@ export default async function handler(req, res) {
             maintenance: val.enabled === true,
             message: val.message || null
         });
-    } catch (err) {
-        // On error, assume site is NOT in maintenance (fail open)
+
+    } catch {
+        // Fail open — site accessibility > maintenance accuracy
         return res.status(200).json({ maintenance: false });
     }
 }

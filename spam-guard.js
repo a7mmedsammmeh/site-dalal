@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — Spam Guard
+   DALAL — Spam Guard (Hardened)
    • Honeypot field check
    • Timing check (form filled too fast = bot)
    • Rate limiting (max 3 orders per 10 min per browser)
-   • Client IP fetch (cached)
+   • Block status check (via /api/check-blocked — no raw IP exposed)
    ═══════════════════════════════════════════════════════════════ */
 
 const SpamGuard = (() => {
@@ -14,36 +14,38 @@ const SpamGuard = (() => {
     const WINDOW_MS     = 10 * 60 * 1000;
     const MIN_FILL_MS   = 3000;
 
-    /* ── IP cache ── */
-    let _ipCache = null;
-    let _ipPromise = null;
+    /* ── Block status cache (no raw IP stored) ── */
+    let _statusCache = null;
+    let _statusPromise = null;
 
-    async function getClientIP() {
-        if (_ipCache) return _ipCache;
-        if (_ipPromise) return _ipPromise;
-        _ipPromise = fetch('/api/get-ip', { 
+    async function checkBlockStatus() {
+        if (_statusCache) return _statusCache;
+        if (_statusPromise) return _statusPromise;
+        _statusPromise = fetch('/api/check-blocked', { 
             signal: AbortSignal.timeout(8000),
             headers: { 'Accept': 'application/json' }
         })
             .then(r => r.ok ? r.json() : null)
             .then(g => {
-                _ipCache = g ? { 
-                    ip: g.ip || null, 
+                // NOTE: /api/check-blocked never returns raw IP
+                // It returns: { blocked, country, city }
+                _statusCache = g ? { 
+                    blocked: g.blocked || false,
                     country: g.country || null, 
                     city: g.city || null 
-                } : { ip: null, country: null, city: null };
-                return _ipCache;
+                } : { blocked: false, country: null, city: null };
+                return _statusCache;
             })
             .catch(() => { 
-                _ipCache = { ip: null, country: null, city: null }; 
-                return _ipCache; 
+                _statusCache = { blocked: false, country: null, city: null }; 
+                return _statusCache; 
             });
-        return _ipPromise;
+        return _statusPromise;
     }
 
     /* Prefetch on load so it's ready by the time user submits */
     if (typeof window !== 'undefined') {
-        window.addEventListener('load', () => getClientIP(), { once: true });
+        window.addEventListener('load', () => checkBlockStatus(), { once: true });
     }
 
     /* ── Rate limit ── */
@@ -116,5 +118,5 @@ const SpamGuard = (() => {
             : 'Verification failed. Please try again or <a href="contact.html" style="color:var(--gold);text-decoration:underline;">contact us</a>';
     }
 
-    return { check, recordOrder, markFormOpen, honeypotHTML, errorMsg, getClientIP };
+    return { check, recordOrder, markFormOpen, honeypotHTML, errorMsg, checkBlockStatus };
 })();

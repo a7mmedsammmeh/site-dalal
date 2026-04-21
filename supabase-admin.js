@@ -347,14 +347,8 @@ async function logActivity(actionType, actionDescription, entityType = null, ent
         _validStr(actionDescription, 'actionDescription', 1000);
 
         const db = await _requireAdmin();
-        let ipAddress = null;
-        try {
-            const ipRes = await fetch('/api/get-ip', { signal: AbortSignal.timeout(3000) });
-            if (ipRes.ok) {
-                const ipData = await ipRes.json();
-                ipAddress = ipData.ip || null;
-            }
-        } catch (e) { /* silent */ }
+        // NOTE: Raw IP is no longer fetched or stored in activity logs
+        // Server-side security endpoints handle IP logging with hashed values
         
         const { error } = await db.from('activity_logs').insert([{
             action_type: actionType,
@@ -362,7 +356,7 @@ async function logActivity(actionType, actionDescription, entityType = null, ent
             entity_type: entityType ? String(entityType) : null,
             entity_id: entityId ? String(entityId) : null,
             details: details ? JSON.parse(JSON.stringify(details)) : null,
-            ip_address: ipAddress,
+            ip_address: null,
             created_at: new Date().toISOString()
         }]);
         if (error) console.warn('Activity log error:', error);

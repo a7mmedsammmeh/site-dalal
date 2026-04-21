@@ -1,109 +1,150 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wnzueymobiwecuikwcgx.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
+/* ═══════════════════════════════════════════════════════════════
+   DALAL — Security Settings API (Hardened)
+   ─────────────────────────────────────────────────────────────
+   GET  /api/security-settings  — Fetch current limits (admin only)
+   POST /api/security-settings  — Update limits (admin only)
+   
+   Hardened:
+   - Strict CORS (no wildcard)
+   - No hardcoded keys
+   - Whitelist of allowed setting keys with type + range validation
+   - Uses service key for DB operations
+   ═══════════════════════════════════════════════════════════════ */
+
+import {
+    setCorsHeaders, verifyAdmin,
+    supabaseGet, supabasePatch, SERVICE_HEADERS, SUPABASE_URL
+} from './_lib/security.js';
+
+/* ── Allowed settings whitelist with validation rules ── */
+const SETTINGS_SCHEMA = {
+    // Numeric settings (integer): [min, max]
+    order_max_per_ip:         { type: 'number', min: 1, max: 100 },
+    order_window_time:        { type: 'number', min: 1, max: 10080 }, // max 1 week in minutes
+    phone_cooldown_time:      { type: 'number', min: 1, max: 1440 },  // max 1 day in minutes
+    duplicate_window_time:    { type: 'number', min: 1, max: 1440 },
+    max_items_per_order:      { type: 'number', min: 1, max: 100 },
+    review_window_time:       { type: 'number', min: 1, max: 10080 },
+    review_max_per_ip:        { type: 'number', min: 1, max: 100 },
+    pwa_cooldown_time:        { type: 'number', min: 1, max: 10080 },
+
+    // Unit settings (string enum)
+    order_window_unit:        { type: 'unit' },
+    phone_cooldown_unit:      { type: 'unit' },
+    duplicate_window_unit:    { type: 'unit' },
+    review_window_unit:       { type: 'unit' },
+    pwa_cooldown_unit:        { type: 'unit' },
+
+    // Boolean settings
+    pwa_cooldown_enabled:     { type: 'boolean' }
+};
+
+const ALLOWED_UNITS = ['minutes', 'hours', 'days', 'weeks'];
+
+function validateSettings(input) {
+    if (!input || typeof input !== 'object') return { valid: false, error: 'Invalid input' };
+    if (Array.isArray(input)) return { valid: false, error: 'Invalid input format' };
+
+    const validated = {};
+
+    for (const [key, value] of Object.entries(input)) {
+        const schema = SETTINGS_SCHEMA[key];
+        if (!schema) continue; // Silently ignore unknown keys
+
+        if (schema.type === 'number') {
+            const num = Number(value);
+            if (!Number.isInteger(num) || num < schema.min || num > schema.max) {
+                return { valid: false, error: `${key} must be an integer between ${schema.min} and ${schema.max}` };
+            }
+            validated[key] = num;
+        } else if (schema.type === 'unit') {
+            if (typeof value !== 'string' || !ALLOWED_UNITS.includes(value)) {
+                return { valid: false, error: `${key} must be one of: ${ALLOWED_UNITS.join(', ')}` };
+            }
+            validated[key] = value;
+        } else if (schema.type === 'boolean') {
+            if (typeof value !== 'boolean') {
+                return { valid: false, error: `${key} must be boolean` };
+            }
+            validated[key] = value;
+        }
+    }
+
+    if (Object.keys(validated).length === 0) {
+        return { valid: false, error: 'No valid settings provided' };
+    }
+
+    return { valid: true, data: validated };
+}
 
 export default async function handler(req, res) {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    /* ── CORS (strict — no wildcard) ── */
+    setCorsHeaders(req, res, 'GET, POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method !== 'GET' && req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
 
     try {
-        // Admin authorization required for BOTH viewing and updating limits
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Unauthorized' });
+        /* ── Admin verification (required for ALL methods) ── */
+        const admin = await verifyAdmin(req);
+        if (!admin.valid) {
+            return res.status(admin.status).json({ error: admin.error });
         }
-        const token = authHeader.replace('Bearer ', '');
 
-        // Verify admin via RPC
-        const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_admin`, {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            signal: AbortSignal.timeout(5000)
-        });
-
-        if (!rpcRes.ok) return res.status(403).json({ error: 'Forbidden — admin only' });
-        
-        const isAdmin = await rpcRes.json();
-        if (!isAdmin) return res.status(403).json({ error: 'Forbidden — admin only' });
-
-        // === GET settings ===
+        /* ── GET: Fetch current settings ── */
         if (req.method === 'GET') {
-            const currentRes = await fetch(
-                `${SUPABASE_URL}/rest/v1/site_settings?key=eq.security_limits&select=value`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    signal: AbortSignal.timeout(4000)
-                }
+            const data = await supabaseGet(
+                'site_settings',
+                'key=eq.security_limits&select=value'
             );
 
-            if (!currentRes.ok) return res.status(500).json({ error: 'Failed to fetch settings' });
-            
-            const data = await currentRes.json();
-            if (!data || data.length === 0) return res.status(404).json({ error: 'No limits configured in DB' });
-            
+            if (!data || data.length === 0) {
+                return res.status(404).json({ error: 'No limits configured' });
+            }
+
             return res.status(200).json({ success: true, limits: data[0].value || {} });
         }
 
-        // === POST settings ===
+        /* ── POST: Update settings ── */
         if (req.method === 'POST') {
-            const newLimits = req.body || {};
-            
-            const expectedStringKeys = ['order_window_unit', 'phone_cooldown_unit', 'duplicate_window_unit', 'review_window_unit', 'pwa_cooldown_unit'];
-            const allowedUnits = ['minutes', 'hours', 'days', 'weeks', 'months'];
-            for (let key of expectedStringKeys) {
-                if (newLimits[key] !== undefined) {
-                    if (typeof newLimits[key] !== 'string') return res.status(400).json({ error: `Invalid type for ${key}, must be string.` });
-                    if (!allowedUnits.includes(newLimits[key])) return res.status(400).json({ error: `Invalid unit for ${key}.` });
-                }
+            const newLimits = req.body;
+
+            // Validate against whitelist + type + range
+            const validation = validateSettings(newLimits);
+            if (!validation.valid) {
+                return res.status(400).json({ error: validation.error });
             }
 
-            const expectedBooleanKeys = ['pwa_cooldown_enabled'];
-            for (let key of expectedBooleanKeys) {
-                if (newLimits[key] !== undefined && typeof newLimits[key] !== 'boolean') {
-                    return res.status(400).json({ error: `Invalid type for ${key}, must be boolean.` });
+            // Merge with existing (don't overwrite unrelated settings)
+            let existing = {};
+            try {
+                const current = await supabaseGet(
+                    'site_settings',
+                    'key=eq.security_limits&select=value'
+                );
+                if (current && current.length > 0) {
+                    existing = current[0].value || {};
                 }
-            }
+            } catch { /* proceed with empty */ }
 
-            // Update via patching
-            const updateRes = await fetch(
-                `${SUPABASE_URL}/rest/v1/site_settings?key=eq.security_limits`,
-                {
-                    method: 'PATCH',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({
-                        value: newLimits,
-                        updated_at: new Date().toISOString()
-                    }),
-                    signal: AbortSignal.timeout(5000)
-                }
+            const merged = { ...existing, ...validation.data };
+
+            // Update using service key
+            const success = await supabasePatch(
+                'site_settings',
+                'key=eq.security_limits',
+                { value: merged, updated_at: new Date().toISOString() }
             );
 
-            if (!updateRes.ok) {
-                return res.status(500).json({ error: 'Failed to update security limits' });
+            if (!success) {
+                return res.status(500).json({ error: 'Failed to update settings' });
             }
 
-            return res.status(200).json({ success: true, limits: newLimits });
+            return res.status(200).json({ success: true, limits: merged });
         }
 
-    } catch (err) {
-        console.error('Security settings error:', err);
+    } catch {
         return res.status(500).json({ error: 'Internal server error' });
     }
 }

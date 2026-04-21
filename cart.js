@@ -1069,7 +1069,8 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             const result = await response.json();
 
             if (!response.ok) {
-                if (result.error === 'phone_blocked') {
+                if (result.error === 'access_restricted' || result.error === 'phone_blocked' ||
+                    result.error === 'ip_blocked' || result.error === 'device_blocked') {
                     btn.disabled = false;
                     label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
                     const errEl = document.getElementById('soError');
@@ -1092,16 +1093,6 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                     errEl.textContent = isAr
                         ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار قليلاً.'
                         : 'Too many orders in a short time. Please wait a moment.';
-                    errEl.classList.add('is-visible');
-                    return;
-                }
-                if (result.error === 'ip_blocked' || result.error === 'device_blocked') {
-                    btn.disabled = false;
-                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
-                    const errEl = document.getElementById('soError');
-                    errEl.textContent = isAr
-                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصلي معنا.'
-                        : 'Sorry, you cannot place an order. Please contact us.';
                     errEl.classList.add('is-visible');
                     return;
                 }
@@ -1406,7 +1397,8 @@ function checkoutViaSite() {
 
             if (!response.ok) {
                 // Handle specific server errors
-                if (result.error === 'phone_blocked') {
+                if (result.error === 'access_restricted' || result.error === 'phone_blocked' ||
+                    result.error === 'ip_blocked' || result.error === 'device_blocked') {
                     btn.disabled = false;
                     label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
                     const errEl = document.getElementById('coError');
@@ -1431,16 +1423,6 @@ function checkoutViaSite() {
                     errEl.textContent = isAr
                         ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار قليلاً.'
                         : 'Too many orders in a short time. Please wait a moment.';
-                    errEl.classList.add('is-visible');
-                    return;
-                }
-                if (result.error === 'ip_blocked' || result.error === 'device_blocked') {
-                    btn.disabled = false;
-                    label.textContent = isAr ? 'تأكيد الطلب' : 'Confirm Order';
-                    const errEl = document.getElementById('coError');
-                    errEl.textContent = isAr
-                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصلي معنا.'
-                        : 'Sorry, you cannot place an order. Please contact us.';
                     errEl.classList.add('is-visible');
                     return;
                 }

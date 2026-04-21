@@ -377,7 +377,8 @@
             const result = await response.json();
 
             if (!response.ok) {
-                if (result.error === 'phone_blocked') {
+                if (result.error === 'access_restricted' || result.error === 'phone_blocked' ||
+                    result.error === 'ip_blocked' || result.error === 'device_blocked') {
                     btn.disabled = false;
                     label.textContent = t.submit;
                     const errEl = document.getElementById('orderError');
@@ -401,16 +402,6 @@
                     errEl.textContent = lang === 'ar'
                         ? 'لقد أرسلت عدة طلبات في وقت قصير. يرجى الانتظار قليلاً.'
                         : 'Too many orders in a short time. Please wait a moment.';
-                    errEl.classList.add('is-visible');
-                    return;
-                }
-                if (result.error === 'ip_blocked' || result.error === 'device_blocked') {
-                    btn.disabled = false;
-                    label.textContent = t.submit;
-                    const errEl = document.getElementById('orderError');
-                    errEl.textContent = lang === 'ar'
-                        ? 'عذراً، لا يمكنك إتمام الطلب. للاستفسار تواصل معنا.'
-                        : 'Sorry, you cannot place an order. Please contact us.';
                     errEl.classList.add('is-visible');
                     return;
                 }

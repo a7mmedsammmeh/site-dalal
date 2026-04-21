@@ -378,19 +378,20 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (/Firefox/i.test(ua)) browser = 'Firefox';
         else if (/Safari/i.test(ua))  browser = 'Safari';
 
-        // Check blocked status via /api/get-ip (server-side, every page load)
+        // Check blocked status via /api/check-blocked (server-side, every page load)
+        // NOTE: /api/check-blocked never returns raw IP — only blocked/country/city
         let blocked = false;
         try {
             const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
             const fpParam = fp ? `?fp=${encodeURIComponent(fp)}` : '';
 
-            const geo = await fetch('/api/get-ip' + fpParam, {
+            const statusRes = await fetch('/api/check-blocked' + fpParam, {
                 signal: AbortSignal.timeout(8000),
                 headers: { 'Accept': 'application/json' }
             });
-            if (geo.ok) {
-                const g = await geo.json();
-                if (g.blocked) {
+            if (statusRes.ok) {
+                const status = await statusRes.json();
+                if (status.blocked) {
                     window.location.replace('/blocked.html');
                     return;
                 }

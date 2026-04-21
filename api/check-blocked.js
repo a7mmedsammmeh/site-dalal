@@ -1,40 +1,84 @@
-const ALLOWED_ORIGINS = ['https://dalalwear.shop', 'https://www.dalalwear.shop', 'https://dalal-lin.vercel.app'];
+/* ═══════════════════════════════════════════════════════════════
+   DALAL — Combined Block Check + Geo (Hardened)
+   ─────────────────────────────────────────────────────────────
+   GET /api/check-blocked?fp=xxx
+   
+   Replaces /api/get-ip entirely.
+   
+   PRIVACY: Never returns the user's raw IP address.
+   Returns only: { blocked, country, city }
+   
+   Checks:
+   1. IP block (from server headers — NOT client)
+   2. Fingerprint block (optional, via ?fp= query param)
+   3. Geo-IP lookup (cached)
+   
+   Rate limited + bot detection.
+   ═══════════════════════════════════════════════════════════════ */
+
+import {
+    setCorsHeaders, validateOrigin, getServerIP, isBot,
+    sanitize, supabaseGet, getGeoLocation, createMemoryRateLimiter
+} from './_lib/security.js';
+
+/* ── Rate limiter: max 10 checks per IP per minute ── */
+const rateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 60000, maxHits: 10 });
 
 export default async function handler(req, res) {
-    const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Vary', 'Origin');
+    /* ── CORS (strict) ── */
+    setCorsHeaders(req, res, 'GET, OPTIONS');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+    /* ── Origin validation ── */
+    if (!validateOrigin(req)) {
+        return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const ip = req.query.ip || null;
-    if (!ip) return res.status(200).json({ blocked: false });
+    /* ── Extract IP from SERVER headers (never from client) ── */
+    const ip = getServerIP(req);
+
+    /* ── Bot detection — consistent response ── */
+    if (isBot(req)) {
+        return res.status(200).json({ blocked: false, country: null, city: null });
+    }
+
+    /* ── Rate limiting ── */
+    if (rateLimiter.check(ip)) {
+        return res.status(200).json({ blocked: false, country: null, city: null });
+    }
+
+    if (!ip) {
+        return res.status(200).json({ blocked: false, country: null, city: null });
+    }
+
+    const fingerprint = req.query.fp ? sanitize(req.query.fp, 64) : null;
 
     try {
-        const SUPABASE_URL = 'https://wnzueymobiwecuikwcgx.supabase.co';
-        const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+        /* ── Check IP and fingerprint blocks in parallel ── */
+        const [ipCheck, fpCheck] = await Promise.all([
+            supabaseGet('blocked_ips', `ip=eq.${encodeURIComponent(ip)}&select=ip&limit=1`),
+            fingerprint
+                ? supabaseGet('blocked_fingerprints', `fingerprint=eq.${encodeURIComponent(fingerprint)}&select=fingerprint&limit=1`)
+                : Promise.resolve([])
+        ]);
 
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/blocked_ips?ip=eq.${encodeURIComponent(ip)}&select=ip,reason&limit=1`,
-            {
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                signal: AbortSignal.timeout(3000)
-            }
-        );
-
-        if (!response.ok) return res.status(200).json({ blocked: false });
-
-        const data = await response.json();
-        if (data && data.length > 0) {
-            return res.status(200).json({ blocked: true, reason: data[0].reason || null });
+        /* ── Blocked — return status WITHOUT reason ── */
+        if (ipCheck.length > 0 || fpCheck.length > 0) {
+            return res.status(200).json({
+                blocked: true,
+                country: null,
+                city: null
+            });
         }
-        return res.status(200).json({ blocked: false });
-    } catch (e) {
-        console.error('check-blocked error:', e);
-        return res.status(200).json({ blocked: false });
+
+    } catch {
+        // On error checking blocks, fail safe — don't block legitimate users
     }
+
+    /* ── Geo-IP lookup (cached — prevents ip-api.com exhaustion) ── */
+    const { country, city } = await getGeoLocation(ip);
+
+    /* ── Response: NEVER include raw IP ── */
+    return res.status(200).json({ blocked: false, country, city });
 }

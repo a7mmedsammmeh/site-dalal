@@ -260,22 +260,19 @@
             try {
                 // Get fingerprint and check block status via server-side API
                 const fp = await DalalFingerprint.get();
-                const geoRes = await fetch('/api/get-ip?fp=' + encodeURIComponent(fp));
-                const geo = await geoRes.json();
+                const statusRes = await fetch('/api/check-blocked?fp=' + encodeURIComponent(fp));
+                const status = await statusRes.json();
 
                 // If not blocked, redirect to home
-                if (!geo.blocked) {
+                if (!status.blocked) {
                     window.location.replace('/');
                     return;
                 }
 
-                // Display reason (no IP display for security)
-                const blockReason = geo.reason || 'بدون سبب';
-                document.getElementById('reasonBox').style.display = 'block';
-                document.getElementById('reasonText').textContent = blockReason;
+                // NOTE: Block reason is no longer exposed by the API
+                // for security (prevents info disclosure)
 
             } catch (e) {
-                console.error('Error loading block info:', e);
                 // On error, redirect to home (safe default)
                 window.location.replace('/');
             }
