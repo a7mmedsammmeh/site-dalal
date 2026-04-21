@@ -1590,7 +1590,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         } catch { /* silent fail */ }
     }
 
-    function showAdminToast(msg) {
+    window.showAdminToast = function(msg) {
         let toast = document.getElementById('adminToast');
         if (!toast) return;
         toast.textContent = msg;

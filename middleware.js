@@ -9,20 +9,20 @@
    3. Block known malicious patterns early
    4. Enforce global request size limits
    5. 🔒 Cookie-based auth guard for admin pages
-
-   NOTE: Stateless — cannot do in-memory rate limiting here.
-   Real rate limiting happens in the serverless functions via
-   KV (cross-instance) and in-memory (per-instance) limiters.
+   6. 🔒 Edge-level IP blocking for all pages
    ═══════════════════════════════════════════════════════════════ */
 
 export const config = {
-    matcher: ['/api/:path*', '/admin', '/products-admin', '/admin-login'],
+    matcher: ['/((?!_next|favicon|robots|sitemap|sw\\.js|manifest|.*\\.(css|js|png|jpg|jpeg|webp|svg|ico|woff2?|ttf|eot)).*)'],
 };
 
 /* ── Admin page protection constants ── */
 const ADMIN_PATHS = ['/admin', '/products-admin'];
 const COOKIE_NAME = 'dalal_admin_session';
 const LOGIN_PATH = '/admin-login';
+
+/* ── Pages excluded from IP blocking (prevent redirect loops) ── */
+const BLOCK_EXEMPT_PATHS = ['/blocked.html', '/blocked', '/maintenance.html', '/maintenance'];
 
 // Blocked User-Agent patterns (fast rejection before hitting functions)
 const BLOCKED_UA_PATTERNS = [
@@ -31,16 +31,71 @@ const BLOCKED_UA_PATTERNS = [
     'havij', 'acunetix', 'netsparker', 'qualys'
 ];
 
+/* ── In-memory IP block cache (shared across requests on same edge instance) ── */
+const _ipBlockCache = new Map();
+const IP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const IP_CACHE_MAX = 5000;
+
+/**
+ * Check if an IP is blocked via Supabase REST API (with caching).
+ */
+async function isIPBlocked(ip) {
+    if (!ip) return false;
+
+    // Check cache first
+    const cached = _ipBlockCache.get(ip);
+    if (cached && (Date.now() - cached.at) < IP_CACHE_TTL) {
+        return cached.blocked;
+    }
+
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) return false; // can't check, allow through
+
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/blocked_ips?ip=eq.${encodeURIComponent(ip)}&select=ip&limit=1`,
+            {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Accept': 'application/json'
+                },
+                signal: AbortSignal.timeout(3000)
+            }
+        );
+
+        if (res.ok) {
+            const data = await res.json();
+            const blocked = data.length > 0;
+
+            // Cache the result
+            if (_ipBlockCache.size > IP_CACHE_MAX) {
+                // Evict oldest entries
+                const oldest = [..._ipBlockCache.entries()]
+                    .sort((a, b) => a[1].at - b[1].at)
+                    .slice(0, 1000);
+                oldest.forEach(([k]) => _ipBlockCache.delete(k));
+            }
+            _ipBlockCache.set(ip, { blocked, at: Date.now() });
+
+            return blocked;
+        }
+    } catch {
+        // On error, allow through (don't block everyone if DB is down)
+    }
+
+    return false;
+}
+
 /**
  * Decode JWT payload without verification (Edge-safe, no dependencies).
- * We only check structure + expiry here.
- * Full auth verification happens in the API layer via _requireAdmin().
  */
 function decodeJwtPayload(token) {
     try {
         const parts = token.split('.');
         if (parts.length !== 3) return null;
-        // Base64url → Base64 → decode
         const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
         const decoded = atob(base64);
         return JSON.parse(decoded);
@@ -66,7 +121,6 @@ function getCookie(request, name) {
 
 /**
  * Create a redirect response with optional Set-Cookie header.
- * Response.redirect() creates an immutable response, so we build manually.
  */
 function redirectToLogin(requestUrl, clearCookie = false) {
     const loginUrl = new URL(LOGIN_PATH, requestUrl).toString();
@@ -77,10 +131,43 @@ function redirectToLogin(requestUrl, clearCookie = false) {
     return new Response(null, { status: 302, headers });
 }
 
-export default function middleware(request) {
+/**
+ * Extract client IP from request headers.
+ */
+function getClientIP(request) {
+    return (
+        request.headers.get('x-real-ip') ||
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        null
+    );
+}
+
+export default async function middleware(request) {
     const url = new URL(request.url);
     const ua = (request.headers.get('user-agent') || '').toLowerCase();
     const pathname = url.pathname;
+
+    /* ══════════════════════════════════════════════════════════
+       🔒 EDGE-LEVEL IP BLOCKING (runs before everything)
+       ──────────────────────────────────────────────────────────
+       Checks blocked_ips table via Supabase REST API.
+       Cached for 5 minutes per edge instance.
+       Blocked users see blocked.html — no page content leaks.
+       ══════════════════════════════════════════════════════════ */
+    if (!BLOCK_EXEMPT_PATHS.some(p => pathname === p || pathname.startsWith(p))
+        && !pathname.startsWith('/api/')
+        && !pathname.startsWith('/_next/')) {
+        const clientIP = getClientIP(request);
+        if (clientIP) {
+            const blocked = await isIPBlocked(clientIP);
+            if (blocked) {
+                return new Response(null, {
+                    status: 302,
+                    headers: { 'Location': new URL('/blocked.html', request.url).toString() }
+                });
+            }
+        }
+    }
 
     /* ══════════════════════════════════════════════════════════
        🔒 LOGIN PAGE PROTECTION (Auto-redirect if already logged in)
@@ -91,9 +178,8 @@ export default function middleware(request) {
             const payload = decodeJwtPayload(token);
             if (payload && payload.exp && payload.sub) {
                 const now = Math.floor(Date.now() / 1000);
-                const GRACE_WINDOW = 7 * 24 * 60 * 60; // 7 days in seconds
+                const GRACE_WINDOW = 7 * 24 * 60 * 60;
                 if (payload.exp + GRACE_WINDOW >= now) {
-                    // Pre-existing valid session found → redirect to /admin
                     return new Response(null, {
                         status: 302,
                         headers: { 'Location': new URL('/admin', request.url).toString() }
@@ -101,38 +187,24 @@ export default function middleware(request) {
                 }
             }
         }
-        return undefined; // allow to load login page if no valid session
+        return undefined;
     }
 
     /* ══════════════════════════════════════════════════════════
        🔒 ADMIN PAGE PROTECTION (Cookie-Based Auth Guard)
-       ──────────────────────────────────────────────────────────
-       Runs BEFORE Vercel serves the static HTML file.
-       If the cookie is missing or invalid → redirect to login.
-
-       SECURITY LAYERS:
-       1. Cookie must exist
-       2. JWT must decode to valid JSON
-       3. JWT must have correct Supabase claims (role, aud, sub)
-       4. JWT must not be older than GRACE_WINDOW
-       5. Full admin verification happens client-side via _requireAdmin()
        ══════════════════════════════════════════════════════════ */
     if (ADMIN_PATHS.includes(pathname)) {
         const token = getCookie(request, COOKIE_NAME);
 
-        // No cookie → redirect to login
         if (!token) {
             return redirectToLogin(request.url);
         }
 
-        // Decode JWT and validate
         const payload = decodeJwtPayload(token);
         if (!payload || !payload.exp) {
-            // Invalid/malformed token → clear cookie and redirect
             return redirectToLogin(request.url, true);
         }
 
-        // ── Validate Supabase JWT claims ──
         if (
             payload.role !== 'authenticated' ||
             payload.aud !== 'authenticated' ||
@@ -141,68 +213,67 @@ export default function middleware(request) {
             return redirectToLogin(request.url, true);
         }
 
-        // ── Expiry check with grace window ──
         const now = Math.floor(Date.now() / 1000);
-        const GRACE_WINDOW = 7 * 24 * 60 * 60; // 7 days in seconds
+        const GRACE_WINDOW = 7 * 24 * 60 * 60;
         if (payload.exp + GRACE_WINDOW < now) {
-            // Token expired more than 7 days ago → definitely stale
             return redirectToLogin(request.url, true);
         }
 
-        // Token is valid and within grace window → allow through
         return undefined;
     }
 
     /* ══════════════════════════════════════════════════════════
-       API PROTECTION (existing logic — unchanged)
+       API PROTECTION
        ══════════════════════════════════════════════════════════ */
+    if (pathname.startsWith('/api/')) {
+        // Block known attack tools immediately
+        for (const pattern of BLOCKED_UA_PATTERNS) {
+            if (ua.includes(pattern)) {
+                return new Response(
+                    JSON.stringify({ error: 'Forbidden' }),
+                    {
+                        status: 403,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Content-Type-Options': 'nosniff',
+                            'X-Frame-Options': 'DENY'
+                        }
+                    }
+                );
+            }
+        }
 
-    // Block known attack tools immediately
-    for (const pattern of BLOCKED_UA_PATTERNS) {
-        if (ua.includes(pattern)) {
+        // Block requests with extremely large content-length (>1MB)
+        const contentLength = request.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 1048576) {
+            return new Response(
+                JSON.stringify({ error: 'Request too large' }),
+                {
+                    status: 413,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Content-Type-Options': 'nosniff'
+                    }
+                }
+            );
+        }
+
+        // Block path traversal attempts
+        if (url.pathname.includes('..') || url.pathname.includes('%2e%2e')) {
             return new Response(
                 JSON.stringify({ error: 'Forbidden' }),
                 {
                     status: 403,
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Content-Type-Options': 'nosniff',
-                        'X-Frame-Options': 'DENY'
+                        'X-Content-Type-Options': 'nosniff'
                     }
                 }
             );
         }
     }
 
-    // Block requests with extremely large content-length (>1MB) for API routes
-    const contentLength = request.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > 1048576) {
-        return new Response(
-            JSON.stringify({ error: 'Request too large' }),
-            {
-                status: 413,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Content-Type-Options': 'nosniff'
-                }
-            }
-        );
-    }
-
-    // Block path traversal attempts
-    if (url.pathname.includes('..') || url.pathname.includes('%2e%2e')) {
-        return new Response(
-            JSON.stringify({ error: 'Forbidden' }),
-            {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Content-Type-Options': 'nosniff'
-                }
-            }
-        );
-    }
-
-    // Pass through to serverless function
+    // Pass through
     return undefined;
 }
+
