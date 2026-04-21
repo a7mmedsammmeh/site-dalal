@@ -2319,12 +2319,15 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         let token;
         try {
             const db = typeof getSupabase === 'function' ? await getSupabase() : window.supabase;
-            const { data: { session } } = await db.auth.getSession();
+            const { data: { session }, error } = await db.auth.getSession();
+            if (error) throw error;
             if (!session) throw new Error('No session');
             token = session.access_token;
         } catch(e) {
-            alert('انتهت الجلسة! يرجى إعادة تسجيل الدخول.');
-            window.location.href = 'index.html';
+            console.error('Session validation error:', e.message);
+            alert('انتهت الجلسة يرجى إعادة تسجيل الدخول للحصول على صلاحية الحفظ.');
+            const db = typeof getSupabase === 'function' ? await getSupabase() : window.supabase;
+            showLoginUI(db);
             return;
         }
 
