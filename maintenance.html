@@ -254,6 +254,20 @@
     <div class="brand-footer">DALAL</div>
 
     <script>
+    // Set language from local storage
+    const lang = localStorage.getItem('dalal-lang') || 'ar';
+    let defaultMsgAr = 'نعمل حالياً على تحسينات لتجربتك. سنعود قريباً بشكل أجمل!';
+    let defaultMsgEn = 'We are currently performing some updates to improve your experience. We will be back soon!';
+    
+    if (lang === 'en') {
+        document.documentElement.lang = 'en';
+        document.documentElement.dir = 'ltr';
+        document.title = 'DALAL — Under Maintenance';
+        document.getElementById('maintenanceTitle').textContent = 'Site Under Maintenance';
+        document.getElementById('maintenanceMessage').textContent = defaultMsgEn;
+        document.querySelector('.sub-message').textContent = 'Thank you for your patience 💛';
+    }
+
     // Check if maintenance is actually enabled — if not, redirect to home
     (async function() {
         try {
@@ -263,6 +277,7 @@
                 if (!data.maintenance) {
                     window.location.replace('/');
                 } else if (data.message) {
+                    // Try to guess if it's dual language separated by something, or just show the same
                     document.getElementById('maintenanceMessage').textContent = data.message;
                 }
             }
