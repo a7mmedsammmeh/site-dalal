@@ -81,11 +81,8 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
-    /* ── LAYER 3: Global Rate Limiting ── */
+    /* ── LAYER 3: IP extraction ── */
     const serverIP = getServerIP(req);
-    if (checkGlobalRateLimit(serverIP)) {
-        return res.status(429).json({ error: 'Too many requests', reason: 'GLOBAL_RATE_LIMIT' });
-    }
 
     /* ── LAYER 4: Bot Detection ── */
     if (isBot(req)) {
