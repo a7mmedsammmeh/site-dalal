@@ -16,7 +16,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 export const config = {
-    matcher: ['/api/:path*', '/admin', '/products-admin'],
+    matcher: ['/api/:path*', '/admin', '/products-admin', '/admin-login'],
 };
 
 /* ── Admin page protection constants ── */
@@ -83,6 +83,28 @@ export default function middleware(request) {
     const pathname = url.pathname;
 
     /* ══════════════════════════════════════════════════════════
+       🔒 LOGIN PAGE PROTECTION (Auto-redirect if already logged in)
+       ══════════════════════════════════════════════════════════ */
+    if (pathname === '/admin-login') {
+        const token = getCookie(request, COOKIE_NAME);
+        if (token) {
+            const payload = decodeJwtPayload(token);
+            if (payload && payload.exp && payload.sub) {
+                const now = Math.floor(Date.now() / 1000);
+                const GRACE_WINDOW = 7 * 24 * 60 * 60; // 7 days in seconds
+                if (payload.exp + GRACE_WINDOW >= now) {
+                    // Pre-existing valid session found → redirect to /admin
+                    return new Response(null, {
+                        status: 302,
+                        headers: { 'Location': new URL('/admin', request.url).toString() }
+                    });
+                }
+            }
+        }
+        return undefined; // allow to load login page if no valid session
+    }
+
+    /* ══════════════════════════════════════════════════════════
        🔒 ADMIN PAGE PROTECTION (Cookie-Based Auth Guard)
        ──────────────────────────────────────────────────────────
        Runs BEFORE Vercel serves the static HTML file.
@@ -111,23 +133,15 @@ export default function middleware(request) {
         }
 
         // ── Validate Supabase JWT claims ──
-        // Real Supabase JWTs always contain these.
-        // A forged JWT missing these will be rejected.
         if (
             payload.role !== 'authenticated' ||
             payload.aud !== 'authenticated' ||
-            !payload.sub  // user UUID must exist
+            !payload.sub
         ) {
             return redirectToLogin(request.url, true);
         }
 
         // ── Expiry check with grace window ──
-        // Supabase access tokens expire in ~1hr.
-        // The middleware allows recently-expired tokens because:
-        //   - The Supabase client auto-refreshes via refresh_token
-        //   - The REAL auth check happens in _requireAdmin() (server-side RPC)
-        //   - The middleware's purpose is to block unauthenticated visitors
-        // Tokens expired for more than GRACE_WINDOW are rejected.
         const now = Math.floor(Date.now() / 1000);
         const GRACE_WINDOW = 7 * 24 * 60 * 60; // 7 days in seconds
         if (payload.exp + GRACE_WINDOW < now) {
