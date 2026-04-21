@@ -525,6 +525,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             المنتجات
         </button>
+        <button class="admin-refresh-btn hide-mobile" id="maintenanceToggleBtn" onclick="toggleMaintenanceMode()" style="color:#f39c12;border-color:rgba(243,156,18,0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span id="maintenanceBtnLabel">الصيانة</span>
+        </button>
         <!-- Mobile hamburger -->
         <button class="admin-hamburger" id="adminHamburger" onclick="toggleAdminMenu()" aria-label="القائمة">
             <span></span><span></span><span></span>
@@ -564,6 +568,10 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     <button class="admin-menu-item" onclick="window.location.href='products-admin.html';toggleAdminMenu()" style="color:#f39c12;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         المنتجات
+    </button>
+    <button class="admin-menu-item" onclick="toggleMaintenanceMode();toggleAdminMenu()" style="color:#f39c12;" id="maintenanceMobileBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span id="maintenanceMobileBtnLabel">وضع الصيانة</span>
     </button>
     <button class="admin-menu-item" onclick="confirmDeleteAll();toggleAdminMenu()" style="color:#e05c5c;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
@@ -1108,12 +1116,14 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 حذف
             </button>`;
 
-        const overlay = document.getElementById('odOverlay');
-        const drawer  = document.getElementById('odDrawer');
         overlay.classList.add('open');
         drawer.classList.add('open');
-        if (typeof DalalModal !== 'undefined') DalalModal.lock();
-        else document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.lock();
+            DalalModal.pushState('orderDrawer', closeOrderDrawer);
+        } else {
+            document.body.style.overflow = 'hidden';
+        }
 
         /* drag to dismiss */
         if (typeof DalalModal !== 'undefined') {
@@ -1148,8 +1158,15 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         const drawer  = document.getElementById('odDrawer');
         if (overlay) overlay.classList.remove('open');
         if (drawer)  { drawer.classList.remove('open'); drawer.style.transform = ''; }
-        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
-        else document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.unlock();
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'orderDrawer') {
+                DalalModal.popState();
+            }
+        } else {
+            document.body.style.overflow = '';
+        }
     };
 
     function parseProducts(json) {
@@ -1528,6 +1545,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.showReviewsPanel = async function() {
         document.getElementById('reviewsPanel').style.display = 'block';
         document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') DalalModal.pushState('reviewsPanel', hideReviewsPanel);
         const list = document.getElementById('reviewsList');
         list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim)">جاري التحميل...</div>';
         try {
@@ -1795,6 +1813,12 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.hideReviewsPanel = function() {
         document.getElementById('reviewsPanel').style.display = 'none';
         document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'reviewsPanel') {
+                DalalModal.popState();
+            }
+        }
     };
 
     window.removeReview = async function(id) {
@@ -1830,6 +1854,81 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             }
         } catch { alert('حدث خطأ'); }
     };
+
+    // ─── Maintenance Mode ───
+    let _maintenanceEnabled = false;
+
+    async function checkMaintenanceStatus() {
+        try {
+            const res = await fetch('/api/check-maintenance', { signal: AbortSignal.timeout(4000) });
+            if (res.ok) {
+                const data = await res.json();
+                _maintenanceEnabled = data.maintenance;
+                updateMaintenanceUI();
+            }
+        } catch { /* silent */ }
+    }
+
+    function updateMaintenanceUI() {
+        const label = document.getElementById('maintenanceBtnLabel');
+        const mobileLabel = document.getElementById('maintenanceMobileBtnLabel');
+        const btn = document.getElementById('maintenanceToggleBtn');
+        const mobileBtn = document.getElementById('maintenanceMobileBtn');
+
+        if (_maintenanceEnabled) {
+            if (label) label.textContent = 'الصيانة ✅';
+            if (mobileLabel) mobileLabel.textContent = 'إيقاف الصيانة ✅';
+            if (btn) { btn.style.color = '#e05c5c'; btn.style.borderColor = 'rgba(224,92,92,0.4)'; btn.style.background = 'rgba(224,92,92,0.06)'; }
+            if (mobileBtn) mobileBtn.style.color = '#e05c5c';
+        } else {
+            if (label) label.textContent = 'الصيانة';
+            if (mobileLabel) mobileLabel.textContent = 'وضع الصيانة';
+            if (btn) { btn.style.color = '#f39c12'; btn.style.borderColor = 'rgba(243,156,18,0.3)'; btn.style.background = ''; }
+            if (mobileBtn) mobileBtn.style.color = '#f39c12';
+        }
+    }
+
+    window.toggleMaintenanceMode = async function() {
+        const newState = !_maintenanceEnabled;
+        const msg = newState
+            ? 'هل أنت متأكد من تفعيل وضع الصيانة؟\nالموقع هيكون مغلق للزوار.'
+            : 'هل تريد إلغاء وضع الصيانة وفتح الموقع؟';
+        if (!confirm(msg)) return;
+
+        try {
+            const db = await getSupabase();
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) { toast('يجب تسجيل الدخول أولاً'); return; }
+
+            const res = await fetch('/api/toggle-maintenance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ enabled: newState }),
+                signal: AbortSignal.timeout(8000)
+            });
+
+            if (res.ok) {
+                _maintenanceEnabled = newState;
+                updateMaintenanceUI();
+                toast(newState ? 'تم تفعيل وضع الصيانة ✓' : 'تم إلغاء وضع الصيانة — الموقع شغال ✓');
+                if (typeof logActivity === 'function') {
+                    logActivity('update', newState ? 'تفعيل وضع الصيانة' : 'إلغاء وضع الصيانة', 'site_settings', null, { maintenance: newState });
+                }
+            } else {
+                const err = await res.json().catch(() => ({}));
+                toast('فشل تغيير وضع الصيانة: ' + (err.error || 'خطأ'));
+            }
+        } catch (err) {
+            console.error('Maintenance toggle error:', err);
+            toast('فشل تغيير وضع الصيانة');
+        }
+    };
+
+    // Check maintenance status on admin load
+    checkMaintenanceStatus();
 
     // loadOrders called by checkAuth after session verified
     initAdmin();
@@ -1987,12 +2086,19 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.showVisitorsPanel = async function() {
         document.getElementById('visitorsPanel').style.display = 'block';
         document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') DalalModal.pushState('visitorsPanel', hideVisitorsPanel);
         await loadVisitors();
     };
 
     window.hideVisitorsPanel = function() {
         document.getElementById('visitorsPanel').style.display = 'none';
         document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'visitorsPanel') {
+                DalalModal.popState();
+            }
+        }
     };
 
     window.loadVisitors = async function() {
@@ -2350,12 +2456,19 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.showBlockedIPsPanel = async function() {
         document.getElementById('blockedIPsPanel').style.display = 'block';
         document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') DalalModal.pushState('blockedIPsPanel', hideBlockedIPsPanel);
         await loadBlockedIPs();
     };
 
     window.hideBlockedIPsPanel = function() {
         document.getElementById('blockedIPsPanel').style.display = 'none';
         document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'blockedIPsPanel') {
+                DalalModal.popState();
+            }
+        }
     };
 
     window.loadBlockedIPs = async function() {
@@ -2546,12 +2659,19 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.showBlockedPhonesPanel = async function() {
         document.getElementById('blockedPhonesPanel').style.display = 'block';
         document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') DalalModal.pushState('blockedPhonesPanel', hideBlockedPhonesPanel);
         await loadBlockedPhones();
     };
 
     window.hideBlockedPhonesPanel = function() {
         document.getElementById('blockedPhonesPanel').style.display = 'none';
         document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'blockedPhonesPanel') {
+                DalalModal.popState();
+            }
+        }
     };
 
     window.loadBlockedPhones = async function() {
@@ -2806,12 +2926,19 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.showActivityLogPanel = async function() {
         document.getElementById('activityLogPanel').style.display = 'block';
         document.body.style.overflow = 'hidden';
+        if (typeof DalalModal !== 'undefined') DalalModal.pushState('activityLogPanel', hideActivityLogPanel);
         await loadActivityLogs();
     };
 
     window.hideActivityLogPanel = function() {
         document.getElementById('activityLogPanel').style.display = 'none';
         document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'activityLogPanel') {
+                DalalModal.popState();
+            }
+        }
     };
 
     window.loadActivityLogs = async function() {

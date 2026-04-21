@@ -188,15 +188,30 @@ function openMessengerWithContact(buildMsg) {
     document.body.insertAdjacentHTML('beforeend', html);
     const overlay = document.getElementById('messengerContactModal');
     requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
-    if (typeof DalalModal !== 'undefined') DalalModal.lock();
-    else document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.lock();
+    } else {
+        document.body.style.overflow = 'hidden';
+    }
 
     const closeModal = () => {
         overlay.classList.remove('is-open');
         setTimeout(() => overlay.remove(), 350);
-        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
-        else document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.unlock();
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'messengerContactModal') {
+                DalalModal.popState();
+            }
+        } else {
+            document.body.style.overflow = '';
+        }
     };
+
+    // Push state AFTER closeModal is defined
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.pushState('messengerContactModal', closeModal);
+    }
 
     const submit = (skip = false) => {
         const phone = skip ? '' : (document.getElementById('mcPhone')?.value.trim() || '');
@@ -387,8 +402,11 @@ function openQuickAddModal(product) {
     requestAnimationFrame(() => {
         requestAnimationFrame(() => overlay.classList.add('active'));
     });
-    if (typeof DalalModal !== 'undefined') DalalModal.lock();
-    else document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.lock();
+    } else {
+        document.body.style.overflow = 'hidden';
+    }
 
     // Qty selection
     overlay.querySelectorAll('.qa-qty-btn').forEach(btn => {
@@ -403,9 +421,21 @@ function openQuickAddModal(product) {
     const closeQA = () => {
         overlay.classList.remove('active');
         setTimeout(() => overlay.remove(), 350);
-        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
-        else document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.unlock();
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'quickAddModal') {
+                DalalModal.popState();
+            }
+        } else {
+            document.body.style.overflow = '';
+        }
     };
+
+    // Push state AFTER closeQA is defined
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.pushState('quickAddModal', closeQA);
+    }
     document.getElementById('qaClose').addEventListener('click', closeQA);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeQA(); });
 
@@ -835,6 +865,7 @@ function openCart() {
     if (overlay) overlay.classList.add('active');
     if (sticky) sticky.style.display = 'none';
     document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') DalalModal.pushState('cartDrawer', closeCart);
 
     if (cart.length === 0) renderCartRecentlyViewed();
 }
@@ -847,6 +878,12 @@ function closeCart() {
     if (overlay) overlay.classList.remove('active');
     if (sticky) sticky.style.display = '';
     document.body.style.overflow = '';
+    if (typeof DalalModal !== 'undefined') {
+        const stack = DalalModal._stack;
+        if (stack.length > 0 && stack[stack.length - 1]?.id === 'cartDrawer') {
+            DalalModal.popState();
+        }
+    }
 }
 
 /* ─── Site Order Modal (single product with full details) ─── */
@@ -940,7 +977,18 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
         overlay.classList.remove('is-open');
         setTimeout(() => overlay.remove(), 350);
         document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'siteOrderModal') {
+                DalalModal.popState();
+            }
+        }
     };
+
+    // Push state after closeModal is defined
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.pushState('siteOrderModal', closeModal);
+    }
 
     document.getElementById('siteOrderClose').addEventListener('click', closeModal);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
@@ -1088,6 +1136,10 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                     ${isAr ? 'تتبع طلبك ←' : 'Track your order ←'}
                 </a>`;
             document.getElementById('soSuccess').classList.add('is-visible');
+            // Show PWA install prompt after success
+            setTimeout(() => {
+                if (typeof showInstallPrompt === 'function') showInstallPrompt();
+            }, 2000);
             setTimeout(closeModal, 5000);
         } catch (err) {
             console.error(err);

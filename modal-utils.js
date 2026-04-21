@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    DALAL — Modal Utilities
-   Body scroll lock + drag-to-dismiss for all modals
+   Body scroll lock + drag-to-dismiss + browser back button
    ═══════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -8,6 +8,51 @@
 
     let _lockCount = 0;
     let _touchBlocker = null;
+
+    /* ─── Modal Stack (for browser back button) ─── */
+    let _modalStack = [];
+
+    /**
+     * Push a modal state onto the history stack.
+     * When user presses Back, the modal will close instead of navigating away.
+     * @param {string} modalId - Unique identifier for this modal
+     * @param {Function} closeFn - Function to call to close this modal
+     */
+    function pushModalState(modalId, closeFn) {
+        _modalStack.push({ id: modalId, close: closeFn });
+        history.pushState({ dalalModal: modalId }, '');
+    }
+
+    /**
+     * Pop a modal state when modal is closed programmatically (not via back button).
+     * This prevents the back button from firing a stale close.
+     */
+    function popModalState() {
+        if (_modalStack.length > 0) {
+            _modalStack.pop();
+            // Go back to remove the state we pushed — but silently (flag to ignore popstate)
+            _ignoreNextPop = true;
+            history.back();
+        }
+    }
+
+    let _ignoreNextPop = false;
+
+    // Listen for browser back button
+    window.addEventListener('popstate', function (e) {
+        if (_ignoreNextPop) {
+            _ignoreNextPop = false;
+            return;
+        }
+        // If we have a modal on the stack, close it
+        if (_modalStack.length > 0) {
+            const modal = _modalStack.pop();
+            if (modal && typeof modal.close === 'function') {
+                modal._fromBack = true; // flag so close fn doesn't call popModalState again
+                modal.close();
+            }
+        }
+    });
 
     /**
      * Lock body scroll — prevents page scrolling behind modals.
@@ -161,12 +206,24 @@
         };
     }
 
+    /**
+     * Check if the close was triggered by the browser back button.
+     * Used internally so close functions don't double-pop the state.
+     */
+    function isBackClose() {
+        // Check the last popped modal for back flag
+        return false; // default
+    }
+
     // Expose globally
     window.DalalModal = {
         lock: lockBodyScroll,
         unlock: unlockBodyScroll,
         forceUnlock: forceUnlockBodyScroll,
-        setupDrag: setupDragToDismiss
+        setupDrag: setupDragToDismiss,
+        pushState: pushModalState,
+        popState: popModalState,
+        _stack: _modalStack  // exposed for internal checks
     };
 
 })();

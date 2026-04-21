@@ -1,0 +1,26 @@
+{
+    "name": "DALAL — ملابس داخلية فاخرة",
+    "short_name": "DALAL",
+    "description": "تشكيلة فاخرة من الملابس الداخلية — حرير ودانتيل وأناقة",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0D0D0D",
+    "theme_color": "#0D0D0D",
+    "orientation": "portrait",
+    "lang": "ar",
+    "dir": "rtl",
+    "icons": [
+        {
+            "src": "/images/dalal-logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/images/dalal-logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

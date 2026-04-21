@@ -265,8 +265,12 @@
            before adding is-open, otherwise the CSS transition won't fire */
         const doOpen = () => {
             document.getElementById('orderOverlay').classList.add('is-open');
-            if (typeof DalalModal !== 'undefined') DalalModal.lock();
-            else document.body.style.overflow = 'hidden';
+            if (typeof DalalModal !== 'undefined') {
+                DalalModal.lock();
+                DalalModal.pushState('orderModal', closeOrderModal);
+            } else {
+                document.body.style.overflow = 'hidden';
+            }
             setTimeout(() => document.getElementById('orderInputName').focus(), 400);
         };
 
@@ -283,8 +287,16 @@
         const overlay = document.getElementById('orderOverlay');
         if (!overlay) return;
         overlay.classList.remove('is-open');
-        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
-        else document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.unlock();
+            // Pop history state (unless this was triggered by browser back)
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'orderModal') {
+                DalalModal.popState();
+            }
+        } else {
+            document.body.style.overflow = '';
+        }
     }
 
     /* ── Submit ── */
@@ -434,6 +446,10 @@
                 </a>`;
             document.getElementById('orderSuccess').classList.add('is-visible');
             if (typeof playSuccessSound === 'function') playSuccessSound();
+            // Show PWA install prompt after success
+            setTimeout(() => {
+                if (typeof showInstallPrompt === 'function') showInstallPrompt();
+            }, 2000);
             setTimeout(closeOrderModal, 5000);
         } catch (err) {
             console.error('Order error:', err);
