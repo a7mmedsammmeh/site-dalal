@@ -404,6 +404,7 @@
                     return;
                 }
                 if (result.error === 'rate_limited' || result.error === 'duplicate') {
+                    console.warn('[ORDER BLOCKED]', result.reason || 'UNKNOWN', result);
                     btn.disabled = false;
                     label.textContent = t.submit;
                     const errEl = document.getElementById('orderError');

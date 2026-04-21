@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     /* ── LAYER 3: Global Rate Limiting ── */
     const serverIP = getServerIP(req);
     if (checkGlobalRateLimit(serverIP)) {
-        return res.status(429).json({ error: 'Too many requests' });
+        return res.status(429).json({ error: 'Too many requests', reason: 'GLOBAL_RATE_LIMIT' });
     }
 
     /* ── LAYER 4: Bot Detection ── */
@@ -137,7 +137,7 @@ export default async function handler(req, res) {
         if (orderRateLimiter.check(compositeId, false)) {
             logSecurityEvent('warning', 'order:mem_rate_limited', { ip: serverIP });
             trackAnomaly(serverIP, 'failure');
-            return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
+            return res.status(429).json({ error: 'rate_limited', reason: 'MEMORY_RATE_LIMIT', message: 'Too many orders. Please wait.' });
         }
 
         /* ── LAYER 10: DB Rate Limiting (source of truth — counts real orders) ── */
@@ -151,7 +151,7 @@ export default async function handler(req, res) {
                 );
                 if (ipOrders.length >= LIMITS.order_max_per_ip) {
                     logSecurityEvent('warning', 'order:db_rate_limited', { ip: serverIP, count: ipOrders.length, limit: LIMITS.order_max_per_ip });
-                    return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
+                    return res.status(429).json({ error: 'rate_limited', reason: 'DB_IP_RATE_LIMIT', count: ipOrders.length, limit: LIMITS.order_max_per_ip, message: 'Too many orders. Please wait.' });
                 }
             } catch {
                 logSecurityEvent('critical', 'order:rate_check_failed', { ip: serverIP });
@@ -246,7 +246,7 @@ export default async function handler(req, res) {
                     TIMEOUT.SECURITY
                 );
                 if (fpOrders.length >= LIMITS.order_max_per_ip) {
-                    return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
+                    return res.status(429).json({ error: 'rate_limited', reason: 'DB_FINGERPRINT_LIMIT', count: fpOrders.length, limit: LIMITS.order_max_per_ip, message: 'Too many orders from this device. Please wait.' });
                 }
             } catch { /* fingerprint rate check is secondary — don't block on failure */ }
         }
@@ -255,13 +255,13 @@ export default async function handler(req, res) {
         const payloadHash = await hashSHA256(JSON.stringify({ phone: normalizedPhone, address, items }));
         if (isDuplicatePayload(compositeId, payloadHash, dedupWindowMs)) {
             logSecurityEvent('warning', 'order:duplicate', { ip: serverIP, detail: `hash:${payloadHash.slice(0, 8)}` });
-            return res.status(429).json({ error: 'duplicate', message: 'This order was already submitted. Please wait.' });
+            return res.status(429).json({ error: 'duplicate', reason: 'DUPLICATE_PAYLOAD', message: 'This order was already submitted. Please wait.' });
         }
 
         /* ── LAYER 17: Phone Cooldown ── */
         if (phoneCooldownLimiter.check(normalizedPhone, false)) {
             logSecurityEvent('info', 'order:phone_cooldown', { ip: serverIP, phone: normalizedPhone });
-            return res.status(429).json({ error: 'rate_limited', message: 'Please wait before placing another order.' });
+            return res.status(429).json({ error: 'rate_limited', reason: 'PHONE_COOLDOWN', message: 'Please wait before placing another order.' });
         }
 
         /* ── Geo-IP (cached, non-critical — fail safe) ── */
