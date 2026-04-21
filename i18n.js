@@ -63,6 +63,7 @@ const DALAL_I18N = {
         aboutMissionQuote:'"نؤمن بأن الأناقة الحقيقية تبدأ من الداخل — وأن كل امرأة تستحق أن تشعر بالثقة والجمال في كل لحظة من يومها."',
         aboutPromiseTitle:'وعدنا لكِ',
         aboutPromiseP1:   'نلتزم بتقديم تجربة تسوق راقية من أول نقرة حتى لحظة استلام طلبكِ. توصيل لجميع محافظات مصر، ودفع عند الاستلام، وخدمة عملاء تضع راحتكِ في المقام الأول.',
+        aboutPromiseP2:   'دلال ليست مجرد علامة تجارية – هي تجربة تستحقينها.',
         aboutShopNow:     'تسوّقي الآن',
         /* contact page */
         contactPageTitle:    'تواصل معنا',
@@ -167,6 +168,7 @@ const DALAL_I18N = {
         aboutMissionQuote:'"We believe true elegance starts from within — and every woman deserves to feel confident and beautiful in every moment of her day."',
         aboutPromiseTitle:'Our Promise',
         aboutPromiseP1:   'We are committed to delivering a premium shopping experience from the first click to the moment your order arrives. Delivery across all of Egypt, cash on delivery, and customer service that puts your comfort first.',
+        aboutPromiseP2:   'DALAL is not just a brand – it is an experience you deserve.',
         aboutShopNow:     'Shop Now',
         /* contact page */
         contactPageTitle:    'Contact Us',
