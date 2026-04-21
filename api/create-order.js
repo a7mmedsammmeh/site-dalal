@@ -140,15 +140,8 @@ export default async function handler(req, res) {
             return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
         }
 
-        /* ── LAYER 10: KV Rate Limiting (FAIL CLOSED) ── */
-        const kvResult = await kvRateLimit(`order:${compositeId}`, rateWindowMs, LIMITS.order_max_per_ip);
-        if (kvResult === true) {
-            logSecurityEvent('warning', 'order:kv_rate_limited', { ip: serverIP });
-            return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
-        }
-
-        /* ── LAYER 11: DB Rate Limiting (only if KV not configured) ── */
-        if (kvResult === null && serverIP) {
+        /* ── LAYER 10: DB Rate Limiting (source of truth — counts real orders) ── */
+        if (serverIP) {
             try {
                 const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
                 const ipOrders = await supabaseGet(
@@ -157,11 +150,10 @@ export default async function handler(req, res) {
                     TIMEOUT.SECURITY
                 );
                 if (ipOrders.length >= LIMITS.order_max_per_ip) {
-                    logSecurityEvent('warning', 'order:db_rate_limited', { ip: serverIP });
+                    logSecurityEvent('warning', 'order:db_rate_limited', { ip: serverIP, count: ipOrders.length, limit: LIMITS.order_max_per_ip });
                     return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
                 }
             } catch {
-                // DB fallback failed — FAIL CLOSED (KV not configured, DB also failed)
                 logSecurityEvent('critical', 'order:rate_check_failed', { ip: serverIP });
                 return res.status(503).json({ error: 'Service temporarily unavailable' });
             }
@@ -243,26 +235,20 @@ export default async function handler(req, res) {
             return res.status(503).json({ error: 'Service temporarily unavailable' });
         }
 
-        /* ── Fingerprint rate limiting via composite ID ── */
-        if (fingerprint) {
-            const fpClean = sanitize(fingerprint, 64);
-            const kvFp = await kvRateLimit(`order:cid:${compositeId}`, rateWindowMs, LIMITS.order_max_per_ip);
-            if (kvFp === true) {
-                return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
-            }
-            if (kvFp === null && serverIP) {
-                try {
-                    const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
-                    const fpOrders = await supabaseGet(
-                        'orders',
-                        `fingerprint=eq.${encodeURIComponent(fpClean)}&created_at=gte.${windowTime}&select=id`,
-                        TIMEOUT.SECURITY
-                    );
-                    if (fpOrders.length >= LIMITS.order_max_per_ip) {
-                        return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
-                    }
-                } catch { /* fingerprint rate check is secondary */ }
-            }
+        /* ── Fingerprint rate limiting via DB (counts real orders only) ── */
+        if (fingerprint && serverIP) {
+            try {
+                const fpClean = sanitize(fingerprint, 64);
+                const windowTime = new Date(Date.now() - rateWindowMs).toISOString();
+                const fpOrders = await supabaseGet(
+                    'orders',
+                    `fingerprint=eq.${encodeURIComponent(fpClean)}&created_at=gte.${windowTime}&select=id`,
+                    TIMEOUT.SECURITY
+                );
+                if (fpOrders.length >= LIMITS.order_max_per_ip) {
+                    return res.status(429).json({ error: 'rate_limited', message: 'Too many orders from this device. Please wait.' });
+                }
+            } catch { /* fingerprint rate check is secondary — don't block on failure */ }
         }
 
         /* ── LAYER 16: Duplicate Payload Detection (SHA-256) ── */
