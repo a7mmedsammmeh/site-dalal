@@ -1177,7 +1177,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     /* ── Order Detail Drawer ── */
     window.openOrderDrawer = function(id) {
-        const o = _all.find(x => x.id === id);
+        const o = _all.find(x => String(x.id) === String(id));
         if (!o) return;
 
         const STATUS_LABELS = {
@@ -1339,7 +1339,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     }
 
     window.printOrder = function(id) {
-        const o = _all.find(x => x.id === id);
+        const o = _all.find(x => String(x.id) === String(id));
         if (!o) return;
 
         const products = Array.isArray(o.products) ? o.products
