@@ -269,8 +269,11 @@
                     return;
                 }
 
-                // NOTE: Block reason is no longer exposed by the API
-                // for security (prevents info disclosure)
+                // Show block reason if provided
+                if (status.reason) {
+                    document.getElementById('reasonText').textContent = status.reason;
+                    document.getElementById('reasonBox').style.display = 'block';
+                }
 
             } catch (e) {
                 // On error, redirect to home (safe default)

@@ -57,16 +57,20 @@ export default async function handler(req, res) {
     try {
         /* ── Check IP and fingerprint blocks in parallel ── */
         const [ipCheck, fpCheck] = await Promise.all([
-            supabaseGet('blocked_ips', `ip=eq.${encodeURIComponent(ip)}&select=ip&limit=1`),
+            supabaseGet('blocked_ips', `ip=eq.${encodeURIComponent(ip)}&select=ip,reason&limit=1`),
             fingerprint
-                ? supabaseGet('blocked_fingerprints', `fingerprint=eq.${encodeURIComponent(fingerprint)}&select=fingerprint&limit=1`)
+                ? supabaseGet('blocked_fingerprints', `fingerprint=eq.${encodeURIComponent(fingerprint)}&select=fingerprint,reason&limit=1`)
                 : Promise.resolve([])
         ]);
 
-        /* ── Blocked — return status WITHOUT reason ── */
+        /* ── Blocked — return status WITH reason ── */
         if (ipCheck.length > 0 || fpCheck.length > 0) {
+            const reason = ipCheck.length > 0
+                ? (ipCheck[0].reason || null)
+                : (fpCheck[0].reason || null);
             return res.status(200).json({
                 blocked: true,
+                reason,
                 country: null,
                 city: null
             });
