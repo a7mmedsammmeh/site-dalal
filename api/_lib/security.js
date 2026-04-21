@@ -181,7 +181,13 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
     }
 
     return {
-        check(key) {
+        /**
+         * Check if key is rate limited.
+         * By default, auto-records the attempt (for API rate limiting).
+         * Pass autoRecord=false for order limiter where you want to
+         * record only AFTER successful creation.
+         */
+        check(key, autoRecord = true) {
             if (!key) return false;
             const now = Date.now();
 
@@ -192,12 +198,35 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
 
             const record = map.get(key);
             if (!record || now - record.windowStart > windowMs) {
-                map.set(key, { count: 1, windowStart: now });
+                if (autoRecord) {
+                    map.set(key, { count: 1, windowStart: now });
+                }
                 return false;
             }
 
-            record.count++;
-            return record.count > maxHits;
+            if (record.count >= maxHits) {
+                return true; // blocked — don't increment
+            }
+
+            if (autoRecord) {
+                record.count++;
+            }
+            return false;
+        },
+
+        /**
+         * Record a successful action manually.
+         * Use when autoRecord=false in check().
+         */
+        record(key) {
+            if (!key) return;
+            const now = Date.now();
+            const record = map.get(key);
+            if (!record || now - record.windowStart > windowMs) {
+                map.set(key, { count: 1, windowStart: now });
+            } else {
+                record.count++;
+            }
         },
 
         getCount(key) {
@@ -209,8 +238,12 @@ function createMemoryRateLimiter({ maxEntries = 1000, windowMs = 600000, maxHits
         },
 
         updateConfig(newWindowMs, newMaxHits) {
+            const changed = (newMaxHits && newMaxHits !== maxHits) ||
+                            (newWindowMs && newWindowMs !== windowMs);
             if (newWindowMs) windowMs = newWindowMs;
             if (newMaxHits) maxHits = newMaxHits;
+            // When admin changes config, clear all records so new limits apply immediately
+            if (changed) map.clear();
         },
 
         get size() { return map.size; }

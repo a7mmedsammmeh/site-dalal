@@ -16,8 +16,8 @@ import {
     checkGlobalRateLimit, logSecurityEvent, TIMEOUT
 } from './_lib/security.js';
 
-/* ── Rate limiter: max 10 checks per IP per minute ── */
-const rateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 60000, maxHits: 10 });
+/* ── Rate limiter: max 60 checks per IP per minute ── */
+const rateLimiter = createMemoryRateLimiter({ maxEntries: 1000, windowMs: 60000, maxHits: 60 });
 
 export default async function handler(req, res) {
     /* ── CORS + Security Headers ── */

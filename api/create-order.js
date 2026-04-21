@@ -134,7 +134,7 @@ export default async function handler(req, res) {
         const compositeId = getCompositeId(serverIP, req, fingerprint);
 
         /* ── LAYER 9: In-Memory Rate Limiting (fast) ── */
-        if (orderRateLimiter.check(compositeId)) {
+        if (orderRateLimiter.check(compositeId, false)) {
             logSecurityEvent('warning', 'order:mem_rate_limited', { ip: serverIP });
             trackAnomaly(serverIP, 'failure');
             return res.status(429).json({ error: 'rate_limited', message: 'Too many orders. Please wait.' });
@@ -273,7 +273,7 @@ export default async function handler(req, res) {
         }
 
         /* ── LAYER 17: Phone Cooldown ── */
-        if (phoneCooldownLimiter.check(normalizedPhone)) {
+        if (phoneCooldownLimiter.check(normalizedPhone, false)) {
             logSecurityEvent('info', 'order:phone_cooldown', { ip: serverIP, phone: normalizedPhone });
             return res.status(429).json({ error: 'rate_limited', message: 'Please wait before placing another order.' });
         }
@@ -405,6 +405,10 @@ export default async function handler(req, res) {
 
         const result = await supabaseInsert('orders', orderData);
         const savedId = result?.[0]?.id || null;
+
+        /* ── Record successful order in rate limiters ── */
+        orderRateLimiter.record(compositeId);
+        phoneCooldownLimiter.record(normalizedPhone);
 
         return res.status(200).json({
             success: true,
