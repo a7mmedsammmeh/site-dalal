@@ -277,8 +277,20 @@
                 if (!data.maintenance) {
                     window.location.replace('/');
                 } else if (data.message) {
-                    // Try to guess if it's dual language separated by something, or just show the same
-                    document.getElementById('maintenanceMessage').textContent = data.message;
+                    // If message contains '|', split for bilingual (e.g. "رسالة | Message")
+                    if (data.message.includes('|')) {
+                        const parts = data.message.split('|');
+                        document.getElementById('maintenanceMessage').textContent = lang === 'en' ? parts[1].trim() : parts[0].trim();
+                    } else {
+                        // If language is English and the database message contains Arabic letters,
+                        // DO NOT overwrite the English default message we already set.
+                        const hasArabic = /[\u0600-\u06FF]/.test(data.message);
+                        if (lang === 'en' && hasArabic) {
+                            // Keep defaultMsgEn
+                        } else {
+                            document.getElementById('maintenanceMessage').textContent = data.message;
+                        }
+                    }
                 }
             }
         } catch { /* stay on page */ }
