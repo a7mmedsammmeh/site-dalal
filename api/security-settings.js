@@ -60,20 +60,19 @@ export default async function handler(req, res) {
         if (req.method === 'POST') {
             const newLimits = req.body || {};
             
-            // Validate incoming format to prevent breaking backend logic
-            const expectedNumberKeys = ['order_max_per_ip', 'order_window_time', 'phone_cooldown_time', 'duplicate_window_time', 'review_max_per_ip', 'review_window_time', 'max_items_per_order'];
-            for (let key of expectedNumberKeys) {
-                if (newLimits[key] !== undefined && typeof newLimits[key] !== 'number') {
-                    return res.status(400).json({ error: `Invalid type for ${key}, must be number.` });
-                }
-            }
-
-            const expectedStringKeys = ['order_window_unit', 'phone_cooldown_unit', 'duplicate_window_unit', 'review_window_unit'];
-            const allowedUnits = ['minutes', 'hours', 'days', 'weeks'];
+            const expectedStringKeys = ['order_window_unit', 'phone_cooldown_unit', 'duplicate_window_unit', 'review_window_unit', 'pwa_cooldown_unit'];
+            const allowedUnits = ['minutes', 'hours', 'days', 'weeks', 'months'];
             for (let key of expectedStringKeys) {
                 if (newLimits[key] !== undefined) {
                     if (typeof newLimits[key] !== 'string') return res.status(400).json({ error: `Invalid type for ${key}, must be string.` });
                     if (!allowedUnits.includes(newLimits[key])) return res.status(400).json({ error: `Invalid unit for ${key}.` });
+                }
+            }
+
+            const expectedBooleanKeys = ['pwa_cooldown_enabled'];
+            for (let key of expectedBooleanKeys) {
+                if (newLimits[key] !== undefined && typeof newLimits[key] !== 'boolean') {
+                    return res.status(400).json({ error: `Invalid type for ${key}, must be boolean.` });
                 }
             }
 

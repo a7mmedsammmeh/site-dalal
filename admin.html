@@ -759,6 +759,30 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                     <input type="number" id="sec_max_items" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
                 </div>
 
+                <div style="background:rgba(224,192,151,0.05);border:1px solid rgba(224,192,151,0.2);border-radius:var(--r);padding:1rem;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                        <label style="font-size:0.8rem;color:var(--gold-dim);margin:0;">تفعيل ميزة إخفاء التطبيق بعد الرفض</label>
+                        <label class="switch" style="margin:0;">
+                            <input type="checkbox" id="sec_pwa_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="sec_pwa_duration_wrap" style="transition:opacity 0.2s;opacity:0.5;pointer-events:none;">
+                        <label style="display:block;font-size:0.75rem;color:var(--text-dim);margin-bottom:0.5rem;">مدة الإخفاء</label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="number" id="sec_pwa_time" class="admin-search-input" style="width:60%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                            <select id="sec_pwa_unit" class="admin-search-input" style="width:40%;border-bottom:1px solid var(--border);padding:0.5rem 0;color:var(--text);background:transparent;cursor:pointer;">
+                                <option value="minutes" style="background:var(--bg-card)">دقائق</option>
+                                <option value="hours" style="background:var(--bg-card)">ساعات</option>
+                                <option value="days" style="background:var(--bg-card)">أيام</option>
+                                <option value="weeks" style="background:var(--bg-card)">أسابيع</option>
+                                <option value="months" style="background:var(--bg-card)">شهور</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="secError" style="color:#e05c5c;font-size:0.85rem;display:none;"></div>
                 <div id="secSuccess" style="color:#4caf7d;font-size:0.85rem;display:none;">تم الحفظ بنجاح ✓</div>
 
@@ -2253,6 +2277,22 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 document.getElementById('sec_rev_unit').value = limits.review_window_unit || 'hours';
                 
                 document.getElementById('sec_max_items').value = limits.max_items_per_order || 20;
+
+                const pwaEnabled = limits.pwa_cooldown_enabled !== false; // default true
+                const pwaToggle = document.getElementById('sec_pwa_enabled');
+                const pwaWrap = document.getElementById('sec_pwa_duration_wrap');
+                
+                pwaToggle.checked = pwaEnabled;
+                pwaWrap.style.opacity = pwaEnabled ? '1' : '0.5';
+                pwaWrap.style.pointerEvents = pwaEnabled ? 'auto' : 'none';
+                
+                pwaToggle.onchange = () => {
+                    pwaWrap.style.opacity = pwaToggle.checked ? '1' : '0.5';
+                    pwaWrap.style.pointerEvents = pwaToggle.checked ? 'auto' : 'none';
+                };
+
+                document.getElementById('sec_pwa_time').value = limits.pwa_cooldown_time ?? 1;
+                document.getElementById('sec_pwa_unit').value = limits.pwa_cooldown_unit || 'weeks';
             }
         } catch(e) {
             console.error('Failed to load security limits', e);
@@ -2312,7 +2352,11 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             review_window_time: parseInt(document.getElementById('sec_rev_time').value) || 24,
             review_window_unit: document.getElementById('sec_rev_unit').value,
             
-            max_items_per_order: parseInt(document.getElementById('sec_max_items').value) || 20
+            max_items_per_order: parseInt(document.getElementById('sec_max_items').value) || 20,
+
+            pwa_cooldown_enabled: document.getElementById('sec_pwa_enabled').checked,
+            pwa_cooldown_time: parseInt(document.getElementById('sec_pwa_time').value) || 1,
+            pwa_cooldown_unit: document.getElementById('sec_pwa_unit').value
         };
 
         try {

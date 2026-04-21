@@ -13,6 +13,7 @@
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         _deferredPrompt = e;
+        injectInstallLinks(); // Dynamically show button if uninstalled
     });
 
     // Detect platform
@@ -28,19 +29,43 @@
     }
 
     /**
+     * Helper to fetch cooldown settings
+     */
+    async function getCooldownDays() {
+        try {
+            const res = await fetch(`${typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://wnzueymobiwecuikwcgx.supabase.co'}/rest/v1/site_settings?key=eq.security_limits&select=value`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const limits = data[0].value || {};
+                    if (limits.pwa_cooldown_enabled === false) return { enabled: false };
+                    
+                    const t = limits.pwa_cooldown_time ?? 1;
+                    const u = limits.pwa_cooldown_unit ?? 'weeks';
+                    const multipliers = { minutes: 1/(24*60), hours: 1/24, days: 1, weeks: 7, months: 30 };
+                    return { enabled: true, days: t * (multipliers[u] || 7) };
+                }
+            }
+        } catch { /* ignore */ }
+        return { enabled: true, days: 7 }; // default
+    }
+
+    /**
      * Show install prompt popup.
      * Call this after a successful order, or manually.
      */
-    function showInstallPrompt(force = false) {
+    async function showInstallPrompt(force = false) {
         // Don't show if already installed
         if (isStandalone()) return;
         
-        // If not forced, check dismissal cooldown (7 days)
+        // If not forced, check dismissal cooldown
         if (!force) {
             const dismissedAt = localStorage.getItem(INSTALL_DISMISSED_KEY);
             if (dismissedAt) {
                 const daysPassed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
-                if (daysPassed < 7) return;
+                const cooldownObj = await getCooldownDays();
+                // If cooldown is enabled and daysPassed is less than desired cooldown, abort
+                if (cooldownObj.enabled && daysPassed < cooldownObj.days) return;
             }
         }
 
@@ -59,15 +84,15 @@
             // Chrome/Edge/Android — native prompt available (Supports both Desktop and Mobile)
             popupTitle = isMobile 
                 ? (isAr ? 'أضيفي دلال لموبايلك!' : 'Add DALAL to your phone!')
-                : (isAr ? 'نزّلي برنامج دلال للكمبيوتر!' : 'Install DALAL Desktop App!');
+                : (isAr ? 'تنزيل دلال للكمبيوتر!' : 'Download DALAL for PC!');
                 
             const desc = isMobile 
                 ? (isAr ? 'أضيفي دلال للشاشة الرئيسية عشان توصلي لينا بسهولة وبدون متفتحي المتصفح!' : 'Add DALAL to your home screen for quick and easy access!')
-                : (isAr ? 'ثبتي تطبيق دلال على جهازك لتجربة تسوق أسرع وأسهل!' : 'Install DALAL on your computer for a faster shopping experience!');
+                : (isAr ? 'نزلي تطبيق دلال على جهازك لتجربة تسوق أسرع وأسهل!' : 'Install DALAL on your computer for a faster shopping experience!');
 
             const btnText = isMobile 
-                ? (isAr ? 'أضيفي للشاشة الرئيسية' : 'Add to Home Screen')
-                : (isAr ? 'تثبيت التطبيق الآن' : 'Install App Now');
+                ? (isAr ? 'أضيفي دلال لموبايلك' : 'Add DALAL to Home')
+                : (isAr ? 'تطبيق دلال للكمبيوتر' : 'DALAL for PC');
 
             instructionsHTML = `
                 <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.7;margin-bottom:1.25rem;">
@@ -300,32 +325,84 @@
         }
     }
 
-    // Inject Permanent Install Link into Footer
+    // Inject Permanent Install Link into Footer and Menu
+    let _footerInjected = false;
+    async function injectInstallLinks() {
+        if (isStandalone() || _footerInjected) return;
+        
+        // Hide from Navbar and Footer if in cooldown
+        const dismissedAt = localStorage.getItem(INSTALL_DISMISSED_KEY);
+        if (dismissedAt) {
+            const daysPassed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+            const cooldownObj = await getCooldownDays();
+            if (cooldownObj.enabled && daysPassed < cooldownObj.days) return;
+        }
+
+        _footerInjected = true;
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        const txt = isMobile
+            ? (lang === 'ar' ? 'أضيفي دلال لموبايلك 📱' : 'Add DALAL App 📱')
+            : (lang === 'ar' ? 'دلال للكمبيوتر 💻' : 'DALAL for PC 💻');
+        
+        const svgIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="vertical-align:middle;margin-left:4px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+
+        // 1. Footer Link
+        const quickLinksHeading = document.getElementById('footerQuickLinks');
+        if (quickLinksHeading) {
+            const ul = quickLinksHeading.nextElementSibling;
+            if (ul && ul.tagName === 'UL') {
+                const li = document.createElement('li');
+                li.style.marginTop = '0.5rem';
+                const a = document.createElement('a');
+                a.href = '#';
+                a.className = 'pwa-install-trigger';
+                a.style.color = 'var(--gold)';
+                a.style.fontWeight = 'bold';
+                a.innerHTML = `${svgIcon} ${txt}`;
+                li.appendChild(a);
+                ul.appendChild(li);
+            }
+        }
+
+        // 2. Main Menu Link (Navbar)
+        const navLinks = document.getElementById('navLinks');
+        if (navLinks) {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'nav-link pwa-install-trigger';
+            a.style.color = 'var(--gold)';
+            a.style.fontWeight = 'bold';
+            a.innerHTML = `${svgIcon} ${txt}`;
+            li.appendChild(a);
+            navLinks.appendChild(li); // add to end of menu
+        }
+
+        // Bind clicks
+        document.querySelectorAll('.pwa-install-trigger').forEach(btn => {
+            btn.onclick = (e) => {
+                e.preventDefault();
+                showInstallPrompt(true); 
+                
+                // close mobile menu if open
+                if (navLinks && navLinks.classList.contains('active')) {
+                    navLinks.classList.remove('active');
+                    const toggle = document.getElementById('navToggle');
+                    if(toggle) toggle.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            };
+        });
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
         if (isStandalone()) return;
-        setTimeout(() => {
-            const lang = localStorage.getItem('dalal-lang') || 'ar';
-            const quickLinksHeading = document.getElementById('footerQuickLinks');
-            if (quickLinksHeading) {
-                const ul = quickLinksHeading.nextElementSibling;
-                if (ul && ul.tagName === 'UL') {
-                    const li = document.createElement('li');
-                    li.style.marginTop = '0.5rem';
-                    const a = document.createElement('a');
-                    a.href = '#';
-                    a.id = 'footerLinkInstallApp';
-                    a.style.color = 'var(--gold)';
-                    a.style.fontWeight = 'bold';
-                    a.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:middle;margin-left:4px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${lang === 'ar' ? 'تثبيت تطبيق دلال 📱' : 'Install DALAL App 📱'}`;
-                    a.onclick = (e) => {
-                        e.preventDefault();
-                        showInstallPrompt(true); // force display
-                    };
-                    li.appendChild(a);
-                    ul.appendChild(li);
-                }
-            }
-        }, 1000);
+        // iOS doesn't fire beforeinstallprompt, so we inject immediately
+        if (isIOS()) {
+            setTimeout(injectInstallLinks, 500);
+        }
     });
 
     // Expose globally
