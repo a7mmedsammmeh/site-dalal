@@ -33,8 +33,14 @@
      */
     async function getCooldownDays() {
         try {
-            const url = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://wnzueymobiwecuikwcgx.supabase.co';
-            const key = typeof SUPABASE_KEY !== 'undefined' ? SUPABASE_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0.XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI';
+            // Use globals from supabase.js if available, else fetch from /api/config
+            let url = (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) ? SUPABASE_URL : null;
+            let key = (typeof SUPABASE_KEY !== 'undefined' && SUPABASE_KEY) ? SUPABASE_KEY : null;
+            if (!url || !key) {
+                const cfg = await fetch('/api/config').then(r => r.json());
+                url = cfg.url;
+                key = cfg.key;
+            }
             const res = await fetch(`${url}/rest/v1/site_settings?key=eq.security_limits&select=value`, {
                 headers: { 'apikey': key }
             });
@@ -42,7 +48,7 @@
                 const data = await res.json();
                 if (data && data.length > 0) {
                     const limits = data[0].value || {};
-                    if (limits.pwa_cooldown_enabled === false) return { enabled: false };
+                    if (limits.pwa_cooldown_enabled !== true) return { enabled: false };
                     
                     const t = limits.pwa_cooldown_time ?? 1;
                     const u = limits.pwa_cooldown_unit ?? 'weeks';
@@ -51,7 +57,7 @@
                 }
             }
         } catch { /* ignore */ }
-        return { enabled: true, days: 7 }; // default
+        return { enabled: false, days: 7 }; // default OFF
     }
 
     /**

@@ -1123,6 +1123,13 @@ async function saveProduct() {
 
         const productData = { slug, code, name_ar: nameAr, name_en: nameEn, description_ar: descAr, description_en: descEn, main_image_url: mainImageUrl, featured, sizes };
 
+        // Preserve display_order when editing so product stays in its position
+        if (_editingProductId) {
+            const existingProduct = _pmProducts.find(p => p.id === _editingProductId);
+            const currentIndex = _pmProducts.indexOf(existingProduct);
+            productData.display_order = currentIndex >= 0 ? currentIndex + 1 : undefined;
+        }
+
         if (_editingProductId) {
             // Update product
             await updateProduct(_editingProductId, productData);
