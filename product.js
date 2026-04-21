@@ -285,8 +285,12 @@ function renderRecentlyViewed(currentId) {
 /* ─── Modal helpers ─── */
 function openModal() {
     document.getElementById('orderModal').classList.add('active');
-    if (typeof DalalModal !== 'undefined') DalalModal.lock();
-    else document.body.style.overflow = 'hidden';
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.lock();
+        DalalModal.pushState('orderModal', closeModal);
+    } else {
+        document.body.style.overflow = 'hidden';
+    }
     selectedQtyOption = null;
     selectedSize      = null;
     document.getElementById('modalColorInput').value = '';
@@ -296,8 +300,15 @@ function openModal() {
 
 function closeModal() {
     document.getElementById('orderModal').classList.remove('active');
-    if (typeof DalalModal !== 'undefined') DalalModal.unlock();
-    else document.body.style.overflow = '';
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.unlock();
+        const stack = DalalModal._stack;
+        if (stack.length > 0 && stack[stack.length - 1]?.id === 'orderModal') {
+            DalalModal.popState();
+        }
+    } else {
+        document.body.style.overflow = '';
+    }
 }
 
 /* ─── Drag to dismiss (mobile) ─── */

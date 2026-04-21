@@ -1259,9 +1259,21 @@ function checkoutViaSite() {
     const closeModal = () => {
         overlay.classList.remove('is-open');
         setTimeout(() => overlay.remove(), 350);
-        if (typeof DalalModal !== 'undefined') DalalModal.unlock();
-        else document.body.style.overflow = '';
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.unlock();
+            const stack = DalalModal._stack;
+            if (stack.length > 0 && stack[stack.length - 1]?.id === 'cartOrderModal') {
+                DalalModal.popState();
+            }
+        } else {
+            document.body.style.overflow = '';
+        }
     };
+
+    // Push state AFTER closeModal is defined
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.pushState('cartOrderModal', closeModal);
+    }
 
     document.getElementById('cartOrderClose').addEventListener('click', closeModal);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
