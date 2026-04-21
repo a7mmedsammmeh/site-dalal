@@ -2214,10 +2214,13 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         document.body.style.overflow = 'hidden';
         if (typeof DalalModal !== 'undefined') DalalModal.pushState('securityPanel', hideSecurityPanel);
         
-        // Fetch current settings
-        const token = localStorage.getItem('dalal_admin_token');
-        if (!token) return;
+        // Fetch current settings using Supabase session
         try {
+            const db = typeof getSupabase === 'function' ? await getSupabase() : window.supabase;
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) return;
+            const token = session.access_token;
+
             document.getElementById('secSaveBtn').textContent = 'جاري التحميل...';
             document.getElementById('secSaveBtn').disabled = true;
             
@@ -2272,8 +2275,14 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
     window.saveSecuritySettings = async function(e) {
         e.preventDefault();
-        const token = localStorage.getItem('dalal_admin_token');
-        if (!token) {
+        
+        let token;
+        try {
+            const db = typeof getSupabase === 'function' ? await getSupabase() : window.supabase;
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) throw new Error('No session');
+            token = session.access_token;
+        } catch(e) {
             alert('انتهت الجلسة! يرجى إعادة تسجيل الدخول.');
             window.location.href = 'index.html';
             return;
