@@ -633,24 +633,29 @@
             const fp = (typeof DalalFingerprint !== 'undefined') ? await DalalFingerprint.get() : null;
 
             /* ── SERVER-SIDE review submission ── */
+            const payload = {
+                product_id:    productId || null,
+                order_ref:     orderRef || null,
+                rating:        selectedRating,
+                comment,
+                reviewer_name: reviewerName,
+                fingerprint:   fp,
+                products:      orderProducts.length > 0 ? orderProducts : null,
+                form_opened_at: _formOpenedAt,
+                dalal_website: document.getElementById('dalal_website')?.value || ''
+            };
+            console.log('[review] submitting:', JSON.stringify(payload, null, 2));
+
             const response = await fetch('/api/submit-review', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    product_id:    productId || null,
-                    order_ref:     orderRef || null,
-                    rating:        selectedRating,
-                    comment,
-                    reviewer_name: reviewerName,
-                    fingerprint:   fp,
-                    products:      orderProducts.length > 0 ? orderProducts : null,
-                    form_opened_at: _formOpenedAt,
-                    dalal_website: document.getElementById('dalal_website')?.value || ''
-                }),
+                body: JSON.stringify(payload),
                 signal: AbortSignal.timeout(10000)
             });
 
+            console.log('[review] response status:', response.status);
             const result = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : {};
+            console.log('[review] response body:', result);
 
             if (!response.ok) {
                 if (result.error === 'rate_limited') {
@@ -659,8 +664,10 @@
                 if (result.error === 'already_reviewed') {
                     throw new Error(isAr ? 'لقد قيّمتِ هذا الطلب من قبل' : 'You already reviewed this order.');
                 }
-                throw new Error(result.message || 'Review failed');
+                throw new Error(result.message || result.error || 'Review failed');
             }
+
+            console.log('[review] ✅ success!');
 
             // Back link — return to product page if came from direct review, else home
             const backEl = document.getElementById('backLink');
@@ -683,10 +690,11 @@
 
             document.getElementById('reviewForm').style.display    = 'none';
             document.getElementById('successScreen').style.display = 'block';
-        } catch {
+        } catch (submitErr) {
+            console.error('[review] ❌ error:', submitErr);
             btn.disabled = false;
             lbl.textContent = t.submitBtn;
-            errEl.textContent = t.errorFail;
+            errEl.textContent = submitErr.message || t.errorFail;
             errEl.style.display = 'block';
         }
     });

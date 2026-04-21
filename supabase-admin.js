@@ -190,12 +190,14 @@ async function blockIP(ip, reason = null) {
     if (!_IP_RE.test(ip)) throw new Error(`Invalid IP format: ${ip}`);
     if (reason !== null) _validStr(reason, 'reason', 500);
 
+    console.log('[blockIP] ip:', ip, 'reason:', reason);
     const db = await _requireAdmin();
-    const { error } = await db.from('blocked_ips').insert([{
+    const { data, error } = await db.from('blocked_ips').insert([{
         ip,
-        reason,
+        reason: reason || null,
         blocked_at: new Date().toISOString()
-    }]);
+    }]).select();
+    console.log('[blockIP] result:', data, 'error:', error);
     if (error) throw error;
 }
 
