@@ -13,7 +13,33 @@
    ═══════════════════════════════════════════════════════════════ */
 
 export const config = {
-    matcher: ['/((?!_next|favicon|robots|sitemap|sw\\.js|manifest|.*\\.(css|js|png|jpg|jpeg|webp|svg|ico|woff2?|ttf|eot)).*)'],
+    matcher: [
+        '/',
+        '/index.html',
+        '/product.html',
+        '/products.html',
+        '/orders.html',
+        '/track.html',
+        '/review.html',
+        '/contact.html',
+        '/about.html',
+        '/privacy.html',
+        '/404.html',
+        '/admin',
+        '/products-admin',
+        '/admin-login',
+        '/api/create-order',
+        '/api/submit-review',
+        '/api/check-blocked',
+        '/api/track-visitor',
+        '/api/config',
+        '/api/check-maintenance',
+        '/api/cancel-order',
+        '/api/check-phone',
+        '/api/dash-session',
+        '/api/security-settings',
+        '/api/toggle-maintenance'
+    ],
 };
 
 /* ── Admin page protection constants ── */
@@ -31,9 +57,13 @@ const BLOCKED_UA_PATTERNS = [
     'havij', 'acunetix', 'netsparker', 'qualys'
 ];
 
+/* ── Supabase config (must be module-level for Edge build) ── */
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
 /* ── In-memory IP block cache (shared across requests on same edge instance) ── */
 const _ipBlockCache = new Map();
-const IP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const IP_CACHE_TTL = 30 * 1000; // 30 seconds — fast for testing
 const IP_CACHE_MAX = 5000;
 
 /**
@@ -47,9 +77,6 @@ async function isIPBlocked(ip) {
     if (cached && (Date.now() - cached.at) < IP_CACHE_TTL) {
         return cached.blocked;
     }
-
-    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_KEY) return false; // can't check, allow through
 
