@@ -5,27 +5,32 @@
    All admin/destructive operations live in supabase-admin.js.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Supabase Public Config ──
-   NOTE: This is the ANON (public) key — safe to be in frontend.
-   It can ONLY do what RLS policies allow (read-only).
-   The SERVICE_ROLE key (dangerous) is ONLY on the server in Vercel env vars.
+/* ── Supabase Config ──
+   Keys are loaded from /api/config (server env vars).
+   No hardcoded secrets in frontend code.
    ───────────────────────────────────────────────────────────────── */
-const _sb_cfg = (() => {
-    const u = ['https://','wnzueymobiwecuikwcgx','.supabase.co'];
-    const k = [
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
-        'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InduenVleW1vYml3ZWN1aWt3Y2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjk1MjEsImV4cCI6MjA5MTg0NTUyMX0',
-        'XYpIYxVLdL_xjQ4oYw0XBC8hHwX6ZCH0E-LpA9evHQI'
-    ];
-    return { url: u.join(''), key: k.join('.') };
-})();
-const SUPABASE_URL = _sb_cfg.url;
-const SUPABASE_KEY = _sb_cfg.key;
+let SUPABASE_URL = null;
+let SUPABASE_KEY = null;
 
 let _supabase = null;
+let _configPromise = null;
+
+async function _loadConfig() {
+    if (SUPABASE_URL && SUPABASE_KEY) return;
+    if (!_configPromise) {
+        _configPromise = fetch('/api/config')
+            .then(r => r.json())
+            .then(cfg => {
+                SUPABASE_URL = cfg.url;
+                SUPABASE_KEY = cfg.key;
+            });
+    }
+    await _configPromise;
+}
 
 async function getSupabase() {
     if (_supabase) return _supabase;
+    await _loadConfig();
     if (!window.supabase) {
         await new Promise((resolve, reject) => {
             const s = document.createElement('script');
