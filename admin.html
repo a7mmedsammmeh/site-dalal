@@ -695,19 +695,43 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                         <input type="number" id="sec_order_max" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
                     </div>
                     <div>
-                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">فترة سماح الطلبات (بالدقائق)</label>
-                        <input type="number" id="sec_order_win" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">فترة سماح الطلبات</label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="number" id="sec_order_time" class="admin-search-input" style="width:60%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                            <select id="sec_order_unit" class="admin-search-input" style="width:40%;border-bottom:1px solid var(--border);padding:0.5rem 0;color:var(--text);background:transparent;cursor:pointer;">
+                                <option value="minutes" style="background:var(--bg-card)">دقائق</option>
+                                <option value="hours" style="background:var(--bg-card)">ساعات</option>
+                                <option value="days" style="background:var(--bg-card)">أيام</option>
+                                <option value="weeks" style="background:var(--bg-card)">أسابيع</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
                 <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:1.25rem;">
                     <div>
-                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">حظر تكرار رقم الموبايل (بالدقائق)</label>
-                        <input type="number" id="sec_phone_cool" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">حظر تكرار رقم الموبايل</label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="number" id="sec_phone_cool_time" class="admin-search-input" style="width:60%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                            <select id="sec_phone_cool_unit" class="admin-search-input" style="width:40%;border-bottom:1px solid var(--border);padding:0.5rem 0;color:var(--text);background:transparent;cursor:pointer;">
+                                <option value="minutes" style="background:var(--bg-card)">دقائق</option>
+                                <option value="hours" style="background:var(--bg-card)">ساعات</option>
+                                <option value="days" style="background:var(--bg-card)">أيام</option>
+                                <option value="weeks" style="background:var(--bg-card)">أسابيع</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
-                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">حظر تكرار محتوى الطلب (بالدقائق)</label>
-                        <input type="number" id="sec_dup_win" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">حظر تكرار محتوى الطلب</label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="number" id="sec_dup_time" class="admin-search-input" style="width:60%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                            <select id="sec_dup_unit" class="admin-search-input" style="width:40%;border-bottom:1px solid var(--border);padding:0.5rem 0;color:var(--text);background:transparent;cursor:pointer;">
+                                <option value="minutes" style="background:var(--bg-card)">دقائق</option>
+                                <option value="hours" style="background:var(--bg-card)">ساعات</option>
+                                <option value="days" style="background:var(--bg-card)">أيام</option>
+                                <option value="weeks" style="background:var(--bg-card)">أسابيع</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -717,8 +741,16 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                         <input type="number" id="sec_rev_max" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
                     </div>
                     <div>
-                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">فترة سماح التقييمات (بالساعات)</label>
-                        <input type="number" id="sec_rev_win" class="admin-search-input" style="width:100%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                        <label style="display:block;font-size:0.8rem;color:var(--gold-dim);margin-bottom:0.5rem;">فترة سماح التقييمات</label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="number" id="sec_rev_time" class="admin-search-input" style="width:60%;border-bottom:1px solid var(--border);padding:0.5rem 0;" required>
+                            <select id="sec_rev_unit" class="admin-search-input" style="width:40%;border-bottom:1px solid var(--border);padding:0.5rem 0;color:var(--text);background:transparent;cursor:pointer;">
+                                <option value="minutes" style="background:var(--bg-card)">دقائق</option>
+                                <option value="hours" style="background:var(--bg-card)">ساعات</option>
+                                <option value="days" style="background:var(--bg-card)">أيام</option>
+                                <option value="weeks" style="background:var(--bg-card)">أسابيع</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -2196,12 +2228,27 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             if (res.ok) {
                 const data = await res.json();
                 const limits = data.limits || {};
+                
+                // Fallbacks to old keys if user hasn't updated yet
+                const order_time = limits.order_window_time ?? limits.order_window_min ?? 10;
+                const phone_time = limits.phone_cooldown_time ?? limits.phone_cooldown_min ?? 2;
+                const dup_time = limits.duplicate_window_time ?? limits.duplicate_window_min ?? 2;
+                const rev_time = limits.review_window_time ?? limits.review_window_hours ?? 24;
+                
                 document.getElementById('sec_order_max').value = limits.order_max_per_ip || 3;
-                document.getElementById('sec_order_win').value = limits.order_window_min || 10;
-                document.getElementById('sec_phone_cool').value = limits.phone_cooldown_min || 2;
-                document.getElementById('sec_dup_win').value = limits.duplicate_window_min || 2;
+                document.getElementById('sec_order_time').value = order_time;
+                document.getElementById('sec_order_unit').value = limits.order_window_unit || 'minutes';
+                
+                document.getElementById('sec_phone_cool_time').value = phone_time;
+                document.getElementById('sec_phone_cool_unit').value = limits.phone_cooldown_unit || 'minutes';
+                
+                document.getElementById('sec_dup_time').value = dup_time;
+                document.getElementById('sec_dup_unit').value = limits.duplicate_window_unit || 'minutes';
+                
                 document.getElementById('sec_rev_max').value = limits.review_max_per_ip || 10;
-                document.getElementById('sec_rev_win').value = limits.review_window_hours || 24;
+                document.getElementById('sec_rev_time').value = rev_time;
+                document.getElementById('sec_rev_unit').value = limits.review_window_unit || 'hours';
+                
                 document.getElementById('sec_max_items').value = limits.max_items_per_order || 20;
             }
         } catch(e) {
@@ -2238,11 +2285,19 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
 
         const payload = {
             order_max_per_ip: parseInt(document.getElementById('sec_order_max').value) || 3,
-            order_window_min: parseInt(document.getElementById('sec_order_win').value) || 10,
-            phone_cooldown_min: parseInt(document.getElementById('sec_phone_cool').value) || 2,
-            duplicate_window_min: parseInt(document.getElementById('sec_dup_win').value) || 2,
+            order_window_time: parseInt(document.getElementById('sec_order_time').value) || 10,
+            order_window_unit: document.getElementById('sec_order_unit').value,
+            
+            phone_cooldown_time: parseInt(document.getElementById('sec_phone_cool_time').value) || 2,
+            phone_cooldown_unit: document.getElementById('sec_phone_cool_unit').value,
+            
+            duplicate_window_time: parseInt(document.getElementById('sec_dup_time').value) || 2,
+            duplicate_window_unit: document.getElementById('sec_dup_unit').value,
+            
             review_max_per_ip: parseInt(document.getElementById('sec_rev_max').value) || 10,
-            review_window_hours: parseInt(document.getElementById('sec_rev_win').value) || 24,
+            review_window_time: parseInt(document.getElementById('sec_rev_time').value) || 24,
+            review_window_unit: document.getElementById('sec_rev_unit').value,
+            
             max_items_per_order: parseInt(document.getElementById('sec_max_items').value) || 20
         };
 

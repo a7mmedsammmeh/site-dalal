@@ -146,7 +146,8 @@ export default async function handler(req, res) {
        LAYER 2.5: Fetch Dynamic Security Limits
        ────────────────────────────────────────────────────────── */
     let LIMITS = {
-        review_window_hours: 24,
+        review_window_time: 24,
+        review_window_unit: 'hours',
         review_max_per_ip: 10
     };
     try {
@@ -162,8 +163,12 @@ export default async function handler(req, res) {
         }
     } catch { /* proceed with defaults */ }
 
+    const multipliers = { minutes: 60 * 1000, hours: 60 * 60 * 1000, days: 24 * 60 * 60 * 1000, weeks: 7 * 24 * 60 * 60 * 1000 };
+    const rTime = LIMITS.review_window_time ?? LIMITS.review_window_hours ?? 24;
+    const rUnit = LIMITS.review_window_unit ?? 'hours';
+
     // Update in-memory constants
-    RATE_WINDOW_MS = LIMITS.review_window_hours * 60 * 60 * 1000;
+    RATE_WINDOW_MS = rTime * (multipliers[rUnit] || multipliers.hours);
     MAX_REVIEWS_PER_IP = LIMITS.review_max_per_ip;
 
     if (checkRateLimit(ip)) {

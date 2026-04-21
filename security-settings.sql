@@ -8,11 +8,15 @@ VALUES (
     'security_limits',
     '{
         "order_max_per_ip": 3,
-        "order_window_min": 10,
-        "phone_cooldown_min": 2,
-        "duplicate_window_min": 2,
+        "order_window_time": 10,
+        "order_window_unit": "minutes",
+        "phone_cooldown_time": 2,
+        "phone_cooldown_unit": "minutes",
+        "duplicate_window_time": 2,
+        "duplicate_window_unit": "minutes",
         "review_max_per_ip": 10,
-        "review_window_hours": 24,
+        "review_window_time": 24,
+        "review_window_unit": "hours",
         "max_items_per_order": 20
     }'::jsonb
 )

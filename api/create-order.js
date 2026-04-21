@@ -251,9 +251,12 @@ export default async function handler(req, res) {
        ────────────────────────────────────────────────────────── */
     let LIMITS = {
         order_max_per_ip: 3,
-        order_window_min: 10,
-        phone_cooldown_min: 2,
-        duplicate_window_min: 2,
+        order_window_time: 10,
+        order_window_unit: 'minutes',
+        phone_cooldown_time: 2,
+        phone_cooldown_unit: 'minutes',
+        duplicate_window_time: 2,
+        duplicate_window_unit: 'minutes',
         max_items_per_order: 20
     };
     try {
@@ -269,11 +272,19 @@ export default async function handler(req, res) {
         }
     } catch { /* proceed with defaults */ }
 
+    const multipliers = { minutes: 60 * 1000, hours: 60 * 60 * 1000, days: 24 * 60 * 60 * 1000, weeks: 7 * 24 * 60 * 60 * 1000 };
+    
+    const getMs = (timeKey, unitKey, fallbackMin) => {
+        const t = LIMITS[timeKey] ?? fallbackMin;
+        const u = LIMITS[unitKey] ?? 'minutes';
+        return t * (multipliers[u] || multipliers.minutes);
+    };
+
     // Update in-memory constants using dynamic limits
-    RATE_WINDOW_MS = LIMITS.order_window_min * 60 * 1000;
+    RATE_WINDOW_MS = getMs('order_window_time', 'order_window_unit', LIMITS.order_window_min ?? 10);
     MAX_PER_IP_MEM = LIMITS.order_max_per_ip;
-    DEDUP_WINDOW_MS = LIMITS.duplicate_window_min * 60 * 1000;
-    PHONE_COOLDOWN_MS = LIMITS.phone_cooldown_min * 60 * 1000;
+    DEDUP_WINDOW_MS = getMs('duplicate_window_time', 'duplicate_window_unit', LIMITS.duplicate_window_min ?? 2);
+    PHONE_COOLDOWN_MS = getMs('phone_cooldown_time', 'phone_cooldown_unit', LIMITS.phone_cooldown_min ?? 2);
 
     /* ──────────────────────────────────────────────────────────
        LAYER 2: Origin Validation
@@ -415,10 +426,9 @@ export default async function handler(req, res) {
            LAYER 11: DB-Backed Rate Limiting (persistent)
            Uses server-extracted IP — NOT client-provided.
            ────────────────────────────────────────────────────── */
-        const RATE_WINDOW_MIN = LIMITS.order_window_min;
         const MAX_PER_IP = LIMITS.order_max_per_ip;
         const MAX_PER_FP = LIMITS.order_max_per_ip; // usually same as IP max
-        const windowTime = new Date(Date.now() - RATE_WINDOW_MIN * 60 * 1000).toISOString();
+        const windowTime = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
 
         try {
             // Rate limit by server-side IP
