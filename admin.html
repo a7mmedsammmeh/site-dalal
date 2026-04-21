@@ -835,106 +835,46 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         cancelled: 'ملغية'
     };
 
-    // ─── Auth ───
+    // ─── Auth (Cookie-based — middleware protects the page) ───
     async function initAdmin() {
         const db = await getSupabase();
-        const { data: { session } } = await db.auth.getSession();
+        let { data: { session } } = await db.auth.getSession();
+
+        // If no session in localStorage, try refreshing
         if (!session) {
-            document.body.style.overflow = 'hidden';
-            showLoginUI(db);
+            try {
+                const { data: refreshed } = await db.auth.refreshSession();
+                session = refreshed?.session;
+            } catch {}
+        }
+
+        // If still no session, redirect to login
+        // (middleware should have caught this, but just in case)
+        if (!session) {
+            window.location.href = '/admin-login';
             return;
         }
+
         // Verify admin role via DB
         const { data: isAdmin, error } = await db.rpc('is_admin');
         if (error || !isAdmin) {
             await db.auth.signOut();
-            document.body.style.overflow = 'hidden';
-            showLoginUI(db, '⛔ ليس لديك صلاحية الوصول لهذه الصفحة');
+            try { await fetch('/api/admin-auth', { method: 'DELETE' }); } catch {}
+            window.location.href = '/admin-login';
             return;
         }
         loadOrders();
         subscribeToNewOrders();
     }
 
-    function showLoginUI(db, initialError) {
-        document.body.insertAdjacentHTML('beforeend', `
-        <div id="loginOverlay" style="position:fixed;inset:0;z-index:99999;background:#0D0D0D;display:flex;align-items:center;justify-content:center;font-family:'Tajawal','Poppins',sans-serif;animation:loginFadeIn 0.4s ease;">
-            <style>
-                @keyframes loginFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-                #loginBox{background:#1A1A1A;border:1px solid rgba(224,192,151,0.2);border-radius:12px;padding:2.5rem 2rem;width:100%;max-width:380px;margin:1rem;}
-                #loginBox h1{font-family:'Playfair Display',serif;color:#E0C097;font-size:1.8rem;letter-spacing:0.2em;text-align:center;margin-bottom:0.3rem;}
-                #loginBox p{color:#6B6158;font-size:0.82rem;text-align:center;margin-bottom:2rem;}
-                .lf{margin-bottom:1.1rem;} .ll{display:block;font-size:0.75rem;color:#A89B8C;letter-spacing:0.08em;margin-bottom:0.4rem;}
-                .li{width:100%;background:#141414;border:1px solid rgba(224,192,151,0.15);border-radius:4px;color:#F5F0EB;font-family:inherit;font-size:0.9rem;padding:0.75rem 1rem;outline:none;transition:border-color 0.25s;}
-                .li:focus{border-color:#C4A67A;}
-                .lb{width:100%;background:#E0C097;color:#0D0D0D;border:1px solid #E0C097;border-radius:4px;font-family:inherit;font-size:0.88rem;font-weight:700;letter-spacing:0.1em;padding:0.95rem;cursor:pointer;margin-top:0.5rem;transition:background 0.3s,color 0.3s;}
-                .lb:hover{background:transparent;color:#E0C097;} .lb:disabled{opacity:0.6;cursor:not-allowed;}
-                .le{color:#e05c5c;font-size:0.8rem;text-align:center;margin-top:0.75rem;display:none;}
-                .ld{height:1px;background:rgba(224,192,151,0.1);margin:1.5rem 0;}
-                .ls{display:inline-block;width:16px;height:16px;border:2px solid rgba(13,13,13,0.3);border-top-color:#0D0D0D;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-left:6px;}
-                @keyframes spin{to{transform:rotate(360deg)}}
-            </style>
-            <div id="loginBox">
-                <h1>DALAL</h1><p>لوحة التحكم</p>
-                <div class="ld"></div>
-                <div class="lf"><label class="ll">البريد الإلكتروني</label><input class="li" id="loginEmail" type="email" placeholder="admin@dalal.com" autocomplete="email"></div>
-                <div class="lf"><label class="ll">كلمة المرور</label><input class="li" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
-                <button class="lb" id="loginSubmit">دخول</button>
-                <div class="le" id="loginError">البريد الإلكتروني أو كلمة المرور غير صحيحة</div>
-            </div>
-        </div>`);
-
-        // Show initial error (e.g. "not an admin" after redirect)
-        if (initialError) {
-            const err = document.getElementById('loginError');
-            err.textContent = initialError;
-            err.style.display = 'block';
-        }
-
-        async function tryLogin() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const pass  = document.getElementById('loginPass').value;
-            if (!email || !pass) return;
-            const btn = document.getElementById('loginSubmit');
-            btn.disabled = true;
-            btn.innerHTML = 'جاري التحقق <span class="ls"></span>';
-            const { error } = await db.auth.signInWithPassword({ email, password: pass });
-            if (error) {
-                btn.disabled = false; btn.textContent = 'دخول';
-                const err = document.getElementById('loginError');
-                err.textContent = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
-                err.style.display = 'block';
-                document.getElementById('loginPass').value = '';
-                setTimeout(() => err.style.display = 'none', 3000);
-            } else {
-                // ── Verify admin role after successful login ──
-                btn.innerHTML = 'جاري التحقق من الصلاحية <span class="ls"></span>';
-                const { data: isAdmin, error: roleErr } = await db.rpc('is_admin');
-                if (roleErr || !isAdmin) {
-                    // Not an admin — sign out immediately
-                    await db.auth.signOut();
-                    btn.disabled = false; btn.textContent = 'دخول';
-                    const err = document.getElementById('loginError');
-                    err.textContent = '⛔ هذا الحساب ليس لديه صلاحية الوصول';
-                    err.style.display = 'block';
-                    document.getElementById('loginPass').value = '';
-                    return;
-                }
-                const ov = document.getElementById('loginOverlay');
-                ov.style.transition = 'opacity 0.3s'; ov.style.opacity = '0';
-                setTimeout(() => { ov.remove(); document.body.style.overflow = ''; loadOrders(); subscribeToNewOrders(); }, 300);
-            }
-        }
-        document.getElementById('loginSubmit').addEventListener('click', tryLogin);
-        document.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
-        setTimeout(() => document.getElementById('loginEmail').focus(), 100);
-    }
-
     window.adminLogout = async function() {
-        const db = await getSupabase();
-        await db.auth.signOut();
+        try {
+            const db = await getSupabase();
+            await db.auth.signOut();
+        } catch {}
         if (typeof _adminVerified !== 'undefined') _adminVerified = false;
-        location.reload();
+        try { await fetch('/api/admin-auth', { method: 'DELETE' }); } catch {}
+        window.location.href = '/admin-login';
     };
 
     window.toggleAdminMenu = function() {

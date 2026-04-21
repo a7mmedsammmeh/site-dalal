@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DALAL — تسجيل الدخول</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Poppins:wght@300;400;500;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="images/dalal-logo.png">
+<style>
+:root {
+    --bg:         #0D0D0D;
+    --bg-card:    #1A1A1A;
+    --gold:       #E0C097;
+    --gold-dim:   #C4A67A;
+    --text:       #F5F0EB;
+    --text-muted: #A89B8C;
+    --text-dim:   #6B6158;
+    --border:     rgba(224,192,151,0.15);
+    --red:        #e05c5c;
+    --green:      #4caf7d;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:16px; -webkit-font-smoothing:antialiased; }
+
+body {
+    font-family:'Tajawal','Poppins',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+/* ── Animated background ── */
+.bg-glow {
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    overflow:hidden;
+}
+.bg-glow::before, .bg-glow::after {
+    content:'';
+    position:absolute;
+    border-radius:50%;
+    filter:blur(120px);
+    opacity:0.07;
+    animation:float 12s ease-in-out infinite alternate;
+}
+.bg-glow::before {
+    width:500px; height:500px;
+    background:var(--gold);
+    top:-15%; right:-10%;
+}
+.bg-glow::after {
+    width:400px; height:400px;
+    background:var(--gold-dim);
+    bottom:-10%; left:-5%;
+    animation-delay:-6s;
+    animation-direction:alternate-reverse;
+}
+@keyframes float {
+    0%   { transform:translate(0,0) scale(1); }
+    100% { transform:translate(-40px,30px) scale(1.15); }
+}
+
+/* ── Login card ── */
+.login-card {
+    position:relative; z-index:1;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:2.5rem 2rem 2rem;
+    width:100%;
+    max-width:400px;
+    margin:1rem;
+    animation:cardIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+}
+@keyframes cardIn {
+    from { opacity:0; transform:translateY(24px) scale(0.96); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+}
+
+/* ── Logo area ── */
+.login-brand {
+    text-align:center;
+    margin-bottom:2rem;
+}
+.login-brand h1 {
+    font-family:'Playfair Display',serif;
+    color:var(--gold);
+    font-size:2rem;
+    letter-spacing:0.25em;
+    margin-bottom:0.35rem;
+    font-weight:700;
+}
+.login-brand p {
+    color:var(--text-dim);
+    font-size:0.82rem;
+    letter-spacing:0.06em;
+}
+
+.login-divider {
+    height:1px;
+    background:linear-gradient(90deg, transparent, var(--border), transparent);
+    margin:0 0 2rem;
+}
+
+/* ── Form fields ── */
+.login-field {
+    margin-bottom:1.25rem;
+}
+.login-label {
+    display:block;
+    font-size:0.75rem;
+    color:var(--text-muted);
+    letter-spacing:0.08em;
+    margin-bottom:0.5rem;
+}
+.login-input {
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text);
+    font-family:inherit;
+    font-size:0.9rem;
+    padding:0.85rem 1rem;
+    outline:none;
+    transition:border-color 0.25s, box-shadow 0.25s;
+}
+.login-input:focus {
+    border-color:var(--gold-dim);
+    box-shadow:0 0 0 3px rgba(224,192,151,0.08);
+}
+.login-input::placeholder { color:var(--text-dim); }
+
+/* ── Submit button ── */
+.login-btn {
+    width:100%;
+    background:var(--gold);
+    color:var(--bg);
+    border:1px solid var(--gold);
+    border-radius:8px;
+    font-family:inherit;
+    font-size:0.9rem;
+    font-weight:700;
+    letter-spacing:0.1em;
+    padding:0.95rem;
+    cursor:pointer;
+    margin-top:0.75rem;
+    transition:background 0.3s, color 0.3s, transform 0.15s;
+    position:relative;
+    overflow:hidden;
+}
+.login-btn:hover {
+    background:transparent;
+    color:var(--gold);
+}
+.login-btn:active { transform:scale(0.98); }
+.login-btn:disabled {
+    opacity:0.65;
+    cursor:not-allowed;
+    transform:none;
+}
+
+/* ── Spinner ── */
+.login-spinner {
+    display:inline-block;
+    width:16px; height:16px;
+    border:2px solid rgba(13,13,13,0.3);
+    border-top-color:var(--bg);
+    border-radius:50%;
+    animation:spin 0.7s linear infinite;
+    vertical-align:middle;
+    margin-inline-start:6px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Error / Success messages ── */
+.login-error {
+    color:var(--red);
+    font-size:0.82rem;
+    text-align:center;
+    margin-top:1rem;
+    padding:0.65rem 0.75rem;
+    background:rgba(224,92,92,0.08);
+    border:1px solid rgba(224,92,92,0.2);
+    border-radius:6px;
+    display:none;
+    animation:shakeIn 0.35s ease;
+}
+@keyframes shakeIn {
+    0%,100% { transform:translateX(0); }
+    20%     { transform:translateX(-6px); }
+    40%     { transform:translateX(6px); }
+    60%     { transform:translateX(-3px); }
+    80%     { transform:translateX(3px); }
+}
+
+.login-success {
+    color:var(--green);
+    font-size:0.82rem;
+    text-align:center;
+    margin-top:1rem;
+    padding:0.65rem 0.75rem;
+    background:rgba(76,175,125,0.08);
+    border:1px solid rgba(76,175,125,0.2);
+    border-radius:6px;
+    display:none;
+}
+
+/* ── Footer ── */
+.login-footer {
+    text-align:center;
+    margin-top:1.5rem;
+    padding-top:1rem;
+    border-top:1px solid var(--border);
+}
+.login-footer a {
+    color:var(--text-dim);
+    text-decoration:none;
+    font-size:0.78rem;
+    display:inline-flex;
+    align-items:center;
+    gap:0.35rem;
+    transition:color 0.2s;
+}
+.login-footer a:hover { color:var(--gold); }
+
+/* ── Responsive ── */
+@media(max-width:480px) {
+    .login-card { padding:2rem 1.5rem 1.5rem; margin:0.75rem; border-radius:12px; }
+    .login-brand h1 { font-size:1.6rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="login-card" id="loginCard">
+    <div class="login-brand">
+        <h1>DALAL</h1>
+        <p>لوحة التحكم</p>
+    </div>
+    <div class="login-divider"></div>
+
+    <div class="login-field">
+        <label class="login-label" for="loginEmail">البريد الإلكتروني</label>
+        <input class="login-input" id="loginEmail" type="email"
+               placeholder="admin@dalal.com" autocomplete="email" dir="ltr">
+    </div>
+    <div class="login-field">
+        <label class="login-label" for="loginPass">كلمة المرور</label>
+        <input class="login-input" id="loginPass" type="password"
+               placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button class="login-btn" id="loginSubmit">دخول</button>
+
+    <div class="login-error" id="loginError"></div>
+    <div class="login-success" id="loginSuccess">✓ تم تسجيل الدخول بنجاح — جاري التحويل...</div>
+
+    <div class="login-footer">
+        <a href="/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            العودة للموقع
+        </a>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    const emailField = document.getElementById('loginEmail');
+    const passField  = document.getElementById('loginPass');
+    const submitBtn  = document.getElementById('loginSubmit');
+    const errorEl    = document.getElementById('loginError');
+    const successEl  = document.getElementById('loginSuccess');
+
+    function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+        successEl.style.display = 'none';
+        // Auto-hide after 5s
+        setTimeout(() => { errorEl.style.display = 'none'; }, 5000);
+    }
+
+    function showSuccess() {
+        successEl.style.display = 'block';
+        errorEl.style.display = 'none';
+    }
+
+    async function tryLogin() {
+        const email = emailField.value.trim();
+        const pass  = passField.value;
+        if (!email || !pass) {
+            showError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+            return;
+        }
+
+        // Loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'جاري التحقق <span class="login-spinner"></span>';
+        errorEl.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/admin-auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password: pass })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'دخول';
+                passField.value = '';
+
+                if (res.status === 429) {
+                    showError('تم تجاوز الحد المسموح — حاول بعد قليل');
+                } else if (res.status === 403) {
+                    showError('⛔ هذا الحساب ليس لديه صلاحية الوصول');
+                } else {
+                    showError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+                }
+                return;
+            }
+
+            // Success — set Supabase session in localStorage for client-side SDK
+            submitBtn.innerHTML = 'جاري إعداد الجلسة <span class="login-spinner"></span>';
+
+            if (data.access_token && data.refresh_token) {
+                try {
+                    // Load Supabase config
+                    const configRes = await fetch('/api/config');
+                    const config = await configRes.json();
+
+                    // Load Supabase JS SDK
+                    if (!window.supabase) {
+                        await new Promise((resolve, reject) => {
+                            const s = document.createElement('script');
+                            s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+                            s.onload = resolve;
+                            s.onerror = reject;
+                            document.head.appendChild(s);
+                        });
+                    }
+
+                    // Initialize client and set session
+                    const db = window.supabase.createClient(config.url, config.key);
+                    await db.auth.setSession({
+                        access_token: data.access_token,
+                        refresh_token: data.refresh_token
+                    });
+                } catch (e) {
+                    console.warn('Could not set Supabase session:', e);
+                    // Non-fatal: cookie is set, middleware will allow access
+                }
+            }
+
+            showSuccess();
+
+            // Redirect to admin dashboard
+            setTimeout(() => {
+                window.location.href = '/admin';
+            }, 500);
+
+        } catch (err) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'دخول';
+            showError('حدث خطأ في الاتصال — حاول مرة أخرى');
+        }
+    }
+
+    // Event listeners
+    submitBtn.addEventListener('click', tryLogin);
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') tryLogin();
+    });
+
+    // Auto-focus email field
+    setTimeout(() => emailField.focus(), 150);
+})();
+</script>
+</body>
+</html>

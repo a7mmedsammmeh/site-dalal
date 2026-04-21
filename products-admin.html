@@ -1174,7 +1174,7 @@ async function saveProduct() {
     }
 }
 
-// Initialize page — check auth + admin role first
+// Initialize page — middleware protects this page via cookie auth
 document.addEventListener('DOMContentLoaded', async () => {
     // Wait for supabase.js to be ready
     let attempts = 0;
@@ -1194,7 +1194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (!session) {
-            window.location.href = 'admin.html';
+            window.location.href = '/admin-login';
             return;
         }
 
@@ -1202,14 +1202,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: isAdmin, error } = await db.rpc('is_admin');
         if (error || !isAdmin) {
             await db.auth.signOut();
-            window.location.href = 'admin.html';
+            try { await fetch('/api/admin-auth', { method: 'DELETE' }); } catch {}
+            window.location.href = '/admin-login';
             return;
         }
 
         loadProductsManagement();
     } catch(e) {
         console.error('Auth check error:', e);
-        window.location.href = 'admin.html';
+        window.location.href = '/admin-login';
     }
 });
 </script>
