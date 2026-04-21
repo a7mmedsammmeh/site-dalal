@@ -320,7 +320,18 @@ body {
                 body: JSON.stringify({ email, password: pass })
             });
 
-            const data = await res.json();
+            let data;
+            const contentType = res.headers.get('content-type') || '';
+            try {
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    data = { error: `Server returned non-JSON (${res.status}): ${text.slice(0, 150)}...` };
+                }
+            } catch (err) {
+                data = { error: 'Failed to parse response' };
+            }
 
             if (!res.ok) {
                 submitBtn.disabled = false;
@@ -334,7 +345,7 @@ body {
                 } else if (res.status === 401) {
                     showError(data.error || 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
                 } else {
-                    showError(data.error || 'حدث خطأ غير متوقع');
+                    showError(data.error || `Error ${res.status}: حدث خطأ غير متوقع`);
                 }
                 return;
             }
