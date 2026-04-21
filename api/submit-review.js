@@ -155,7 +155,7 @@ export default async function handler(req, res) {
             const cappedProducts = products.slice(0, 10);
             const seenIds = new Set();
             for (const p of cappedProducts) {
-                const pid = parseInt(p.id);
+                const pid = parseInt(p.id || p.product_id);
                 if (!pid || pid < 1 || seenIds.has(pid)) continue;
                 seenIds.add(pid);
                 reviewsToInsert.push({
@@ -168,6 +168,7 @@ export default async function handler(req, res) {
                     is_visible: false // ALWAYS false — admin must approve
                 });
             }
+            console.log('submit-review: products loop result:', reviewsToInsert.length, 'reviews from', products.length, 'products');
         }
 
         // Fallback: single review
@@ -181,9 +182,11 @@ export default async function handler(req, res) {
                 client_ip: ip,
                 is_visible: false
             }];
+            console.log('submit-review: using fallback single review, product_id:', productIdNum, 'order_ref:', orderRefClean);
         }
 
         /* ── Insert via service key ── */
+        console.log('submit-review: inserting', reviewsToInsert.length, 'reviews');
         await supabaseInsert('reviews', reviewsToInsert);
 
         return res.status(200).json({ success: true });
