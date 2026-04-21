@@ -252,10 +252,12 @@ export default async function handler(req, res) {
         }
 
         /* ── LAYER 16: Duplicate Payload Detection (SHA-256) ── */
-        const payloadHash = await hashSHA256(JSON.stringify({ phone: normalizedPhone, address, items }));
-        if (isDuplicatePayload(compositeId, payloadHash, dedupWindowMs)) {
-            logSecurityEvent('warning', 'order:duplicate', { ip: serverIP, detail: `hash:${payloadHash.slice(0, 8)}` });
-            return res.status(429).json({ error: 'duplicate', reason: 'DUPLICATE_PAYLOAD', message: 'This order was already submitted. Please wait.' });
+        if (dedupWindowMs > 0) {
+            const payloadHash = await hashSHA256(JSON.stringify({ phone: normalizedPhone, address, items }));
+            if (isDuplicatePayload(compositeId, payloadHash, dedupWindowMs)) {
+                logSecurityEvent('warning', 'order:duplicate', { ip: serverIP, detail: `hash:${payloadHash.slice(0, 8)}` });
+                return res.status(429).json({ error: 'duplicate', reason: 'DUPLICATE_PAYLOAD', message: 'This order was already submitted. Please wait.' });
+            }
         }
 
         /* ── LAYER 17: Phone Cooldown ── */
