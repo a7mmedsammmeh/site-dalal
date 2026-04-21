@@ -188,7 +188,8 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true });
 
-    } catch {
+    } catch (err) {
+        console.error('submit-review error:', err?.message || err);
         // Never expose internal error details
         return res.status(500).json({ error: 'Internal server error' });
     }

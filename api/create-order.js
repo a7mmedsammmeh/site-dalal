@@ -412,6 +412,7 @@ export default async function handler(req, res) {
         });
 
     } catch (err) {
+        console.error('create-order error:', err?.message || err);
         // Never expose internal error details
         return res.status(500).json({ error: 'Internal server error' });
     }
