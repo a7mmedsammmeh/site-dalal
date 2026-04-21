@@ -757,6 +757,10 @@ function validateRequestSignature(req) {
 
 /* ══════════════════════════════════════════════════════════════════
    FETCH DYNAMIC SECURITY LIMITS
+   ─────────────────────────────────────────────────────────────────
+   Reads from dashboard DB every time. On failure, uses the LAST
+   KNOWN good values (not hardcoded defaults) so admin changes
+   persist even during DB hiccups.
    ══════════════════════════════════════════════════════════════════ */
 
 const DEFAULT_LIMITS = {
@@ -780,19 +784,43 @@ const TIME_MULTIPLIERS = {
     weeks: 7 * 24 * 60 * 60 * 1000
 };
 
+/* Cache: stores the last successfully fetched limits from DB */
+let _cachedLimits = null;
+let _cachedAt = 0;
+const LIMITS_CACHE_TTL = 30000; // 30 seconds — re-read from DB every 30s
+
 async function fetchSecurityLimits() {
-    let limits = { ...DEFAULT_LIMITS };
+    // If we have a recent cache (< 30s old), use it directly
+    const now = Date.now();
+    if (_cachedLimits && (now - _cachedAt) < LIMITS_CACHE_TTL) {
+        return _cachedLimits;
+    }
+
     try {
         const data = await supabaseGet(
             'site_settings',
             'key=eq.security_limits&select=value',
-            TIMEOUT.SECURITY
+            TIMEOUT.DB_READ  // 4s instead of 3s SECURITY timeout
         );
-        if (data && data.length > 0) {
-            limits = { ...limits, ...(data[0].value || {}) };
+        if (data && data.length > 0 && data[0].value) {
+            _cachedLimits = { ...DEFAULT_LIMITS, ...data[0].value };
+            _cachedAt = now;
+            return _cachedLimits;
         }
-    } catch { /* proceed with defaults */ }
-    return limits;
+    } catch (err) {
+        // Log the failure so admin can debug
+        logSecurityEvent('critical', 'limits:fetch_failed', {
+            detail: err?.message || 'unknown error'
+        });
+    }
+
+    // If DB failed but we have a previous cached result, use it
+    if (_cachedLimits) {
+        return _cachedLimits;
+    }
+
+    // Absolute last resort: use defaults (only on first ever request if DB is down)
+    return { ...DEFAULT_LIMITS };
 }
 
 function getWindowMs(limits, timeKey, unitKey, fallbackMin = 10) {
