@@ -110,8 +110,10 @@ export default async function handler(req, res) {
     const LIMITS = await fetchSecurityLimits();
     const rateWindowMs = getWindowMs(LIMITS, 'order_window_time', 'order_window_unit', 10);
     const dedupWindowMs = getWindowMs(LIMITS, 'duplicate_window_time', 'duplicate_window_unit', 2);
+    const phoneCooldownMs = getWindowMs(LIMITS, 'phone_cooldown_time', 'phone_cooldown_unit', 2);
 
     orderRateLimiter.updateConfig(rateWindowMs, LIMITS.order_max_per_ip);
+    phoneCooldownLimiter.updateConfig(phoneCooldownMs, LIMITS.order_max_per_ip);
 
     try {
         const body = req.body;
