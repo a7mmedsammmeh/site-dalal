@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
    DALAL — Admin Authentication (Cookie-Based)
    ─────────────────────────────────────────────────────────────
-   POST   /api/admin-auth  → Login  (set HttpOnly cookie)
-   DELETE /api/admin-auth  → Logout (clear cookie)
+   POST   /api/dash-session  → Login  (set HttpOnly cookie)
+   DELETE /api/dash-session  → Logout (clear cookie)
 
    🔒 SECURITY:
      - HttpOnly cookie prevents XSS token theft

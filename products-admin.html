@@ -1202,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: isAdmin, error } = await db.rpc('is_admin');
         if (error || !isAdmin) {
             await db.auth.signOut();
-            try { await fetch('/api/admin-auth', { method: 'DELETE' }); } catch {}
+            try { await fetch('/api/dash-session', { method: 'DELETE' }); } catch {}
             window.location.href = '/admin-login';
             return;
         }

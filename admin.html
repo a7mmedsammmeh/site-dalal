@@ -859,7 +859,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         const { data: isAdmin, error } = await db.rpc('is_admin');
         if (error || !isAdmin) {
             await db.auth.signOut();
-            try { await fetch('/api/admin-auth', { method: 'DELETE' }); } catch {}
+            try { await fetch('/api/dash-session', { method: 'DELETE' }); } catch {}
             window.location.href = '/admin-login';
             return;
         }
@@ -873,7 +873,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
             await db.auth.signOut();
         } catch {}
         if (typeof _adminVerified !== 'undefined') _adminVerified = false;
-        try { await fetch('/api/admin-auth', { method: 'DELETE' }); } catch {}
+        try { await fetch('/api/dash-session', { method: 'DELETE' }); } catch {}
         window.location.href = '/admin-login';
     };
 
