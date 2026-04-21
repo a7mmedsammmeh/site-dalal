@@ -374,7 +374,15 @@
                 signal: AbortSignal.timeout(15000)
             });
 
-            const result = await response.json();
+            /* ── Parse response safely (handles Vercel crash pages) ── */
+            let result;
+            const ct = response.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+                result = await response.json();
+            } else {
+                // Server returned HTML/text error (crash page)
+                throw new Error('Server error');
+            }
 
             if (!response.ok) {
                 if (result.error === 'access_restricted' || result.error === 'phone_blocked' ||

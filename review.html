@@ -650,7 +650,7 @@
                 signal: AbortSignal.timeout(10000)
             });
 
-            const result = await response.json();
+            const result = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : {};
 
             if (!response.ok) {
                 if (result.error === 'rate_limited') {

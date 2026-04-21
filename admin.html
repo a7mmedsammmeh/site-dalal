@@ -2253,6 +2253,8 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
+                const ct = res.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) throw new Error('Server error');
                 const data = await res.json();
                 const limits = data.limits || {};
                 
@@ -2371,7 +2373,8 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json();
+            const ct = res.headers.get('content-type') || '';
+            const data = ct.includes('application/json') ? await res.json() : { error: 'Server error' };
             if(!res.ok) throw new Error(data.error || 'Failed to save settings');
             
             suc.style.display = 'block';

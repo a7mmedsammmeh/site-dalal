@@ -1066,7 +1066,14 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
                 signal: AbortSignal.timeout(15000)
             });
 
-            const result = await response.json();
+            /* ── Parse response safely (handles server crash pages) ── */
+            let result;
+            const ct1 = response.headers.get('content-type') || '';
+            if (ct1.includes('application/json')) {
+                result = await response.json();
+            } else {
+                throw new Error('Server error');
+            }
 
             if (!response.ok) {
                 if (result.error === 'access_restricted' || result.error === 'phone_blocked' ||
@@ -1393,7 +1400,14 @@ function checkoutViaSite() {
                 signal: AbortSignal.timeout(15000)
             });
 
-            const result = await response.json();
+            /* ── Parse response safely (handles server crash pages) ── */
+            let result;
+            const ct2 = response.headers.get('content-type') || '';
+            if (ct2.includes('application/json')) {
+                result = await response.json();
+            } else {
+                throw new Error('Server error');
+            }
 
             if (!response.ok) {
                 // Handle specific server errors

@@ -5,6 +5,7 @@
    Import once, use everywhere — no duplication.
    ═══════════════════════════════════════════════════════════════ */
 
+import { createHash, randomBytes } from 'crypto';
 /* ── Environment (fail-fast if missing) ── */
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -13,8 +14,8 @@ const KV_REST_API_URL = process.env.KV_REST_API_URL || null;
 const KV_REST_API_TOKEN = process.env.KV_REST_API_TOKEN || null;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !SUPABASE_ANON_KEY) {
-    throw new Error(
-        'FATAL: Missing required environment variables. ' +
+    console.error(
+        'CRITICAL: Missing required environment variables. ' +
         'Set SUPABASE_URL, SUPABASE_SERVICE_KEY, and SUPABASE_ANON_KEY.'
     );
 }
@@ -289,18 +290,7 @@ function normalizePhone(phone) {
    ═══════════════════════════════════════════════════════════════ */
 
 async function hashSHA256(str) {
-    try {
-        const { createHash } = await import('crypto');
-        return createHash('sha256').update(str).digest('hex');
-    } catch {
-        // Fallback for environments without crypto
-        const encoder = new TextEncoder();
-        const data = encoder.encode(str);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        return Array.from(new Uint8Array(hashBuffer))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-    }
+    return createHash('sha256').update(str).digest('hex');
 }
 
 /**
@@ -571,10 +561,14 @@ function getWindowMs(limits, timeKey, unitKey, fallbackMin = 10) {
 function generateOrderRef() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const len = 12;
-    const arr = new Uint8Array(len);
-    crypto.getRandomValues(arr);
     let ref = '';
-    for (let i = 0; i < len; i++) ref += chars[arr[i] % chars.length];
+    try {
+        const bytes = randomBytes(len);
+        for (let i = 0; i < len; i++) ref += chars[bytes[i] % chars.length];
+    } catch {
+        // Fallback if crypto unavailable
+        for (let i = 0; i < len; i++) ref += chars[Math.floor(Math.random() * chars.length)];
+    }
     return `DL-${ref}`;
 }
 
