@@ -2273,13 +2273,18 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
     window.saveSecuritySettings = async function(e) {
         e.preventDefault();
         const token = localStorage.getItem('dalal_admin_token');
-        if (!token) return;
+        if (!token) {
+            alert('انتهت الجلسة! يرجى إعادة تسجيل الدخول.');
+            window.location.href = 'index.html';
+            return;
+        }
 
         const btn = document.getElementById('secSaveBtn');
         const err = document.getElementById('secError');
         const suc = document.getElementById('secSuccess');
         btn.disabled = true;
         btn.style.opacity = '0.7';
+        btn.textContent = 'جاري الحفظ...';
         err.style.display = 'none';
         suc.style.display = 'none';
 
@@ -2311,16 +2316,19 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if(!res.ok) throw new Error(data.error || 'Failed to save');
+            if(!res.ok) throw new Error(data.error || 'Failed to save settings');
             
             suc.style.display = 'block';
-            setTimeout(() => suc.style.display = 'none', 3000);
+            alert('تم حفظ إعدادات الأمان بنجاح واشتغلت على الموقع! ✅');
+            hideSecurityPanel();
         } catch(ex) {
+            alert('حصل خطأ أثناء الحفظ:\n' + ex.message);
             err.textContent = ex.message;
             err.style.display = 'block';
         } finally {
             btn.disabled = false;
             btn.style.opacity = '1';
+            btn.textContent = 'حفظ التعديلات';
         }
     };
 
