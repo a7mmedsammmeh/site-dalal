@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
 Disallow: /admin.html
+Disallow: /products-admin.html
+Disallow: /orders.html
+Disallow: /blocked.html
+Disallow: /maintenance.html
 
 Sitemap: https://www.dalalwear.shop/sitemap.xml

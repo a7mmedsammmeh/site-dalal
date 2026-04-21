@@ -6,6 +6,12 @@ let currentProduct   = null;
 let selectedQtyOption  = null;
 let selectedSize       = null;
 
+/* ─── HTML escape for review content (XSS prevention) ─── */
+function escReview(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 /* ─── Load product reviews via SECURE RPC ─── */
 async function loadProductReviews(product, lang) {
     const isAr = lang === 'ar';
@@ -90,11 +96,11 @@ async function loadProductReviews(product, lang) {
             <div class="product-review-card">
                 <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;flex-wrap:wrap;">
                     <div class="review-stars-pub" style="direction:ltr">${stars}</div>
-                    <span style="font-size:0.82rem;font-weight:500;color:var(--text)">${name.replace(/</g,'&lt;')}</span>
+                    <span style="font-size:0.82rem;font-weight:500;color:var(--text)">${escReview(name)}</span>
                     ${verifiedBadge}${pinnedBadge}
                     <span style="font-size:0.72rem;color:var(--text-dim);margin-inline-start:auto">${date}</span>
                 </div>
-                ${r.comment ? `<p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;margin:0">${r.comment.replace(/</g,'&lt;')}</p>` : ''}
+                ${r.comment ? `<p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;margin:0">${escReview(r.comment)}</p>` : ''}
             </div>`;
         };
 

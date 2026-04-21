@@ -237,6 +237,7 @@ async function blockPhone(phone, reason = null) {
     const db = await _requireAdmin();
     const { error } = await db.from('blocked_phones').insert([{
         phone: normalized,
+        normalized_phone: normalized,
         reason,
         blocked_at: new Date().toISOString()
     }]);
