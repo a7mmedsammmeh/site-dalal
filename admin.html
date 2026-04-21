@@ -2206,21 +2206,21 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 const dup_time = limits.duplicate_window_time ?? limits.duplicate_window_min ?? 2;
                 const rev_time = limits.review_window_time ?? limits.review_window_hours ?? 24;
                 
-                document.getElementById('sec_order_max').value = limits.order_max_per_ip || 3;
+                document.getElementById('sec_order_max').value = limits.order_max_per_ip ?? 3;
                 document.getElementById('sec_order_time').value = order_time;
-                document.getElementById('sec_order_unit').value = limits.order_window_unit || 'minutes';
+                document.getElementById('sec_order_unit').value = limits.order_window_unit ?? 'minutes';
                 
                 document.getElementById('sec_phone_cool_time').value = phone_time;
-                document.getElementById('sec_phone_cool_unit').value = limits.phone_cooldown_unit || 'minutes';
+                document.getElementById('sec_phone_cool_unit').value = limits.phone_cooldown_unit ?? 'minutes';
                 
                 document.getElementById('sec_dup_time').value = dup_time;
-                document.getElementById('sec_dup_unit').value = limits.duplicate_window_unit || 'minutes';
+                document.getElementById('sec_dup_unit').value = limits.duplicate_window_unit ?? 'minutes';
                 
-                document.getElementById('sec_rev_max').value = limits.review_max_per_ip || 10;
+                document.getElementById('sec_rev_max').value = limits.review_max_per_ip ?? 10;
                 document.getElementById('sec_rev_time').value = rev_time;
-                document.getElementById('sec_rev_unit').value = limits.review_window_unit || 'hours';
+                document.getElementById('sec_rev_unit').value = limits.review_window_unit ?? 'hours';
                 
-                document.getElementById('sec_max_items').value = limits.max_items_per_order || 20;
+                document.getElementById('sec_max_items').value = limits.max_items_per_order ?? 20;
 
                 const pwaEnabled = limits.pwa_cooldown_enabled !== false; // default true
                 const pwaToggle = document.getElementById('sec_pwa_enabled');
@@ -2285,24 +2285,24 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         suc.style.display = 'none';
 
         const payload = {
-            order_max_per_ip: parseInt(document.getElementById('sec_order_max').value) || 3,
-            order_window_time: parseInt(document.getElementById('sec_order_time').value) || 10,
+            order_max_per_ip: parseInt(document.getElementById('sec_order_max').value) ?? 3,
+            order_window_time: parseInt(document.getElementById('sec_order_time').value) ?? 10,
             order_window_unit: document.getElementById('sec_order_unit').value,
             
-            phone_cooldown_time: parseInt(document.getElementById('sec_phone_cool_time').value) || 2,
+            phone_cooldown_time: parseInt(document.getElementById('sec_phone_cool_time').value) ?? 2,
             phone_cooldown_unit: document.getElementById('sec_phone_cool_unit').value,
             
-            duplicate_window_time: parseInt(document.getElementById('sec_dup_time').value) || 2,
+            duplicate_window_time: parseInt(document.getElementById('sec_dup_time').value) ?? 2,
             duplicate_window_unit: document.getElementById('sec_dup_unit').value,
             
-            review_max_per_ip: parseInt(document.getElementById('sec_rev_max').value) || 10,
-            review_window_time: parseInt(document.getElementById('sec_rev_time').value) || 24,
+            review_max_per_ip: parseInt(document.getElementById('sec_rev_max').value) ?? 10,
+            review_window_time: parseInt(document.getElementById('sec_rev_time').value) ?? 24,
             review_window_unit: document.getElementById('sec_rev_unit').value,
             
-            max_items_per_order: parseInt(document.getElementById('sec_max_items').value) || 20,
+            max_items_per_order: parseInt(document.getElementById('sec_max_items').value) ?? 20,
 
             pwa_cooldown_enabled: document.getElementById('sec_pwa_enabled').checked,
-            pwa_cooldown_time: parseInt(document.getElementById('sec_pwa_time').value) || 1,
+            pwa_cooldown_time: parseInt(document.getElementById('sec_pwa_time').value) ?? 1,
             pwa_cooldown_unit: document.getElementById('sec_pwa_unit').value
         };
 
