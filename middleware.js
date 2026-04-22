@@ -193,8 +193,13 @@ function decodeJwtPayload(token) {
         while (base64.length % 4) {
             base64 += '=';
         }
-        const decoded = atob(base64);
-        return JSON.parse(decoded);
+        const binaryStr = atob(base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const utf8Decoded = new TextDecoder().decode(bytes);
+        return JSON.parse(utf8Decoded);
     } catch {
         return null;
     }
