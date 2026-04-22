@@ -298,12 +298,13 @@ export default async function middleware(request) {
         if (maintenanceOn) {
             // 3. Admin bypass — authenticated admins get full access
             if (!isAdminSession(request)) {
-                // 4. Block ALL other requests → redirect to maintenance page
-                const maintenanceUrl = new URL('/maintenance.html', request.url).toString();
-                return new Response(null, {
-                    status: 302,
+                // 4. Rewrite: serve maintenance.html content directly (no redirect flicker)
+                const maintenanceUrl = new URL('/maintenance.html', request.url);
+                const maintenancePage = await fetch(maintenanceUrl);
+                return new Response(maintenancePage.body, {
+                    status: 503,
                     headers: {
-                        'Location': maintenanceUrl,
+                        'Content-Type': 'text/html; charset=utf-8',
                         'Cache-Control': 'no-store, no-cache, must-revalidate',
                         'Retry-After': '3600',
                     }
