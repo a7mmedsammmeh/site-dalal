@@ -324,23 +324,6 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 
-/* ─── Maintenance Mode Check ─── */
-(async function checkMaintenance() {
-    try {
-        const path = window.location.pathname;
-        // Don't check on admin, maintenance, or blocked pages
-        if (path.includes('admin') || path.includes('maintenance') || path.includes('blocked')) return;
-
-        const res = await fetch('/api/check-maintenance', { signal: AbortSignal.timeout(4000) });
-        if (res.ok) {
-            const data = await res.json();
-            if (data.maintenance) {
-                window.location.replace('/maintenance.html');
-                return;
-            }
-        }
-    } catch { /* silent — don't block site if check fails */ }
-})();
 
 /* ─── Visitor Tracking (server-side via /api/track-visitor) ─── */
 (async function trackVisitor() {
