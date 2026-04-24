@@ -2139,7 +2139,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                     <th>المصدر</th>
                     <th>التوقيت</th>
                     <th>التاريخ</th>
-                    <th></th>
+                    <th style="width:110px; min-width:110px;"></th>
                 </tr>
             </thead>
             <tbody id="vpTableBody"></tbody>
@@ -2416,8 +2416,9 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                 <td style="font-size:0.72rem;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${v.referrer||''}">${ref}</td>
                 <td class="vp-date">${timeStr}</td>
                 <td class="vp-date">${dateStr}</td>
-                <td>
-                    <button class="del-btn" onclick="removeVisitor('${v.id}')">
+                <td style="width:100px; padding:0 0.5rem; text-align:center;">
+                    <div style="display:flex; gap:0.4rem; justify-content:center; align-items:center; min-width:70px;">
+                        <button class="del-btn" onclick="removeVisitor('${v.id}')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
                     </button>
                     ${v.ip ? (_vpBlockedIPs.has(v.ip)
@@ -2428,6 +2429,7 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
                            </button>`)
                     : ''}
+                    </div>
                 </td>
             </tr>`;
         }).join('');
