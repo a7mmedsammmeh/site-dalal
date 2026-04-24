@@ -1101,7 +1101,7 @@ async function saveProduct() {
         const mainFile = document.getElementById('pfMainInput').files[0];
         if (mainFile) {
             const ext = mainFile.name.split('.').pop();
-            const fileName = `${slug}/pic.${ext}`;
+            const fileName = `${slug}/pic_${Date.now()}.${ext}`;
             mainImageUrl = await uploadProductImage(mainFile, fileName);
         }
 
@@ -1112,7 +1112,7 @@ async function saveProduct() {
             if (img.file) {
                 // New file - upload it
                 const ext = img.file.name.split('.').pop();
-                const fileName = `${slug}/${i+1}.${ext}`;
+                const fileName = `${slug}/gal_${i+1}_${Date.now()}.${ext}`;
                 const url = await uploadProductImage(img.file, fileName);
                 galleryUrls.push(url);
             } else {
@@ -1126,8 +1126,9 @@ async function saveProduct() {
         // Preserve display_order when editing so product stays in its position
         if (_editingProductId) {
             const existingProduct = _pmProducts.find(p => p.id === _editingProductId);
-            const currentIndex = _pmProducts.indexOf(existingProduct);
-            productData.display_order = currentIndex >= 0 ? currentIndex + 1 : undefined;
+            if (existingProduct && existingProduct.display_order !== undefined) {
+                productData.display_order = existingProduct.display_order;
+            }
         }
 
         if (_editingProductId) {

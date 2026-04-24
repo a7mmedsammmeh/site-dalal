@@ -233,6 +233,7 @@ async function fetchAllProducts() {
         gallery: (imagesByProduct[p.id] || []).map(img => img.image_url),
         featured: p.featured === true || p.featured === 'true',
         sizes: p.sizes || [],
-        pricing: pricingByProduct[p.id] || { ar: [], en: [] }
+        pricing: pricingByProduct[p.id] || { ar: [], en: [] },
+        display_order: p.display_order
     }));
 }
