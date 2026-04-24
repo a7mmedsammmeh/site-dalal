@@ -658,7 +658,7 @@ function renderProductsManagement() {
         const imgSrc = p.main_image_url || 'images/dalal-logo.png';
         
         return `<div class="pm-card" data-id="${p.id}">
-            ${p.featured ? '<div class="pm-badge-featured">⭐ مميز</div>' : ''}
+            ${(p.featured === true || p.featured === 'true') ? '<div class="pm-badge-featured">⭐ مميز</div>' : ''}
             <img src="${imgSrc}" alt="${p.name.ar}" class="pm-card-img" onerror="this.src='images/dalal-logo.png'">
             <div class="pm-card-name">${p.name.ar}</div>
             <div class="pm-card-code">#${p.code}</div>

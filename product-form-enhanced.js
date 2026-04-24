@@ -15,7 +15,7 @@ window.initSizesManager = function() {
     
     container.innerHTML = `
         <div class="pf-sizes" style="margin-bottom:0.75rem;">
-            ${['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].map(s => 
+            ${['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].map(s => 
                 `<input type="checkbox" id="pfSize_${s}" class="pf-size-cb" ${_pfSizes.includes(s)?'checked':''}><label for="pfSize_${s}" class="pf-size-label">${s}</label>`
             ).join('')}
         </div>
@@ -30,7 +30,7 @@ window.initSizesManager = function() {
     renderCustomSizes();
     
     // Add change listeners
-    ['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].forEach(s => {
+    ['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].forEach(s => {
         const cb = document.getElementById(`pfSize_${s}`);
         if (cb) cb.addEventListener('change', updateSizesArray);
     });
@@ -40,7 +40,7 @@ function renderCustomSizes() {
     const container = document.getElementById('pfCustomSizes');
     if (!container) return;
     
-    const customSizes = _pfSizes.filter(s => !['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
+    const customSizes = _pfSizes.filter(s => !['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
     
     container.innerHTML = customSizes.map((size, i) => `
         <div class="pf-dynamic-item">
@@ -54,10 +54,10 @@ function renderCustomSizes() {
 }
 
 function updateSizesArray() {
-    const standardSizes = ['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].filter(s => 
+    const standardSizes = ['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].filter(s => 
         document.getElementById(`pfSize_${s}`)?.checked
     );
-    const customSizes = _pfSizes.filter(s => !['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
+    const customSizes = _pfSizes.filter(s => !['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
     _pfSizes = [...standardSizes, ...customSizes];
 }
 
@@ -67,18 +67,18 @@ window.addCustomSize = function() {
 };
 
 window.updateCustomSize = function(index, value) {
-    const standardSizes = ['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].filter(s => 
+    const standardSizes = ['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].filter(s => 
         document.getElementById(`pfSize_${s}`)?.checked
     );
-    const customSizes = _pfSizes.filter(s => !['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
+    const customSizes = _pfSizes.filter(s => !['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
     customSizes[index] = value.trim();
     _pfSizes = [...standardSizes, ...customSizes.filter(s => s)];
 };
 
 window.removeCustomSize = function(index) {
-    const customSizes = _pfSizes.filter(s => !['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
+    const customSizes = _pfSizes.filter(s => !['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].includes(s));
     customSizes.splice(index, 1);
-    const standardSizes = ['L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].filter(s => 
+    const standardSizes = ['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'].filter(s => 
         document.getElementById(`pfSize_${s}`)?.checked
     );
     _pfSizes = [...standardSizes, ...customSizes];
@@ -233,7 +233,7 @@ window.handleGalleryDragEnd = function(e) {
 window.loadProductDataToForm = function(product) {
     if (!product) {
         // New product - set defaults
-        _pfSizes = ['L','XL','2XL','3XL','4XL'];
+        _pfSizes = ['M','L','XL','2XL','3XL','4XL'];
         _pfPricingAr = [
             {label:'قطعة واحدة',value:''},
             {label:'عرض 3 قطع',value:''},

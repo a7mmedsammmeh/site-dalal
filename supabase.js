@@ -231,7 +231,7 @@ async function fetchAllProducts() {
         folder: p.main_image_url ? p.main_image_url.substring(0, p.main_image_url.lastIndexOf('/')) : '',
         main: p.main_image_url ? p.main_image_url.substring(p.main_image_url.lastIndexOf('/') + 1) : 'pic.png',
         gallery: (imagesByProduct[p.id] || []).map(img => img.image_url),
-        featured: p.featured,
+        featured: p.featured === true || p.featured === 'true',
         sizes: p.sizes || [],
         pricing: pricingByProduct[p.id] || { ar: [], en: [] }
     }));
