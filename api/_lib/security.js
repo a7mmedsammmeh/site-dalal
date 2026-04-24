@@ -104,10 +104,19 @@ function validateOrigin(req) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   IP EXTRACTION (Trusted Headers Only)
+   IP EXTRACTION (Cloudflare → Vercel → Fallback)
+   ─────────────────────────────────────────────────────────────────
+   Priority order:
+   1. CF-Connecting-IP  — Set by Cloudflare with the REAL client IP
+   2. x-vercel-forwarded-for — Set by Vercel (= Cloudflare edge IP
+                                when behind CF, so only used as fallback)
+   3. x-real-ip / x-forwarded-for — Standard fallbacks
    ══════════════════════════════════════════════════════════════════ */
 
 function getServerIP(req) {
+    // Cloudflare sets this to the REAL client IP (must be first when CF is proxy)
+    const cfIP = req.headers['cf-connecting-ip'];
+    if (cfIP) return cfIP.trim();
     const vercelIP = req.headers['x-vercel-forwarded-for'];
     if (vercelIP) return vercelIP.split(',')[0].trim();
     const realIP = req.headers['x-real-ip'];
@@ -389,15 +398,15 @@ async function hashForLog(value) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   GEO-IP (Vercel Headers → ip-api.com fallback)
+   GEO-IP (Cloudflare → Vercel → ip-api.com fallback)
    ─────────────────────────────────────────────────────────────────
-   Primary:  Vercel auto-injected headers (instant, free, reliable)
-             x-vercel-ip-country → ISO 3166-1 alpha-2 (e.g. "EG")
-             x-vercel-ip-city    → city name (e.g. "Cairo")
-   Fallback: ip-api.com (free tier, 45 req/min, HTTP only)
+   Priority:
+   1. CF-IPCountry      → Cloudflare header (REAL user country)
+   2. x-vercel-ip-*     → Vercel headers (only accurate without CF)
+   3. ip-api.com        → External API fallback (free, 45 req/min)
 
    getGeoLocation(ip, req?) — `req` is optional for backward compat.
-   When `req` is provided, Vercel headers are checked first.
+   When `req` is provided, platform headers are checked first.
    ══════════════════════════════════════════════════════════════════ */
 
 const geoCache = new Map();
@@ -465,20 +474,27 @@ async function getGeoLocation(ip, req = null) {
     if (!ip) return { country: null, city: null };
     if (!isValidIP(ip)) return { country: null, city: null };
 
-    /* ── 1. Vercel auto-injected headers (best source — instant, free) ── */
+    /* ── 1. Cloudflare + Vercel headers (instant, free, reliable) ── */
+    /*    CF-IPCountry → real user's country (when behind Cloudflare)   */
+    /*    x-vercel-ip-country → fallback (accurate when no CF proxy)   */
     if (req && req.headers) {
+        // Cloudflare: real user's country (MUST check first when CF is proxy)
+        const cfCountry     = req.headers['cf-ipcountry'];
+        // Vercel: only accurate when NOT behind Cloudflare
         const vercelCountry = req.headers['x-vercel-ip-country'];
         const vercelCity    = req.headers['x-vercel-ip-city'];
 
-        if (vercelCountry) {
-            const country = isoToCountryName(vercelCountry);
-            // Decode city — Vercel URL-encodes non-ASCII city names
+        const countryCode = cfCountry || vercelCountry;
+
+        if (countryCode && countryCode !== 'XX' && countryCode !== 'T1') {
+            const country = isoToCountryName(countryCode);
+            // City: Vercel may still have it, Cloudflare doesn't send city as header
             let city = null;
-            if (vercelCity) {
+            if (!cfCountry && vercelCity) {
+                // Only use Vercel city when NOT behind Cloudflare (otherwise it's CF edge city)
                 try { city = decodeURIComponent(vercelCity); } catch { city = vercelCity; }
             }
             const result = { country, city };
-            // Cache the Vercel result too
             geoCache.set(ip, { ...result, expiresAt: Date.now() + GEO_CACHE_TTL });
             return result;
         }

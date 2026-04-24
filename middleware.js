@@ -260,9 +260,11 @@ function redirectToLogin(requestUrl, clearCookie = false) {
 /**
  * Extract client IP from request headers.
  * MUST match the same priority as getServerIP() in security.js
+ * Cloudflare → Vercel → standard fallbacks
  */
 function getClientIP(request) {
     return (
+        request.headers.get('cf-connecting-ip') ||
         request.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ||
         request.headers.get('x-real-ip') ||
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
