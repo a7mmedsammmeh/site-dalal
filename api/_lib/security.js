@@ -389,7 +389,15 @@ async function hashForLog(value) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   GEO-IP CACHING
+   GEO-IP (Vercel Headers → ip-api.com fallback)
+   ─────────────────────────────────────────────────────────────────
+   Primary:  Vercel auto-injected headers (instant, free, reliable)
+             x-vercel-ip-country → ISO 3166-1 alpha-2 (e.g. "EG")
+             x-vercel-ip-city    → city name (e.g. "Cairo")
+   Fallback: ip-api.com (free tier, 45 req/min, HTTP only)
+
+   getGeoLocation(ip, req?) — `req` is optional for backward compat.
+   When `req` is provided, Vercel headers are checked first.
    ══════════════════════════════════════════════════════════════════ */
 
 const geoCache = new Map();
@@ -404,15 +412,85 @@ function isValidIP(ip) {
     return IP_V4_RE.test(ip) || IP_V6_RE.test(ip);
 }
 
-async function getGeoLocation(ip) {
+/* ── ISO 3166-1 alpha-2 → Full country name (common countries) ── */
+const COUNTRY_CODE_MAP = {
+    'EG': 'Egypt',
+    'SA': 'Saudi Arabia',
+    'AE': 'United Arab Emirates',
+    'KW': 'Kuwait',
+    'QA': 'Qatar',
+    'BH': 'Bahrain',
+    'OM': 'Oman',
+    'JO': 'Jordan',
+    'LB': 'Lebanon',
+    'IQ': 'Iraq',
+    'SY': 'Syria',
+    'PS': 'Palestine',
+    'LY': 'Libya',
+    'SD': 'Sudan',
+    'TN': 'Tunisia',
+    'DZ': 'Algeria',
+    'MA': 'Morocco',
+    'YE': 'Yemen',
+    'US': 'United States',
+    'GB': 'United Kingdom',
+    'DE': 'Germany',
+    'FR': 'France',
+    'IT': 'Italy',
+    'ES': 'Spain',
+    'NL': 'Netherlands',
+    'CA': 'Canada',
+    'AU': 'Australia',
+    'TR': 'Turkey',
+    'IN': 'India',
+    'PK': 'Pakistan',
+    'CN': 'China',
+    'JP': 'Japan',
+    'KR': 'South Korea',
+    'BR': 'Brazil',
+    'RU': 'Russia',
+    'SE': 'Sweden',
+    'NO': 'Norway',
+    'FI': 'Finland',
+    'DK': 'Denmark',
+};
+
+function isoToCountryName(code) {
+    if (!code || typeof code !== 'string') return null;
+    const upper = code.toUpperCase().trim();
+    return COUNTRY_CODE_MAP[upper] || upper; // fallback: return the ISO code itself
+}
+
+async function getGeoLocation(ip, req = null) {
     if (!ip) return { country: null, city: null };
     if (!isValidIP(ip)) return { country: null, city: null };
 
+    /* ── 1. Vercel auto-injected headers (best source — instant, free) ── */
+    if (req && req.headers) {
+        const vercelCountry = req.headers['x-vercel-ip-country'];
+        const vercelCity    = req.headers['x-vercel-ip-city'];
+
+        if (vercelCountry) {
+            const country = isoToCountryName(vercelCountry);
+            // Decode city — Vercel URL-encodes non-ASCII city names
+            let city = null;
+            if (vercelCity) {
+                try { city = decodeURIComponent(vercelCity); } catch { city = vercelCity; }
+            }
+            const result = { country, city };
+            // Cache the Vercel result too
+            geoCache.set(ip, { ...result, expiresAt: Date.now() + GEO_CACHE_TTL });
+            return result;
+        }
+    }
+
+    /* ── 2. In-memory cache ── */
     const cached = geoCache.get(ip);
     if (cached && Date.now() < cached.expiresAt) {
         return { country: cached.country, city: cached.city };
     }
 
+    /* ── Cache eviction ── */
     if (geoCache.size >= GEO_CACHE_MAX) {
         const now = Date.now();
         for (const [key, val] of geoCache) {
@@ -424,6 +502,7 @@ async function getGeoLocation(ip) {
         }
     }
 
+    /* ── 3. Fallback: ip-api.com (free tier, 45 req/min) ── */
     try {
         const geoRes = await fetch(
             `http://ip-api.com/json/${ip}?fields=status,country,city`,

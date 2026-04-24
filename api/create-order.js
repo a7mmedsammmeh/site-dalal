@@ -264,7 +264,7 @@ export default async function handler(req, res) {
         }
 
         /* ── Geo-IP (cached, non-critical — fail safe) ── */
-        const { country: serverCountry, city: serverCity } = await getGeoLocation(serverIP);
+        const { country: serverCountry, city: serverCity } = await getGeoLocation(serverIP, req);
 
         /* ══════════════════════════════════════════════════════
            BUSINESS LOGIC — Stock + Price Validation

@@ -90,7 +90,7 @@ export default async function handler(req, res) {
     }
 
     /* ── Geo-IP lookup (non-critical — fail safe) ── */
-    const { country, city } = await getGeoLocation(ip);
+    const { country, city } = await getGeoLocation(ip, req);
 
     return res.status(200).json({ blocked: false, country, city });
 }

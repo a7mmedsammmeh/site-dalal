@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         const body = req.body || {};
 
         /* ── Geo-IP (non-critical — fail safe) ── */
-        const { country, city } = await getGeoLocation(ip);
+        const { country, city } = await getGeoLocation(ip, req);
 
         /* ── Composite ID for dedup ── */
         const compositeId = getCompositeId(ip, req, body.fingerprint);
