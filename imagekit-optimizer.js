@@ -150,18 +150,16 @@
     /**
      * Optimize a single image element
      * PERFORMANCE: Double-check with dataset flag + WeakSet
-     * FIXED: Re-optimize if src changed (for thumbnail clicks)
      */
     function optimizeImage(img) {
+        // Skip if already processed (double-check for safety)
+        if (img.dataset.imagekitOptimized === 'true' || processedImages.has(img)) {
+            return;
+        }
+        
         // Get current src
         const originalSrc = img.src || img.dataset.src || img.getAttribute('src');
         if (!originalSrc || !shouldOptimize(originalSrc)) return;
-        
-        // Check if already optimized with same src
-        if (img.dataset.imagekitOptimized === 'true' && 
-            img.dataset.originalSrc === originalSrc) {
-            return;
-        }
         
         // Determine transformation
         const transformation = getTransformation(img);
@@ -173,7 +171,9 @@
         if (optimizedSrc === originalSrc) return;
         
         // Store original for reference
-        img.dataset.originalSrc = originalSrc;
+        if (!img.dataset.originalSrc) {
+            img.dataset.originalSrc = originalSrc;
+        }
         
         // Update src
         if (img.dataset.src) {
@@ -229,7 +229,7 @@
 
     /**
      * Watch for dynamically added images
-     * OPTIMIZED: Watches childList + limited attribute changes for main images only
+     * OPTIMIZED: Only watches childList (no attributes - handled in code)
      * SAFER: No HTMLImageElement.prototype override (removed risky code)
      */
     function watchDynamicImages() {
@@ -237,28 +237,17 @@
             let newImages = [];
             
             mutations.forEach(mutation => {
-                // Process added nodes
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeName === 'IMG') {
-                            newImages.push(node);
-                        } else if (node.querySelectorAll) {
-                            const images = node.querySelectorAll('img:not([data-imagekit-optimized])');
-                            if (images.length > 0) {
-                                newImages.push(...images);
-                            }
+                // Only process added nodes
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeName === 'IMG') {
+                        newImages.push(node);
+                    } else if (node.querySelectorAll) {
+                        const images = node.querySelectorAll('img:not([data-imagekit-optimized])');
+                        if (images.length > 0) {
+                            newImages.push(...images);
                         }
-                    });
-                }
-                
-                // Process src attribute changes ONLY for main-image class
-                // This handles thumbnail clicks that change the main product image
-                if (mutation.type === 'attributes' && 
-                    mutation.attributeName === 'src' && 
-                    mutation.target.nodeName === 'IMG' &&
-                    mutation.target.classList.contains('main-image')) {
-                    newImages.push(mutation.target);
-                }
+                    }
+                });
             });
             
             // Batch process new images
@@ -274,13 +263,10 @@
             }
         });
         
-        // OPTIMIZED: Watch childList + limited attributes (only for main-image)
+        // OPTIMIZED: Only watch childList (src changes handled in product.js)
         observer.observe(document.body, {
             childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['src'],
-            attributeOldValue: false
+            subtree: true
         });
         
         return observer;

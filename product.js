@@ -886,7 +886,14 @@ async function initProductPage() {
                 const currentMain = document.getElementById('mainImage');
                 if (currentMain) {
                     currentMain.style.opacity = '0';
-                    setTimeout(() => { currentMain.src = src; currentMain.style.opacity = '1'; }, 220);
+                    setTimeout(() => { 
+                        // Convert to ImageKit URL before setting src (prevents double-load)
+                        const optimizedSrc = (typeof ImageKitOptimizer !== 'undefined' && src.includes('supabase.co'))
+                            ? ImageKitOptimizer.optimizeUrl(src, 1200, 85)
+                            : src;
+                        currentMain.src = optimizedSrc; 
+                        currentMain.style.opacity = '1'; 
+                    }, 220);
                 }
                 thumbsContainer.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
                 img.classList.add('active');
