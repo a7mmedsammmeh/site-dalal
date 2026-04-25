@@ -407,3 +407,155 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { /* silent fail — never break the site */ }
 })();
 
+
+/* ─── Size Guide Global Modal ─── */
+(function initGlobalSizeGuide() {
+    // Inject Size Guide Modal into body
+    const sizeGuideHTML = `
+    <div class="modal-overlay" id="sizeGuideModal" role="dialog" aria-modal="true" aria-labelledby="sizeGuideTitle">
+        <div class="modal" style="max-width: 480px; padding: 1.5rem 1.2rem 2rem;">
+            <button class="modal-close" id="sizeGuideClose" aria-label="إغلاق">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <h2 class="modal-title" id="sizeGuideTitle" style="font-size:1.15rem; color:var(--gold); margin-bottom:1rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path><path d="M4 19.5a2.5 2.5 0 0 0 2.5 2.5H20"></path></svg>
+                <span id="sgTitleText">دليل المقاسات</span>
+            </h2>
+            <div class="modal-divider"></div>
+            
+            <div style="overflow-x:auto; margin-top:0.5rem; background:var(--bg-light); border-radius:var(--r-lg); border:1px solid var(--border);">
+                <table style="width:100%; border-collapse:collapse; text-align:center; font-size:0.85rem; color:var(--text);">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--border); color:var(--text-muted); background:rgba(224,192,151,0.03);">
+                            <th style="padding:0.8rem; font-weight:600; width:45%; border-inline-end:1px solid var(--border);" id="sgThSize">المقاس</th>
+                            <th style="padding:0.8rem; font-weight:600;" id="sgThWeight">الوزن التقريبي (كجم)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">Free Size</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">50 - 75 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">L</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">60 - 70 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">70 - 80 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">2XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">80 - 90 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">3XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">90 - 100 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">4XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">100 - 110 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">5XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">110 - 120 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">6XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">120 - 130 كجم</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">7XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">130 - 140 كجم</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">8XL</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">140 - 150 كجم</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p id="sgDisclaimer" style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-top:1.2rem; line-height:1.6;">
+                * هذه المقاسات تقريبية للوزن وقد تختلف قليلاً حسب تصميم الموديل ونوع القماش.
+            </p>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', sizeGuideHTML);
+
+    window.openSizeGuide = function() {
+        const overlay = document.getElementById('sizeGuideModal');
+        if (!overlay) return;
+        overlay.classList.add('active');
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.lock();
+            DalalModal.pushState('sizeGuideModal', closeSizeGuide);
+        } else {
+            document.body.style.overflow = 'hidden';
+        }
+    };
+
+    window.closeSizeGuide = function() {
+        const overlay = document.getElementById('sizeGuideModal');
+        if (!overlay) return;
+        overlay.classList.remove('active');
+        if (typeof DalalModal !== 'undefined') {
+            DalalModal.unlock();
+            const stack = DalalModal._stack;
+            if (stack && stack.length > 0 && stack[stack.length - 1]?.id === 'sizeGuideModal') {
+                DalalModal.popState();
+            }
+        } else {
+            document.body.style.overflow = '';
+        }
+    };
+
+    // Close button
+    document.getElementById('sizeGuideClose')?.addEventListener('click', closeSizeGuide);
+    // Overlay click
+    document.getElementById('sizeGuideModal')?.addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeSizeGuide();
+    });
+
+    // Language update hook
+    document.addEventListener('dalal-lang-change', (e) => {
+        const lang = e.detail;
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        set('sgTitleText', lang === 'ar' ? 'دليل المقاسات' : 'Size Guide');
+        set('sgThSize', lang === 'ar' ? 'المقاس' : 'Size');
+        set('sgThWeight', lang === 'ar' ? 'الوزن التقريبي (كجم)' : 'Approx. Weight (kg)');
+        set('sgDisclaimer', lang === 'ar' ? '* هذه المقاسات تقريبية للوزن وقد تختلف قليلاً حسب تصميم الموديل ونوع القماش.' : '* These are approximate weights and may vary slightly based on design and fabric.');
+    });
+
+    // Setup Mobile Drag to Dismiss for Size Guide
+    const sgOverlay = document.getElementById('sizeGuideModal');
+    const sgModal = sgOverlay?.querySelector('.modal');
+    if (sgModal) {
+        if (typeof DalalModal !== 'undefined' && DalalModal.setupDrag) {
+            DalalModal.setupDrag(sgModal, closeSizeGuide);
+        } else {
+            let startY = 0, currentY = 0, dragging = false;
+            sgModal.addEventListener('touchstart', e => {
+                if (sgModal.scrollTop > 0) return;
+                startY = e.touches[0].clientY; currentY = 0; dragging = true;
+                sgModal.style.transition = 'none';
+            }, { passive: true });
+            sgModal.addEventListener('touchmove', e => {
+                if (!dragging) return;
+                const dy = e.touches[0].clientY - startY;
+                if (dy < 0) return;
+                currentY = dy; sgModal.style.transform = `translateY(${dy}px)`;
+                e.preventDefault();
+            }, { passive: false });
+            sgModal.addEventListener('touchend', () => {
+                if (!dragging) return; dragging = false;
+                sgModal.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+                if (currentY > 120) {
+                    sgModal.style.transform = `translateY(100%)`;
+                    setTimeout(() => { closeSizeGuide(); sgModal.style.transform = ''; }, 300);
+                } else { sgModal.style.transform = ''; }
+            });
+        }
+    }
+})();
+

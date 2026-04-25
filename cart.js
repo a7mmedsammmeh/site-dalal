@@ -364,7 +364,13 @@ function openQuickAddModal(product) {
             </div>
 
             <div class="modal-step">
-                <label class="modal-label" for="qaSizeInput">${isAr ? 'المقاس' : 'Size'}</label>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem;">
+                    <label class="modal-label" for="qaSizeInput" style="margin-bottom:0;">${isAr ? 'المقاس' : 'Size'}</label>
+                    <button type="button" onclick="openSizeGuide()" style="background:transparent; border:none; color:var(--gold); font-size:0.7rem; display:flex; align-items:center; gap:0.2rem; cursor:pointer; text-decoration:none; padding:0;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path><path d="M4 19.5a2.5 2.5 0 0 0 2.5 2.5H20"></path></svg>
+                        <span style="border-bottom: 1px dashed var(--gold);">${isAr ? 'دليل المقاسات' : 'Size Guide'}</span>
+                    </button>
+                </div>
                 <input type="text" id="qaSizeInput" class="modal-input"
                        placeholder="${isAr ? 'مثال: L، XL، 2XL...' : 'e.g. L, XL, 2XL...'}">
             </div>
