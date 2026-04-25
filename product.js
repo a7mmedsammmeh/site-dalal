@@ -499,6 +499,9 @@ function applyProductPageLang(lang) {
     const optEl = document.querySelector('.modal-optional');
     if (optEl) optEl.textContent = lang === 'ar' ? '(اختياري)' : '(optional)';
 
+    set('sizeGuideLabel', lang === 'ar' ? 'دليل المقاسات' : 'Size Guide');
+    set('orderModalSizeGuideLabel', lang === 'ar' ? 'دليل المقاسات' : 'Size Guide');
+
     renderPricing(currentProduct, lang);
     renderProductSizes(currentProduct, lang);
     buildQtyOptions(currentProduct, lang);
