@@ -780,6 +780,11 @@ async function initProductPage() {
 
     currentProduct = product;
 
+    // Track ViewContent event - fires once per product page load
+    if (typeof fbq !== 'undefined' && typeof DalalPixel !== 'undefined' && product && product.id) {
+        DalalPixel.trackViewContent(product);
+    }
+
     // Clean up any previous out-of-stock messages and reset buttons
     cleanupOutOfStockMessages();
     resetBuyButtons(lang);

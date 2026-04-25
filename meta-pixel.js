@@ -215,28 +215,6 @@
         safeTrack
     };
 
-    /**
-     * Auto-track ViewContent on product pages
-     * NO DELAYS - fires immediately when product is ready
-     */
-    if (window.location.pathname.includes('product.html')) {
-        // Check if product already exists
-        if (typeof currentProduct !== 'undefined' && currentProduct) {
-            trackViewContent(currentProduct);
-        } else {
-            // Wait for product to be loaded (no artificial delay)
-            const checkProduct = setInterval(() => {
-                if (typeof currentProduct !== 'undefined' && currentProduct) {
-                    clearInterval(checkProduct);
-                    trackViewContent(currentProduct);
-                }
-            }, 50); // Check every 50ms (faster than before)
-
-            // Timeout after 5 seconds
-            setTimeout(() => clearInterval(checkProduct), 5000);
-        }
-    }
-
     console.log('[Meta Pixel] Tracking module loaded ✓');
 
 })();
