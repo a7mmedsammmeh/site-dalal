@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 (function initGlobalSizeGuide() {
     // Inject Size Guide Modal into body
     const sizeGuideHTML = `
-    <div class="modal-overlay" id="sizeGuideModal" role="dialog" aria-modal="true" aria-labelledby="sizeGuideTitle">
+    <div class="modal-overlay" id="sizeGuideModal" role="dialog" aria-modal="true" aria-labelledby="sizeGuideTitle" style="z-index: 2100;">
         <div class="modal" style="max-width: 480px; padding: 1.5rem 1.2rem 2rem;">
             <button class="modal-close" id="sizeGuideClose" aria-label="إغلاق">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -438,35 +438,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">L</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">60 - 70 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">60 - 69 كجم</td>
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">XL</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">70 - 80 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">70 - 79 كجم</td>
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">2XL</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">80 - 90 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">80 - 89 كجم</td>
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">3XL</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">90 - 100 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">90 - 99 كجم</td>
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">4XL</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">100 - 110 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">100 - 109 كجم</td>
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">5XL</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">110 - 120 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">110 - 119 كجم</td>
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">6XL</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">120 - 130 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">120 - 129 كجم</td>
                         </tr>
                         <tr style="border-bottom:1px solid rgba(224,192,151,0.05);">
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">7XL</td>
-                            <td style="padding:0.8rem; color:var(--text-muted);">130 - 140 كجم</td>
+                            <td style="padding:0.8rem; color:var(--text-muted);">130 - 139 كجم</td>
                         </tr>
                         <tr>
                             <td style="padding:0.8rem; font-weight:bold; color:var(--gold); border-inline-end:1px solid rgba(224,192,151,0.05);">8XL</td>
