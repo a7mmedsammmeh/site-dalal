@@ -34,6 +34,7 @@
     /**
      * Check if URL should be optimized
      * ENHANCED: Skip logos, icons, and small UI images
+     * FIXED: Only optimize Supabase images, skip local images
      */
     function shouldOptimize(url) {
         if (!url || typeof url !== 'string') return false;
@@ -54,10 +55,9 @@
         // Skip data URLs and blobs
         if (url.startsWith('data:') || url.startsWith('blob:')) return false;
         
-        // Skip external CDNs (except Supabase)
-        if (url.startsWith('http') && 
-            !url.includes('supabase.co') && 
-            !url.includes('dalalwear.shop')) {
+        // ONLY optimize Supabase images (skip local images)
+        // Local images like images/hero-lingerie.png are not on ImageKit
+        if (!url.includes('supabase.co')) {
             return false;
         }
         
