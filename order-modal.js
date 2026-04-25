@@ -104,7 +104,13 @@
         <input class="order-input" id="orderInputAddress" type="text" autocomplete="street-address" required>
       </div>
       <div class="order-field">
-        <label class="order-label" id="orderLabelSize" for="orderSelectSize"></label>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+            <label class="order-label" id="orderLabelSize" for="orderSelectSize" style="margin-bottom:0;"></label>
+            <button type="button" onclick="if(typeof openSizeGuide === 'function') openSizeGuide();" style="background:transparent; border:none; color:var(--gold); font-size:0.7rem; display:flex; align-items:center; gap:0.2rem; cursor:pointer; text-decoration:none; padding:0;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path><path d="M4 19.5a2.5 2.5 0 0 0 2.5 2.5H20"></path></svg>
+                <span id="orderSizeGuideText" style="border-bottom: 1px dashed var(--gold);">دليل المقاسات</span>
+            </button>
+        </div>
         <div class="order-select-wrapper">
           <select class="order-select" id="orderSelectSize" required></select>
         </div>
@@ -224,6 +230,7 @@
         document.getElementById('orderLabelAddress').textContent = t.address;
         document.getElementById('orderInputAddress').placeholder = t.addressPh;
         document.getElementById('orderLabelSize').textContent    = t.size;
+        document.getElementById('orderSizeGuideText').textContent = lang === 'ar' ? 'دليل المقاسات' : 'Size Guide';
         document.getElementById('orderLabelColor').textContent   = t.color;
         document.getElementById('orderInputColor').placeholder   = t.colorPh;
         document.getElementById('orderLabelOffer').textContent   = t.offer;
