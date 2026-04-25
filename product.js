@@ -317,6 +317,34 @@ function closeModal() {
     }
 }
 
+/* ─── Size Guide Modal ─── */
+function openSizeGuide() {
+    const overlay = document.getElementById('sizeGuideModal');
+    if (!overlay) return;
+    overlay.classList.add('active');
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.lock();
+        DalalModal.pushState('sizeGuideModal', closeSizeGuide);
+    } else {
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeSizeGuide() {
+    const overlay = document.getElementById('sizeGuideModal');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    if (typeof DalalModal !== 'undefined') {
+        DalalModal.unlock();
+        const stack = DalalModal._stack;
+        if (stack.length > 0 && stack[stack.length - 1]?.id === 'sizeGuideModal') {
+            DalalModal.popState();
+        }
+    } else {
+        document.body.style.overflow = '';
+    }
+}
+
 /* ─── Drag to dismiss (mobile) ─── */
 function initModalDrag() {
     const overlay = document.getElementById('orderModal');
@@ -361,6 +389,33 @@ function initModalDrag() {
                 modal.style.transform = '';
             }
         });
+        
+        // Setup drag for Size Guide Modal if exists
+        const sgOverlay = document.getElementById('sizeGuideModal');
+        const sgModal = sgOverlay?.querySelector('.modal');
+        if (sgModal) {
+            let sgStartY = 0, sgCurrentY = 0, sgDragging = false;
+            sgModal.addEventListener('touchstart', e => {
+                if (sgModal.scrollTop > 0) return;
+                sgStartY = e.touches[0].clientY; sgCurrentY = 0; sgDragging = true;
+                sgModal.style.transition = 'none';
+            }, { passive: true });
+            sgModal.addEventListener('touchmove', e => {
+                if (!sgDragging) return;
+                const dy = e.touches[0].clientY - sgStartY;
+                if (dy < 0) return;
+                sgCurrentY = dy; sgModal.style.transform = `translateY(${dy}px)`;
+                e.preventDefault();
+            }, { passive: false });
+            sgModal.addEventListener('touchend', () => {
+                if (!sgDragging) return; sgDragging = false;
+                sgModal.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+                if (sgCurrentY > 120) {
+                    sgModal.style.transform = `translateY(100%)`;
+                    setTimeout(() => { closeSizeGuide(); sgModal.style.transform = ''; }, 300);
+                } else { sgModal.style.transform = ''; }
+            });
+        }
     }
 }
 
@@ -498,6 +553,16 @@ function applyProductPageLang(lang) {
 
     const optEl = document.querySelector('.modal-optional');
     if (optEl) optEl.textContent = lang === 'ar' ? '(اختياري)' : '(optional)';
+
+    set('sizeGuideLabel',  lang === 'ar' ? 'دليل المقاسات' : 'Size Guide');
+    const sgTitleNode = document.getElementById('sizeGuideTitle');
+    if (sgTitleNode) {
+        const svgHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path><path d="M4 19.5a2.5 2.5 0 0 0 2.5 2.5H20"></path></svg>';
+        sgTitleNode.innerHTML = svgHTML + (lang === 'ar' ? ' دليل المقاسات' : ' Size Guide');
+    }
+    set('thSize',          lang === 'ar' ? 'المقاس' : 'Size');
+    set('thWeight',        lang === 'ar' ? 'الوزن التقريبي (كجم)' : 'Approx. Weight (kg)');
+    set('sizeGuideDisclaimer', lang === 'ar' ? '* هذه المقاسات تقريبية للوزن وقد تختلف قليلاً حسب تصميم الموديل ونوع القماش.' : '* These are approximate weights and may vary slightly based on design and fabric.');
 
     renderPricing(currentProduct, lang);
     renderProductSizes(currentProduct, lang);
@@ -870,7 +935,19 @@ async function initProductPage() {
     document.getElementById('orderModal')?.addEventListener('click', e => {
         if (e.target === e.currentTarget) closeModal();
     });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    document.addEventListener('keydown', e => { 
+        if (e.key === 'Escape') {
+            closeModal();
+            closeSizeGuide();
+        }
+    });
+
+    /* Size Guide */
+    document.getElementById('sizeGuideBtn')?.addEventListener('click', openSizeGuide);
+    document.getElementById('sizeGuideClose')?.addEventListener('click', closeSizeGuide);
+    document.getElementById('sizeGuideModal')?.addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeSizeGuide();
+    });
 
     /* Drag to dismiss */
     initModalDrag();
