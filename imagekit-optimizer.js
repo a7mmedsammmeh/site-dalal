@@ -1,13 +1,20 @@
 /* ═══════════════════════════════════════════════════════════════
-   DALAL — ImageKit Automatic Image Optimization
+   DALAL — ImageKit Automatic Image Optimization (Production-Hardened)
    
    Automatically converts Supabase and local images to ImageKit CDN
-   with WebP conversion and responsive transformations
+   with automatic format optimization and responsive transformations
    
    ImageKit Config:
    - URL Endpoint: https://ik.imagekit.io/zpwmqysui
    - Endpoint Path: /dalal
    - Origin: Supabase Storage
+   
+   PRODUCTION OPTIMIZATIONS:
+   - Removed risky HTMLImageElement.prototype.src override
+   - Simplified transformations (ImageKit auto-handles format)
+   - Optimized MutationObserver (childList only, no attributes)
+   - Enhanced skip logic (logos, icons, small UI images)
+   - Performance improvements (WeakSet + dataset flags)
    ═══════════════════════════════════════════════════════════════ */
 
 (function() {
@@ -21,11 +28,12 @@
         localOrigin: 'https://www.dalalwear.shop'
     };
 
-    // Track processed images to avoid reprocessing
+    // Track processed images to avoid reprocessing (memory-efficient)
     const processedImages = new WeakSet();
 
     /**
      * Check if URL should be optimized
+     * ENHANCED: Skip logos, icons, and small UI images
      */
     function shouldOptimize(url) {
         if (!url || typeof url !== 'string') return false;
@@ -36,8 +44,15 @@
         // Skip SVG files
         if (url.endsWith('.svg')) return false;
         
-        // Skip data URLs
-        if (url.startsWith('data:')) return false;
+        // Skip logos and icons (common patterns)
+        const skipPatterns = ['logo', 'icon', 'favicon', 'avatar'];
+        const lowerUrl = url.toLowerCase();
+        if (skipPatterns.some(pattern => lowerUrl.includes(pattern))) {
+            return false;
+        }
+        
+        // Skip data URLs and blobs
+        if (url.startsWith('data:') || url.startsWith('blob:')) return false;
         
         // Skip external CDNs (except Supabase)
         if (url.startsWith('http') && 
@@ -84,6 +99,7 @@
 
     /**
      * Determine optimal transformation based on image context
+     * SIMPLIFIED: Removed f-webp (ImageKit auto-handles format)
      */
     function getTransformation(img) {
         const classList = img.classList;
@@ -93,39 +109,33 @@
         if (classList.contains('thumb') || 
             classList.contains('cart-item-img') ||
             parent?.classList.contains('thumb-wrap')) {
-            return 'tr=w-150,q-70,f-webp';
+            return 'tr=w-150,q-70';
         }
         
         // Product card images
         if (classList.contains('product-card-img')) {
-            return 'tr=w-400,q-80,f-webp';
+            return 'tr=w-400,q-80';
         }
         
         // Main product images
         if (classList.contains('main-image')) {
-            return 'tr=w-1200,q-85,f-webp';
+            return 'tr=w-1200,q-85';
         }
         
         // Hero/background images
-        if (classList.contains('hero-bg-img') || 
-            classList.contains('hero-logo')) {
-            return 'tr=w-1920,q-85,f-webp';
-        }
-        
-        // Footer/small logos
-        if (classList.contains('footer-logo') || 
-            classList.contains('hero-logo')) {
-            return 'tr=w-300,q-80,f-webp';
+        if (classList.contains('hero-bg-img')) {
+            return 'tr=w-1920,q-85';
         }
         
         // Default transformation
-        return 'tr=w-800,q-80,f-webp';
+        return 'tr=w-800,q-80';
     }
 
     /**
      * Convert URL to ImageKit format
+     * SIMPLIFIED: Let ImageKit handle format automatically
      */
-    function convertToImageKit(url, transformation = 'tr=w-800,q-80,f-webp') {
+    function convertToImageKit(url, transformation = 'tr=w-800,q-80') {
         if (!shouldOptimize(url)) return url;
         
         const path = extractPath(url);
@@ -139,10 +149,13 @@
 
     /**
      * Optimize a single image element
+     * PERFORMANCE: Double-check with dataset flag + WeakSet
      */
     function optimizeImage(img) {
-        // Skip if already processed
-        if (processedImages.has(img)) return;
+        // Skip if already processed (double-check for safety)
+        if (img.dataset.imagekitOptimized === 'true' || processedImages.has(img)) {
+            return;
+        }
         
         // Get current src
         const originalSrc = img.src || img.dataset.src || img.getAttribute('src');
@@ -153,6 +166,9 @@
         
         // Convert to ImageKit
         const optimizedSrc = convertToImageKit(originalSrc, transformation);
+        
+        // If no change needed, skip
+        if (optimizedSrc === originalSrc) return;
         
         // Store original for reference
         if (!img.dataset.originalSrc) {
@@ -182,13 +198,14 @@
             img.loading = 'lazy';
         }
         
-        // Mark as processed
+        // Mark as processed (both methods for redundancy)
         processedImages.add(img);
         img.dataset.imagekitOptimized = 'true';
     }
 
     /**
      * Optimize all images on the page
+     * PERFORMANCE: Only process unoptimized images
      */
     function optimizeAllImages() {
         const images = document.querySelectorAll('img:not([data-imagekit-optimized])');
@@ -196,8 +213,10 @@
         
         images.forEach(img => {
             try {
+                const beforeSrc = img.src;
                 optimizeImage(img);
-                count++;
+                // Only count if actually changed
+                if (img.src !== beforeSrc) count++;
             } catch (err) {
                 console.warn('[ImageKit] Failed to optimize image:', err);
             }
@@ -209,76 +228,45 @@
     }
 
     /**
-     * Override Image.prototype.src setter to intercept dynamic images
-     */
-    function interceptImageSetter() {
-        const originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
-        
-        Object.defineProperty(HTMLImageElement.prototype, 'src', {
-            get: function() {
-                return originalSrcDescriptor.get.call(this);
-            },
-            set: function(value) {
-                if (shouldOptimize(value) && !processedImages.has(this)) {
-                    const transformation = getTransformation(this);
-                    const optimizedValue = convertToImageKit(value, transformation);
-                    
-                    if (!this.dataset.originalSrc) {
-                        this.dataset.originalSrc = value;
-                    }
-                    
-                    processedImages.add(this);
-                    this.dataset.imagekitOptimized = 'true';
-                    
-                    return originalSrcDescriptor.set.call(this, optimizedValue);
-                }
-                return originalSrcDescriptor.set.call(this, value);
-            },
-            configurable: true
-        });
-    }
-
-    /**
      * Watch for dynamically added images
+     * OPTIMIZED: Removed attribute watching, only childList + subtree
+     * SAFER: No HTMLImageElement.prototype override (removed risky code)
      */
     function watchDynamicImages() {
         const observer = new MutationObserver((mutations) => {
-            let hasNewImages = false;
+            let newImages = [];
             
             mutations.forEach(mutation => {
-                // Check added nodes
+                // Only process added nodes (no attribute changes)
                 mutation.addedNodes.forEach(node => {
                     if (node.nodeName === 'IMG') {
-                        optimizeImage(node);
-                        hasNewImages = true;
+                        newImages.push(node);
                     } else if (node.querySelectorAll) {
                         const images = node.querySelectorAll('img:not([data-imagekit-optimized])');
                         if (images.length > 0) {
-                            images.forEach(optimizeImage);
-                            hasNewImages = true;
+                            newImages.push(...images);
                         }
                     }
                 });
-                
-                // Check attribute changes (src updates)
-                if (mutation.type === 'attributes' && 
-                    mutation.attributeName === 'src' && 
-                    mutation.target.nodeName === 'IMG') {
-                    optimizeImage(mutation.target);
-                    hasNewImages = true;
-                }
             });
             
-            if (hasNewImages) {
-                console.log('[ImageKit] ✓ Optimized dynamic images');
+            // Batch process new images
+            if (newImages.length > 0) {
+                newImages.forEach(img => {
+                    try {
+                        optimizeImage(img);
+                    } catch (err) {
+                        console.warn('[ImageKit] Failed to optimize dynamic image:', err);
+                    }
+                });
+                console.log(`[ImageKit] ✓ Optimized ${newImages.length} dynamic images`);
             }
         });
         
+        // OPTIMIZED: Only watch childList, no attributes
         observer.observe(document.body, {
             childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['src']
+            subtree: true
         });
         
         return observer;
@@ -286,13 +274,14 @@
 
     /**
      * Public API
+     * SIMPLIFIED: Removed f-webp from all methods
      */
     window.ImageKitOptimizer = {
         /**
          * Manually optimize a URL
          */
         optimizeUrl: function(url, width = 800, quality = 80) {
-            const transformation = `tr=w-${width},q-${quality},f-webp`;
+            const transformation = `tr=w-${width},q-${quality}`;
             return convertToImageKit(url, transformation);
         },
         
@@ -307,7 +296,7 @@
          * Re-optimize all images
          */
         reoptimize: function() {
-            processedImages.clear();
+            // Clear WeakSet (can't actually clear, but reset dataset flags)
             document.querySelectorAll('img[data-imagekit-optimized]').forEach(img => {
                 img.removeAttribute('data-imagekit-optimized');
             });
@@ -317,19 +306,17 @@
         /**
          * Get ImageKit URL for a path
          */
-        getImageKitUrl: function(path, transformation = 'tr=w-800,q-80,f-webp') {
+        getImageKitUrl: function(path, transformation = 'tr=w-800,q-80') {
             return `${IMAGEKIT_CONFIG.urlEndpoint}${IMAGEKIT_CONFIG.endpointPath}${path}?${transformation}`;
         }
     };
 
     /**
      * Initialize
+     * REMOVED: interceptImageSetter() - risky prototype override removed
      */
     function init() {
-        console.log('[ImageKit] Initializing optimizer...');
-        
-        // Intercept image src setter for dynamic images
-        interceptImageSetter();
+        console.log('[ImageKit] Initializing production-hardened optimizer...');
         
         // Optimize existing images
         if (document.readyState === 'loading') {
@@ -338,7 +325,7 @@
             optimizeAllImages();
         }
         
-        // Watch for dynamic images
+        // Watch for dynamic images (MutationObserver only)
         watchDynamicImages();
         
         // Re-optimize on page show (back/forward cache)
@@ -348,7 +335,7 @@
             }
         });
         
-        console.log('[ImageKit] ✓ Optimizer ready');
+        console.log('[ImageKit] ✓ Production optimizer ready');
     }
 
     // Start
