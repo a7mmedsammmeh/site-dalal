@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (homepageGrid) {
             // clear skeletons
             homepageGrid.innerHTML = '';
-            DALAL_PRODUCTS.filter(p => p.featured).slice(0, 8).forEach(p => {
+            DALAL_PRODUCTS.filter(p => p.featured).forEach(p => {
                 const card = createProductCard(p);
                 card.classList.add('content-fade-in');
                 homepageGrid.appendChild(card);
@@ -226,8 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* inject skeletons immediately while fetch is pending */
     const homepageGrid    = document.getElementById('productsGrid');
     const allProductsGrid = document.getElementById('allProductsGrid');
-    if (homepageGrid)    injectSkeletons(homepageGrid, 8);
-    if (allProductsGrid) injectSkeletons(allProductsGrid, 8);
+    if (homepageGrid)    injectSkeletons(homepageGrid, 12);
+    if (allProductsGrid) injectSkeletons(allProductsGrid, 12);
     const header = document.getElementById('header');
     const onScroll = () => header && header.classList.toggle('scrolled', window.scrollY > 50);
     window.addEventListener('scroll', onScroll, { passive: true });
