@@ -309,6 +309,13 @@ function cartAdd(product, selectedRow, qty = 1, extras = {}, sourceEl = null, fl
     updateCartUI();
     showAddToCartToast(product);
     playSuccessSound();
+    
+    // Track AddToCart event
+    if (typeof DalalPixel !== 'undefined') {
+        const price = parseFloat(selectedRow.value.replace(/[^\d.]/g, '')) || 0;
+        DalalPixel.trackAddToCart(product, price);
+    }
+    
     if (sourceEl) flyToCart(sourceEl, flyProduct || product);
     else animateCartIcon();
 }
@@ -1116,7 +1123,14 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
             const savedId = result.id;
             const serverTotal = result.total;
 
-
+            // Track Lead event (successful order) with enhanced data
+            if (typeof DalalPixel !== 'undefined') {
+                DalalPixel.trackLead({
+                    total: serverTotal,
+                    orderId: orderRef,
+                    items: result.products || []
+                });
+            }
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
@@ -1159,6 +1173,15 @@ function openSiteOrderModal({ product, selectedRow, size, color, notes }) {
 /* ─── Checkout via Site (single order with all cart items) ─── */
 function checkoutViaSite() {
     if (cart.length === 0) return;
+    
+    // Track InitiateCheckout with cart data
+    if (typeof DalalPixel !== 'undefined') {
+        DalalPixel.trackInitiateCheckout({
+            items: cart,
+            total: cartTotal()
+        });
+    }
+    
     const lang = localStorage.getItem('dalal-lang') || 'ar';
     const isAr = lang === 'ar';
 
@@ -1453,7 +1476,14 @@ function checkoutViaSite() {
             const savedId = result.id;
             const serverTotal = result.total;
 
-
+            // Track Lead event (successful order) with enhanced data
+            if (typeof DalalPixel !== 'undefined') {
+                DalalPixel.trackLead({
+                    total: serverTotal,
+                    orderId: orderRef,
+                    items: result.products || []
+                });
+            }
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({

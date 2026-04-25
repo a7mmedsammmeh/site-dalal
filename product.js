@@ -646,7 +646,22 @@ function resetBuyButtons(lang) {
         registerOrderBtn.disabled = false;
         registerOrderBtn.style.opacity = '1';
         registerOrderBtn.style.cursor = 'pointer';
-        registerOrderBtn.onclick = () => currentProduct && openOrderModal(currentProduct);
+        registerOrderBtn.onclick = () => {
+            if (currentProduct) {
+                // Track InitiateCheckout when clicking "Order Now"
+                if (typeof DalalPixel !== 'undefined') {
+                    const pricingRows = currentProduct.pricing?.[lang] || currentProduct.pricing?.ar || [];
+                    const startPrice = pricingRows.length 
+                        ? parseFloat(pricingRows[0].value.replace(/[^\d.]/g, '')) || 0 
+                        : 0;
+                    DalalPixel.trackInitiateCheckout({
+                        ...currentProduct,
+                        value: startPrice
+                    });
+                }
+                openOrderModal(currentProduct);
+            }
+        };
         const titleSpan = registerOrderBtn.querySelector('.btn-stack-title');
         const subSpan   = registerOrderBtn.querySelector('.btn-stack-sub');
         if (titleSpan) titleSpan.textContent = isAr ? 'اطلبي الآن' : 'Order Now';
@@ -659,7 +674,22 @@ function resetBuyButtons(lang) {
         addToCartBtn.disabled = false;
         addToCartBtn.style.opacity = '1';
         addToCartBtn.style.cursor = 'pointer';
-        addToCartBtn.onclick = () => currentProduct && openQuickAddModal(currentProduct);
+        addToCartBtn.onclick = () => {
+            if (currentProduct) {
+                // Track InitiateCheckout when clicking "Add to Cart"
+                if (typeof DalalPixel !== 'undefined') {
+                    const pricingRows = currentProduct.pricing?.[lang] || currentProduct.pricing?.ar || [];
+                    const startPrice = pricingRows.length 
+                        ? parseFloat(pricingRows[0].value.replace(/[^\d.]/g, '')) || 0 
+                        : 0;
+                    DalalPixel.trackInitiateCheckout({
+                        ...currentProduct,
+                        value: startPrice
+                    });
+                }
+                openQuickAddModal(currentProduct);
+            }
+        };
     }
 
     // Reset messenger button
@@ -865,7 +895,22 @@ async function initProductPage() {
     const orderBtn = document.getElementById('orderBtn');
     if (orderBtn) {
         orderBtn.style.opacity = '1';
-        if (!isOutOfStock) orderBtn.addEventListener('click', openModal);
+        if (!isOutOfStock) {
+            orderBtn.addEventListener('click', () => {
+                // Track InitiateCheckout when user clicks Messenger button
+                if (typeof DalalPixel !== 'undefined' && product) {
+                    const pricingRows = product.pricing?.[lang] || product.pricing?.ar || [];
+                    const startPrice = pricingRows.length 
+                        ? parseFloat(pricingRows[0].value.replace(/[^\d.]/g, '')) || 0 
+                        : 0;
+                    DalalPixel.trackInitiateCheckout({
+                        ...product,
+                        value: startPrice
+                    });
+                }
+                openModal();
+            });
+        }
     }
 
     /* Modal close */

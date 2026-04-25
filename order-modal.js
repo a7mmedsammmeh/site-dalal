@@ -428,7 +428,14 @@
             const savedId = result.id;
             const serverTotal = result.total;
 
-
+            // Track Lead event (successful order) with enhanced data
+            if (typeof DalalPixel !== 'undefined') {
+                DalalPixel.trackLead({
+                    total: serverTotal,
+                    orderId: orderRef,
+                    items: result.products || []
+                });
+            }
 
             if (typeof saveOrderLocally === 'function') {
                 saveOrderLocally({
