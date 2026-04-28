@@ -425,6 +425,17 @@ button { border:none; background:none; cursor:pointer; font-family:inherit; colo
         </div>
     </div>
 
+    <!-- Size Filter -->
+    <div class="pm-toolbar" id="pmSizeToolbar" style="margin-bottom:0.75rem;">
+        <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.72rem;color:var(--text-dim);letter-spacing:0.06em;white-space:nowrap;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M4 19.5a2.5 2.5 0 0 0 2.5 2.5H20"/></svg>
+            فلتر بالمقاس:
+        </div>
+        <div class="pm-filters" id="pmSizeFilters">
+            <button class="pm-filter-btn active" data-size="all" onclick="setSizeFilter('all')">الكل</button>
+        </div>
+    </div>
+
     <div class="pm-reorder-hint">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         اسحب المنتجات لتغيير ترتيبها — ثم اضغط "حفظ الترتيب"
@@ -561,6 +572,7 @@ let _orderChanged = false;
 let _dragSrcId = null;
 let _activeFilter = 'all';
 let _searchQuery = '';
+let _activeSizeFilter = 'all';
 let _stockStatuses = {}; // { productId: 'visible' | 'out_of_stock' | 'hidden' }
 
 // Toast function
@@ -574,10 +586,40 @@ function showAdminToast(message) {
 // Filter & Search
 function setFilter(filter) {
     _activeFilter = filter;
-    document.querySelectorAll('.pm-filter-btn').forEach(b => {
+    document.querySelectorAll('#pmFilters .pm-filter-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.filter === filter);
     });
     applyFilters();
+}
+
+function setSizeFilter(size) {
+    _activeSizeFilter = size;
+    document.querySelectorAll('#pmSizeFilters .pm-filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.size === size);
+    });
+    applyFilters();
+}
+
+function buildAdminSizePills() {
+    const container = document.getElementById('pmSizeFilters');
+    if (!container) return;
+    const STANDARD_SIZES = ['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'];
+    const sizeSet = new Set();
+    _pmProducts.forEach(p => {
+        if (p.sizes && Array.isArray(p.sizes)) {
+            p.sizes.forEach(s => sizeSet.add(s));
+        }
+    });
+    const orderedSizes = STANDARD_SIZES.filter(s => sizeSet.has(s));
+    sizeSet.forEach(s => { if (!orderedSizes.includes(s)) orderedSizes.push(s); });
+
+    let html = `<button class="pm-filter-btn ${_activeSizeFilter === 'all' ? 'active' : ''}" data-size="all" onclick="setSizeFilter('all')">الكل</button>`;
+    orderedSizes.forEach(size => {
+        // Count products with this size
+        const count = _pmProducts.filter(p => p.sizes && p.sizes.includes(size)).length;
+        html += `<button class="pm-filter-btn ${_activeSizeFilter === size ? 'active' : ''}" data-size="${size}" onclick="setSizeFilter('${size}')">${size} <span class="pm-filter-count">${count}</span></button>`;
+    });
+    container.innerHTML = html;
 }
 
 function applyFilters() {
@@ -590,6 +632,11 @@ function getFilteredProducts() {
         // Filter by stock status
         const status = _stockStatuses[p.id] || 'visible';
         if (_activeFilter !== 'all' && status !== _activeFilter) return false;
+
+        // Filter by size
+        if (_activeSizeFilter !== 'all') {
+            if (!p.sizes || !Array.isArray(p.sizes) || !p.sizes.includes(_activeSizeFilter)) return false;
+        }
 
         // Filter by search
         if (_searchQuery) {
@@ -623,6 +670,7 @@ function updateFilterCounts() {
 async function loadProductsManagement() {
     try {
         _pmProducts = await fetchAllProducts();
+        buildAdminSizePills();
         renderProductsManagement();
     } catch(e) {
         console.error('products load error:', e);
@@ -662,7 +710,7 @@ function renderProductsManagement() {
             <img src="${imgSrc}" alt="${p.name.ar}" class="pm-card-img" onerror="this.src='images/dalal-logo.png'">
             <div class="pm-card-name">${p.name.ar}</div>
             <div class="pm-card-code">#${p.code}</div>
-            
+            ${p.sizes && p.sizes.length ? `<div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.5rem;">${p.sizes.map(s => `<span style="font-size:0.68rem;padding:0.15rem 0.45rem;border-radius:12px;border:1px solid ${_activeSizeFilter === s ? 'var(--gold)' : 'var(--border)'};color:${_activeSizeFilter === s ? 'var(--gold)' : 'var(--text-dim)'};background:${_activeSizeFilter === s ? 'rgba(224,192,151,0.12)' : 'transparent'};font-weight:${_activeSizeFilter === s ? '700' : '500'};">${s}</span>`).join('')}</div>` : ''}
             <!-- Stock Status Controls -->
             <div style="margin:0.75rem 0;padding:0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);">
                 <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:0.5rem;letter-spacing:0.05em;">حالة المخزون</div>
