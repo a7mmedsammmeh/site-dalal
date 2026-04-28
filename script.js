@@ -40,7 +40,6 @@ function applyLanguage(lang) {
 
     /* size filter labels */
     const sfLabel = lang === 'ar' ? 'فلتر بالمقاس:' : 'Filter by size:';
-    set('sizeFilterLabelHome', sfLabel);
     set('sizeFilterLabelProducts', sfLabel);
     // Update "All" pill text
     document.querySelectorAll('.size-pill[data-size="all"]').forEach(btn => {
@@ -215,8 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.classList.add('content-fade-in');
                 homepageGrid.appendChild(card);
             });
-            // Build size pills for homepage
-            buildSizePills('sizeFilterPillsHome', featured, 'filterBySizeHome');
         }
 
         if (allProductsGrid) {
@@ -624,16 +621,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof rerenderProducts === 'function') rerenderProducts(lang);
     }
 
-    /* Filter by size — homepage */
-    window.filterBySizeHome = function(size) {
-        const container = document.getElementById('sizeFilterPillsHome');
-        if (container) {
-            container.querySelectorAll('.size-pill').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.size === size);
-            });
-        }
-        renderFilteredGrid('productsGrid', DALAL_PRODUCTS.filter(p => p.featured), size);
-    };
 
     /* Filter by size — products page */
     window.filterBySizeProducts = function(size) {
