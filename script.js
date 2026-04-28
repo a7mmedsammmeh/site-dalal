@@ -201,93 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Apply saved language for static content */
     applyLanguage(localStorage.getItem(LANG_KEY) || 'ar');
 
-    /* ─── Size Filter State ─── */
-    const STANDARD_SIZES = ['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'];
-    let _activeSizeHome = 'all';
-    let _activeSizeProducts = 'all';
-
-    /* Build size pills into a container */
-    function buildSizePills(containerId, products, onClickFn) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        const lang = localStorage.getItem(LANG_KEY) || 'ar';
-
-        // Collect all unique sizes from products
-        const sizeSet = new Set();
-        products.forEach(p => {
-            if (p.sizes && Array.isArray(p.sizes)) {
-                p.sizes.forEach(s => sizeSet.add(s));
-            }
-        });
-
-        // Order: standard sizes first (in order), then custom
-        const orderedSizes = STANDARD_SIZES.filter(s => sizeSet.has(s));
-        sizeSet.forEach(s => { if (!orderedSizes.includes(s)) orderedSizes.push(s); });
-
-        // Build HTML
-        const allLabel = lang === 'ar' ? 'الكل' : 'All';
-        let html = `<button class="size-pill active" data-size="all" onclick="${onClickFn}('all')">${allLabel}</button>`;
-        orderedSizes.forEach(size => {
-            html += `<button class="size-pill" data-size="${size}" onclick="${onClickFn}('${size}')">${size}</button>`;
-        });
-        container.innerHTML = html;
-    }
-
-    /* Filter by size — homepage */
-    window.filterBySizeHome = function(size) {
-        _activeSizeHome = size;
-        const container = document.getElementById('sizeFilterPillsHome');
-        if (container) {
-            container.querySelectorAll('.size-pill').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.size === size);
-            });
-        }
-        renderFilteredGrid('productsGrid', DALAL_PRODUCTS.filter(p => p.featured), size);
-    };
-
-    /* Filter by size — products page */
-    window.filterBySizeProducts = function(size) {
-        _activeSizeProducts = size;
-        const container = document.getElementById('sizeFilterPillsProducts');
-        if (container) {
-            container.querySelectorAll('.size-pill').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.size === size);
-            });
-        }
-        renderFilteredGrid('allProductsGrid', DALAL_PRODUCTS, size);
-    };
-
-    /* Render filtered products into a grid */
-    function renderFilteredGrid(gridId, products, activeSize) {
-        const grid = document.getElementById(gridId);
-        if (!grid) return;
-        grid.innerHTML = '';
-
-        const filtered = activeSize === 'all'
-            ? products
-            : products.filter(p => p.sizes && Array.isArray(p.sizes) && p.sizes.includes(activeSize));
-
-        if (filtered.length === 0) {
-            const lang = localStorage.getItem(LANG_KEY) || 'ar';
-            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--text-dim);font-size:0.9rem;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40" style="opacity:0.3;margin-bottom:0.75rem;display:block;margin-inline:auto;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                ${lang === 'ar' ? 'لا توجد منتجات بهذا المقاس' : 'No products in this size'}
-            </div>`;
-        } else {
-            filtered.forEach(p => {
-                const card = createProductCard(p);
-                card.classList.add('content-fade-in');
-                grid.appendChild(card);
-            });
-        }
-
-        /* re-apply language to newly rendered cards */
-        applyLanguage(localStorage.getItem(LANG_KEY) || 'ar');
-
-        /* observe new cards for scroll reveal */
-        setTimeout(() => observeReveal(), 50);
-    }
-
     /* Product grids — wait for JSON to load */
     document.addEventListener('dalal:products-ready', () => {
         const homepageGrid    = document.getElementById('productsGrid');
@@ -650,3 +563,86 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 })();
 
+/* ═══════════════════════════════════════════════════════════════
+   SIZE FILTER — Global (Home + Products Page)
+   ═══════════════════════════════════════════════════════════════ */
+(function initSizeFilter() {
+    const STANDARD_SIZES = ['M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','8XL'];
+
+    /* Build size pills into a container */
+    window.buildSizePills = function(containerId, products, onClickFn) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+
+        // Collect all unique sizes from products
+        const sizeSet = new Set();
+        products.forEach(p => {
+            if (p.sizes && Array.isArray(p.sizes)) {
+                p.sizes.forEach(s => sizeSet.add(s));
+            }
+        });
+
+        // Order: standard sizes first (in order), then custom
+        const orderedSizes = STANDARD_SIZES.filter(s => sizeSet.has(s));
+        sizeSet.forEach(s => { if (!orderedSizes.includes(s)) orderedSizes.push(s); });
+
+        // Build HTML
+        const allLabel = lang === 'ar' ? 'الكل' : 'All';
+        let html = `<button class="size-pill active" data-size="all" onclick="${onClickFn}('all')">${allLabel}</button>`;
+        orderedSizes.forEach(size => {
+            html += `<button class="size-pill" data-size="${size}" onclick="${onClickFn}('${size}')">${size}</button>`;
+        });
+        container.innerHTML = html;
+    };
+
+    /* Render filtered products into a grid */
+    function renderFilteredGrid(gridId, products, activeSize) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+        grid.innerHTML = '';
+        const lang = localStorage.getItem('dalal-lang') || 'ar';
+
+        const filtered = activeSize === 'all'
+            ? products
+            : products.filter(p => p.sizes && Array.isArray(p.sizes) && p.sizes.includes(activeSize));
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--text-dim);font-size:0.9rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40" style="opacity:0.3;margin-bottom:0.75rem;display:block;margin-inline:auto;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                ${lang === 'ar' ? 'لا توجد منتجات بهذا المقاس' : 'No products in this size'}
+            </div>`;
+        } else {
+            filtered.forEach(p => {
+                const card = createProductCard(p);
+                card.classList.add('content-fade-in', 'scroll-reveal', 'revealed');
+                grid.appendChild(card);
+            });
+        }
+
+        /* re-apply language to newly rendered cards */
+        if (typeof rerenderProducts === 'function') rerenderProducts(lang);
+    }
+
+    /* Filter by size — homepage */
+    window.filterBySizeHome = function(size) {
+        const container = document.getElementById('sizeFilterPillsHome');
+        if (container) {
+            container.querySelectorAll('.size-pill').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.size === size);
+            });
+        }
+        renderFilteredGrid('productsGrid', DALAL_PRODUCTS.filter(p => p.featured), size);
+    };
+
+    /* Filter by size — products page */
+    window.filterBySizeProducts = function(size) {
+        const container = document.getElementById('sizeFilterPillsProducts');
+        if (container) {
+            container.querySelectorAll('.size-pill').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.size === size);
+            });
+        }
+        renderFilteredGrid('allProductsGrid', DALAL_PRODUCTS, size);
+    };
+})();
